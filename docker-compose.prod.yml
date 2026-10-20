@@ -1,0 +1,34 @@
+# Hill Booker on a shared VPS. Own database, no database port opened to the internet,
+# API on port 8100 so it does not clash with other apps.
+name: roomly
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: roomly
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: roomly
+    volumes:
+      - roomly_pg:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+  api:
+    build: ./backend
+    restart: unless-stopped
+    depends_on: [db]
+    ports:
+      - "8100:8000"
+    environment:
+      DATABASE_URL: postgresql://roomly:${DB_PASSWORD}@db:5432/roomly
+      JWT_SECRET: ${JWT_SECRET}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+      ALLOW_FAKE_CONFIRM: ${ALLOW_FAKE_CONFIRM:-true}
+      UPLOAD_DIR: /data/uploads
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+    volumes:
+      - roomly_uploads:/data/uploads
+volumes:
+  roomly_pg:
+  roomly_uploads:
