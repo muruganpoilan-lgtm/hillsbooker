@@ -91,6 +91,8 @@ class _LoginScreenState extends State<LoginScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
         children: [
+          Center(child: Image.asset('assets/logo.png', height: 120)),
+          const SizedBox(height: 12),
           Text(_signUp ? 'Create your account' : 'Log in', style: display(30)),
           const SizedBox(height: 20),
           if (_signUp) ...[

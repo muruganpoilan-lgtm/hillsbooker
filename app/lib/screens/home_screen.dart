@@ -134,7 +134,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Hill Booker', style: display(18, color: Colors.white)),
+                        Row(children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(color: const Color(0xFFFAF9F4), borderRadius: BorderRadius.circular(8)),
+                            child: Image.asset('assets/logo_mark.png', height: 26),
+                          ),
+                          const SizedBox(width: 10),
+                          Text('Hill Booker', style: display(18, color: Colors.white)),
+                        ]),
                         const SizedBox(height: 14),
                         SizedBox(width: 270, child: Text('A room for every night of your stay', style: display(30, color: Colors.white))),
                         const SizedBox(height: 8),
