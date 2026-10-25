@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 import '../api.dart';
@@ -193,6 +194,27 @@ class _BookingsScreenState extends State<BookingsScreen> {
     _load();
   }
 
+  Future<void> _openInvoice(String id) async {
+    setState(() => _busy = id);
+    final res = await Api.get('/bookings/$id/invoice-link');
+    if (!mounted) return;
+    setState(() => _busy = '');
+    if (!res.ok) {
+      snack(context, res.error);
+      return;
+    }
+    final ok = await launchUrl(Uri.parse('${res.data['url']}'), mode: LaunchMode.externalApplication);
+    if (!ok && mounted) snack(context, "Couldn't open the invoice. Try again.");
+  }
+
+  Future<void> _emailInvoice(String id) async {
+    setState(() => _busy = id);
+    final res = await Api.post('/bookings/$id/invoice/email');
+    if (!mounted) return;
+    setState(() => _busy = '');
+    snack(context, res.ok ? 'Your invoice was emailed to you.' : res.error);
+  }
+
   Future<void> _confirmCancel(String id) async {
     final yes = await showDialog<bool>(
       context: context,
@@ -326,6 +348,12 @@ class _BookingsScreenState extends State<BookingsScreen> {
             ]),
           ],
           if (status == 'confirmed') ...[
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(child: OutlinedButton.icon(onPressed: _busy == id ? null : () => _openInvoice(id), icon: const Icon(Icons.receipt_long, size: 18), label: const Text('Invoice'))),
+              const SizedBox(width: 10),
+              Expanded(child: OutlinedButton.icon(onPressed: _busy == id ? null : () => _emailInvoice(id), icon: const Icon(Icons.mail_outline, size: 18), label: const Text('Email me'))),
+            ]),
             const SizedBox(height: 10),
             OutlinedButton(
               onPressed: _busy == id ? null : () => _confirmCancel(id),

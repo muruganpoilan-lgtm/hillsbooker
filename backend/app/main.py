@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .db import pool
-from .routes import admin, auth_routes, bookings, owner, payments, public
+from .routes import admin, auth_routes, bookings, invoices, owner, payments, public
 from .storage import upload_root
 
 
@@ -54,6 +54,7 @@ app.include_router(public.router)
 app.include_router(bookings.router)
 app.include_router(payments.router)
 app.include_router(admin.router)
+app.include_router(invoices.router)
 
 
 @app.get("/health")

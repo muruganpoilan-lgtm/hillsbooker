@@ -68,6 +68,26 @@ export default function BookingsPage() {
     if (ready && token) load();
   }, [ready, token, load]);
 
+  async function openInvoice(id) {
+    setError("");
+    setNotice("");
+    setBusy(id);
+    const res = await api(`/bookings/${id}/invoice-link`, { token });
+    setBusy("");
+    if (!res.ok) setError(res.error);
+    else window.open(res.data.url, "_blank");
+  }
+
+  async function emailInvoice(id) {
+    setError("");
+    setNotice("");
+    setBusy(id);
+    const res = await api(`/bookings/${id}/invoice/email`, { method: "POST", token });
+    setBusy("");
+    if (!res.ok) setError(res.error);
+    else setNotice("Your invoice was emailed to you.");
+  }
+
   async function act(id, action) {
     setError("");
     setNotice("");
@@ -195,6 +215,12 @@ export default function BookingsPage() {
 
               {b.status === "confirmed" && (
                 <div className="booking-actions">
+                  <button type="button" className="btn" aria-busy={busy === b.id} onClick={() => openInvoice(b.id)}>
+                    Invoice
+                  </button>
+                  <button type="button" className="btn" aria-busy={busy === b.id} onClick={() => emailInvoice(b.id)}>
+                    Email invoice
+                  </button>
                   <button
                     type="button"
                     className="btn btn-danger"

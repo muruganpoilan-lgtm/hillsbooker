@@ -19,6 +19,19 @@ class Settings(BaseSettings):
     # Cancelling at least this many hours before check-in refunds everything; later cancellations get no refund.
     refund_full_hours: int = 48
 
+    # Invoices. The business details print at the top of every invoice.
+    business_name: str = "Hill Booker"
+    business_address: str = ""
+    business_email: str = ""
+    business_phone: str = ""
+    # Email sending (any SMTP account: your hosting email, Brevo, Gmail app password, ...). Leave smtp_host empty to keep email off.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""        # e.g. "Hill Booker <bookings@hillbooker.com>"
+    smtp_security: str = "starttls"  # starttls, ssl or none
+
     # Photo uploads. Local disk for development; swap storage.py for S3 or Cloudinary in production.
     upload_dir: str = "uploads"
     public_base_url: str = "http://localhost:8000"

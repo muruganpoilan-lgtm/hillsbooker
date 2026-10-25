@@ -3,6 +3,7 @@ from decimal import ROUND_CEILING, Decimal
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from .. import invoice
 from ..auth import current_user
 from ..config import settings
 from ..db import get_conn
@@ -130,7 +131,37 @@ def confirm_booking(booking_id: str, user: dict = Depends(current_user)):
         if cur.fetchone()["late"]:
             raise HTTPException(409, "Your hold expired. Search again")
         cur.execute("UPDATE bookings SET status = 'confirmed', hold_expires_at = NULL WHERE id = %s", (booking_id,))
+    invoice.email_in_background(booking_id)
     return {"booking_id": booking_id, "status": "confirmed"}
+
+
+def _own_confirmed(cur, booking_id: str, user: dict) -> None:
+    cur.execute("SELECT user_id, status FROM bookings WHERE id = %s", (booking_id,))
+    b = cur.fetchone()
+    if not b or str(b["user_id"]) != user["id"]:
+        raise HTTPException(404, "Booking not found")
+    if b["status"] != "confirmed":
+        raise HTTPException(409, "An invoice is made once the booking is confirmed")
+
+
+@router.get("/{booking_id}/invoice-link")
+def invoice_link(booking_id: str, user: dict = Depends(current_user)):
+    """A link that opens the invoice PDF in a browser, with no login needed. Valid for 60 days."""
+    with get_conn() as conn, conn.cursor() as cur:
+        _own_confirmed(cur, booking_id, user)
+    return {"url": invoice.link_for(booking_id)}
+
+
+@router.post("/{booking_id}/invoice/email")
+def email_invoice(booking_id: str, user: dict = Depends(current_user)):
+    """Email the invoice to the guest's own address."""
+    if not invoice.email_enabled():
+        raise HTTPException(503, "Email isn't switched on yet. Open the invoice instead")
+    with get_conn() as conn, conn.cursor() as cur:
+        _own_confirmed(cur, booking_id, user)
+    if not invoice.email_invoice(booking_id):
+        raise HTTPException(502, "The email could not be sent. Try again in a minute")
+    return {"sent": True}
 
 
 @router.post("/{booking_id}/cancel")

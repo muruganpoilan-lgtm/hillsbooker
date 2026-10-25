@@ -76,6 +76,8 @@ CREATE TABLE room_inventory (
   PRIMARY KEY (room_type_id, day)
 );
 
+CREATE SEQUENCE invoice_seq;
+
 CREATE TABLE bookings (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id         uuid NOT NULL REFERENCES users(id),
@@ -86,6 +88,7 @@ CREATE TABLE bookings (
   rooms           int NOT NULL CHECK (rooms > 0),
   guests          int NOT NULL CHECK (guests > 0),
   total_amount    numeric(10,2) NOT NULL,
+  invoice_no      text UNIQUE,  -- assigned the first time an invoice is made, e.g. HB-2026-000123
   advance_amount  numeric(10,2),  -- paid online at booking; the rest is paid at the property. NULL = the full amount
   status          text NOT NULL DEFAULT 'held' CHECK (status IN ('held', 'confirmed', 'cancelled', 'expired')),
   hold_expires_at timestamptz,

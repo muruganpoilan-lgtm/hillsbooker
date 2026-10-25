@@ -5,7 +5,7 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from .. import razorpay_client
+from .. import invoice, razorpay_client
 from ..auth import current_user
 from ..config import payments_enabled, settings
 from ..db import get_conn
@@ -97,6 +97,8 @@ def settle(order_id: str, payment_id: str, user_id: str | None = None) -> dict:
 
     if refund_args:
         refund_payment(*refund_args)
+    if outcome == "confirmed":
+        invoice.email_in_background(booking_id)  # after the commit, so the mail reads the paid booking
     return {"booking_id": booking_id, "status": outcome}
 
 
