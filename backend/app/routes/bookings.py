@@ -1,5 +1,5 @@
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_CEILING, Decimal
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -51,7 +51,7 @@ def create_booking(body: BookingIn, user: dict = Depends(current_user)):
         release_expired_holds(cur)
 
         cur.execute(
-            """SELECT rt.id, rt.property_id, rt.max_guests, rt.base_price, p.status
+            """SELECT rt.id, rt.property_id, rt.max_guests, rt.base_price, p.status, p.advance_percent
                FROM room_types rt JOIN properties p ON p.id = rt.property_id WHERE rt.id = %s""",
             (body.room_type_id,),
         )
@@ -73,6 +73,8 @@ def create_booking(body: BookingIn, user: dict = Depends(current_user)):
             raise HTTPException(409, "Those rooms were just taken for your dates. Try other dates")
 
         total = sum((r["price"] if r["price"] is not None else rt["base_price"]) for r in nights_rows) * Decimal(body.rooms)
+        # Advance: the share of the stay paid online now, rounded up to a whole rupee. The rest is paid at the property.
+        advance = min(total, (total * rt["advance_percent"] / Decimal(100)).quantize(Decimal(1), rounding=ROUND_CEILING))
 
         cur.execute(
             """UPDATE room_inventory SET available = available - %s
@@ -81,14 +83,15 @@ def create_booking(body: BookingIn, user: dict = Depends(current_user)):
         )
         cur.execute(
             """INSERT INTO bookings (user_id, property_id, room_type_id, check_in, check_out, rooms, guests,
-                                     total_amount, status, hold_expires_at)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'held', now() + make_interval(mins => %s))
-               RETURNING id, total_amount, hold_expires_at""",
+                                     total_amount, advance_amount, status, hold_expires_at)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'held', now() + make_interval(mins => %s))
+               RETURNING id, total_amount, advance_amount, hold_expires_at""",
             (user["id"], rt["property_id"], body.room_type_id, body.check_in, body.check_out,
-             body.rooms, body.guests, total, settings.hold_minutes),
+             body.rooms, body.guests, total, advance, settings.hold_minutes),
         )
         booking = cur.fetchone()
     return {"booking_id": booking["id"], "status": "held", "total_amount": booking["total_amount"],
+            "advance_amount": booking["advance_amount"], "balance_due": booking["total_amount"] - booking["advance_amount"],
             "pay_before": booking["hold_expires_at"], "nights": nights}
 
 
@@ -98,7 +101,10 @@ def my_bookings(user: dict = Depends(current_user)):
         release_expired_holds(cur)  # so a guest never sees a hold that has already run out
         cur.execute(
             """SELECT b.id, p.name AS property, p.city, rt.name AS room_type, b.check_in, b.check_out,
-                      b.rooms, b.guests, b.total_amount, b.status, b.hold_expires_at
+                      b.rooms, b.guests, b.total_amount,
+                      COALESCE(b.advance_amount, b.total_amount) AS advance_amount,
+                      b.total_amount - COALESCE(b.advance_amount, b.total_amount) AS balance_due,
+                      b.status, b.hold_expires_at
                FROM bookings b
                JOIN properties p ON p.id = b.property_id
                JOIN room_types rt ON rt.id = b.room_type_id

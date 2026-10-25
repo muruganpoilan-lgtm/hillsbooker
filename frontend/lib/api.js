@@ -96,3 +96,10 @@ export function isISODate(s) {
 export function plural(n, word) {
   return `${n} ${word}${n === 1 ? "" : "s"}`;
 }
+
+// Advance payment: the share (percent) of a stay paid online, rounded up to a whole rupee. The rest is paid at the property.
+export function advanceFor(total, percent) {
+  const t = Number(total) || 0;
+  const p = Number(percent) || 100;
+  return Math.min(t, Math.ceil((t * p) / 100));
+}

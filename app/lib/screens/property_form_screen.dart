@@ -26,6 +26,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
   late final TextEditingController _address;
   late final TextEditingController _description;
   String _type = 'hotel';
+  int _advance = 30;
   final Set<int> _amenityIds = {};
   List<Map<String, dynamic>> _amenities = [];
   bool _busy = false;
@@ -43,6 +44,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
     _description = TextEditingController(text: i == null || i['description'] == null ? '' : '${i['description']}');
     if (i != null) {
       _type = '${i['type'] ?? 'hotel'}';
+      _advance = (i['advance_percent'] is num) ? (i['advance_percent'] as num).toInt() : 100;
       final ids = i['amenity_ids'];
       if (ids is List) {
         for (final v in ids) {
@@ -83,6 +85,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
       'city': _city.text.trim(),
       'address': _address.text.trim().isEmpty ? null : _address.text.trim(),
       'description': _description.text.trim().isEmpty ? null : _description.text.trim(),
+      'advance_percent': _advance,
       'amenity_ids': _amenityIds.toList(),
     };
     final ApiResult res;
@@ -127,6 +130,21 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
           TextField(controller: _address, textCapitalization: TextCapitalization.words, decoration: fieldDeco('Address')),
           const SizedBox(height: 14),
           TextField(controller: _description, minLines: 4, maxLines: 8, textCapitalization: TextCapitalization.sentences, decoration: fieldDeco('Description')),
+          const SizedBox(height: 18),
+          const Text('Advance guests pay online when booking', style: TextStyle(fontWeight: FontWeight.w700, color: C.soft)),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            children: [
+              for (final n in const [10, 20, 25, 30, 50, 100])
+                ChoiceChip(label: Text(n == 100 ? 'Full 100%' : '$n%'), selected: _advance == n, onSelected: (_) => setState(() => _advance = n)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _advance == 100 ? 'Guests pay the full amount online.' : 'Guests pay $_advance% online and the rest at your property.',
+            style: const TextStyle(color: C.soft, fontSize: 13),
+          ),
           if (_amenities.isNotEmpty) ...[
             const SizedBox(height: 18),
             const Text('Amenities', style: TextStyle(fontWeight: FontWeight.w700, color: C.soft)),

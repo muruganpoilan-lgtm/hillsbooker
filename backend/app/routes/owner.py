@@ -86,9 +86,9 @@ def create_property(body: PropertyIn, user: dict = Depends(owner_only)):
         # Listings made by an admin are trusted and go live at once; owners' listings wait for approval.
         status = "approved" if user["role"] == "admin" else "pending"
         cur.execute(
-            """INSERT INTO properties (owner_id, name, type, description, city, address, lat, lng, status)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
-            (owner_id, body.name, body.type, body.description, body.city, body.address, body.lat, body.lng, status),
+            """INSERT INTO properties (owner_id, name, type, description, city, address, lat, lng, status, advance_percent)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+            (owner_id, body.name, body.type, body.description, body.city, body.address, body.lat, body.lng, status, body.advance_percent),
         )
         pid = cur.fetchone()["id"]
         for amenity_id in body.amenity_ids:
@@ -119,7 +119,7 @@ def my_property_detail(property_id: str, user: dict = Depends(owner_only)):
     with get_conn() as conn, conn.cursor() as cur:
         _own_property(cur, property_id, user)
         cur.execute(
-            "SELECT id, name, type, description, city, address, lat, lng, status FROM properties WHERE id = %s",
+            "SELECT id, name, type, description, city, address, lat, lng, status, advance_percent FROM properties WHERE id = %s",
             (property_id,),
         )
         prop = cur.fetchone()
@@ -274,7 +274,9 @@ def get_inventory(room_type_id: str, start: date | None = None, days: int = 60, 
 @router.get("/bookings")
 def owner_bookings(user: dict = Depends(owner_only)):
     sql = """SELECT b.id, p.name AS property, rt.name AS room_type, u.name AS guest,
-                    b.check_in, b.check_out, b.rooms, b.guests, b.total_amount, b.status
+                    b.check_in, b.check_out, b.rooms, b.guests, b.total_amount,
+                    COALESCE(b.advance_amount, b.total_amount) AS advance_amount,
+                    b.total_amount - COALESCE(b.advance_amount, b.total_amount) AS balance_due, b.status
              FROM bookings b
              JOIN properties p ON p.id = b.property_id
              JOIN room_types rt ON rt.id = b.room_type_id

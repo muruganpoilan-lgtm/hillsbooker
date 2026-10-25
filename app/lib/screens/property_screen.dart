@@ -284,6 +284,11 @@ class _PropertyScreenState extends State<PropertyScreen> {
                   ]),
                   if (bookable && r['stay_total'] != null)
                     Text('${money(toNum(r['stay_total']))} for ${plural(_q.nights, 'night')}${qty > 1 ? ' per room' : ''}', style: const TextStyle(color: C.soft)),
+                  if (bookable && r['stay_total'] != null && (_p?['advance_percent'] ?? 100) < 100)
+                    Text(
+                      'Pay ${money(advanceFor(toNum(r['stay_total']) * qty, toNum(_p?['advance_percent'] ?? 100).toInt()))} now (${_p?['advance_percent']}%), the rest at the property',
+                      style: const TextStyle(color: C.green, fontWeight: FontWeight.w700, fontSize: 13),
+                    ),
                   if (bookable && left <= 2)
                     Text('Only $left left for these dates', style: const TextStyle(color: C.goldText, fontWeight: FontWeight.w700))
                   else if (!bookable)

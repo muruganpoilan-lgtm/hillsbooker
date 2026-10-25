@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "./AuthProvider";
 import Ridge from "./Ridge";
-import { api, money, plural, todayISO } from "../lib/api";
+import { advanceFor, api, money, plural, todayISO } from "../lib/api";
 
-export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, nights }) {
+export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, nights, advancePercent = 100 }) {
   const router = useRouter();
   const pathname = usePathname();
   const { token, logout } = useAuth();
@@ -120,6 +120,15 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
                   {Number(qty[room.id] || 1) > 1 ? ` per room` : ""}
                 </p>
               )}
+              {bookable && advancePercent < 100 && (() => {
+                const total = Number(room.stay_total) * Number(qty[room.id] || 1);
+                const adv = advanceFor(total, advancePercent);
+                return (
+                  <p className="meta">
+                    Pay <b>{money(adv)}</b> now ({advancePercent}%), {money(total - adv)} at the property
+                  </p>
+                );
+              })()}
               {bookable && left <= 2 && <p className="scarce">Only {left} left for these dates</p>}
               {hasDates && !bookable && <p className="unavailable">Not free on all of these dates</p>}
               {!hasDates && <p className="unavailable">Choose dates to see if it's free</p>}

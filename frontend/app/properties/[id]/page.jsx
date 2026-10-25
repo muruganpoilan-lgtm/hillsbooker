@@ -85,6 +85,7 @@ export default async function PropertyPage({ params, searchParams }) {
           checkOut={hasDates ? co : ""}
           guests={guests}
           nights={hasDates ? nightsBetween(ci, co) : 0}
+          advancePercent={p.advance_percent || 100}
         />
       </section>
     </main>

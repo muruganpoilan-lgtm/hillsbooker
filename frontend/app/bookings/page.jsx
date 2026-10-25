@@ -164,6 +164,11 @@ export default function BookingsPage() {
                 {prettyDate(b.check_in)} to {prettyDate(b.check_out)} ({plural(nights, "night")}) ·{" "}
                 <span className="price">{money(b.total_amount)}</span>
               </p>
+              {Number(b.balance_due) > 0 && (b.status === "held" || b.status === "confirmed") && (
+                <p className="meta">
+                  Advance {money(b.advance_amount)} is paid online. Balance {money(b.balance_due)} is paid at the property.
+                </p>
+              )}
 
               {b.status === "held" && b.hold_expires_at && (
                 <>
@@ -174,7 +179,7 @@ export default function BookingsPage() {
                   <div className="booking-actions">
                     {payOn ? (
                       <button type="button" className="btn btn-primary" aria-busy={busy === b.id} onClick={() => pay(b)}>
-                        {busy === b.id ? "Opening payment…" : `Pay ${money(b.total_amount)}`}
+                        {busy === b.id ? "Opening payment…" : `Pay ${money(b.advance_amount)}${Number(b.balance_due) > 0 ? " now" : ""}`}
                       </button>
                     ) : (
                       <button type="button" className="btn btn-primary" aria-busy={busy === b.id} onClick={() => act(b.id, "confirm")}>
@@ -203,7 +208,7 @@ export default function BookingsPage() {
                 </div>
               )}
               {b.status === "confirmed" && (
-                <p className="meta">Cancel at least 2 days before check-in for a full refund. After that there is no refund.</p>
+                <p className="meta">Cancel at least 2 days before check-in and your advance is refunded in full. After that there is no refund.</p>
               )}
             </article>
           );

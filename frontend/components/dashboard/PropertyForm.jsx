@@ -18,6 +18,7 @@ export default function PropertyForm({ initial, submitLabel, onSubmit }) {
     city: initial?.city || "",
     address: initial?.address || "",
     description: initial?.description || "",
+    advance_percent: String(initial?.advance_percent ?? 30),
   });
   const [amenityIds, setAmenityIds] = useState(initial?.amenity_ids || []);
   const [amenities, setAmenities] = useState([]);
@@ -45,6 +46,7 @@ export default function PropertyForm({ initial, submitLabel, onSubmit }) {
       city: form.city.trim(),
       address: form.address.trim() || null,
       description: form.description.trim() || null,
+      advance_percent: Number(form.advance_percent),
       amenity_ids: amenityIds,
     });
     setBusy(false);
@@ -80,6 +82,16 @@ export default function PropertyForm({ initial, submitLabel, onSubmit }) {
       <label className="field">
         <span>Description</span>
         <textarea rows={5} value={form.description} onChange={set("description")} />
+      </label>
+      <label className="field">
+        <span>Advance guests pay online when booking</span>
+        <select value={form.advance_percent} onChange={set("advance_percent")}>
+          {[10, 20, 25, 30, 50, 100].map((n) => (
+            <option key={n} value={n}>
+              {n === 100 ? "100% (the full amount, nothing at the property)" : `${n}% now, the rest at the property`}
+            </option>
+          ))}
+        </select>
       </label>
       {amenities.length > 0 && (
         <fieldset className="amenities">

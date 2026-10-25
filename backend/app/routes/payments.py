@@ -113,7 +113,7 @@ def create_order(booking_id: str, user: dict = Depends(current_user)):
         raise HTTPException(503, "Online payments aren't switched on yet")
     with get_conn() as conn, conn.cursor() as cur:
         release_expired_holds(cur)
-        cur.execute("SELECT id, user_id, status, total_amount FROM bookings WHERE id = %s FOR UPDATE", (booking_id,))
+        cur.execute("SELECT id, user_id, status, COALESCE(advance_amount, total_amount) AS pay_now FROM bookings WHERE id = %s FOR UPDATE", (booking_id,))
         b = cur.fetchone()
         if not b or str(b["user_id"]) != user["id"]:
             raise HTTPException(404, "Booking not found")
@@ -125,7 +125,7 @@ def create_order(booking_id: str, user: dict = Depends(current_user)):
         if existing:
             order_id, amount = existing["provider_order_id"], existing["amount"]
         else:
-            amount = b["total_amount"]
+            amount = b["pay_now"]
             try:
                 order = razorpay_client.create_order(paise(amount), receipt=booking_id, notes={"booking_id": booking_id})
             except RazorpayError as e:

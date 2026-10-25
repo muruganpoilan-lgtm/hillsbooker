@@ -296,6 +296,13 @@ class _BookingsScreenState extends State<BookingsScreen> {
             Expanded(child: Text('${prettyDayYear(checkIn)} to ${prettyDayYear(checkOut)} (${plural(nights, 'night')})')),
             Price(toNum(b['total_amount']), size: 18),
           ]),
+          if (toNum(b['balance_due']) > 0 && (status == 'held' || status == 'confirmed')) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Advance ${money(toNum(b['advance_amount']))} is paid online. Balance ${money(toNum(b['balance_due']))} is paid at the property.',
+              style: const TextStyle(color: C.green, fontWeight: FontWeight.w700, fontSize: 13.5),
+            ),
+          ],
           if (status == 'held' && until != null) ...[
             const SizedBox(height: 10),
             Text(left == Duration.zero ? 'Hold ended' : 'Room held for $mins:$secs', style: const TextStyle(color: C.goldText, fontWeight: FontWeight.w800, fontSize: 16)),
@@ -307,7 +314,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
               Expanded(
                 child: FilledButton(
                   onPressed: _busy == id || left == Duration.zero ? null : (_payOn ? () => _pay(b) : () => _act(id, 'confirm')),
-                  child: Text(_busy == id ? 'Opening payment…' : (_payOn ? 'Pay ${money(toNum(b['total_amount']))}' : 'Confirm booking (test)')),
+                  child: Text(_busy == id ? 'Opening payment…' : (_payOn ? 'Pay ${money(toNum(b['advance_amount']))}${toNum(b['balance_due']) > 0 ? ' now' : ''}' : 'Confirm booking (test)')),
                 ),
               ),
               const SizedBox(width: 10),
@@ -326,7 +333,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
               child: const Text('Cancel booking'),
             ),
             const SizedBox(height: 6),
-            const Text('Cancel at least 2 days before check-in for a full refund. After that there is no refund.', style: TextStyle(color: C.soft, fontSize: 13)),
+            const Text('Cancel at least 2 days before check-in and your advance is refunded in full. After that there is no refund.', style: TextStyle(color: C.soft, fontSize: 13)),
           ],
         ],
       ),

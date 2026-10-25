@@ -21,6 +21,7 @@ CREATE TABLE properties (
   lat          numeric(9,6),
   lng          numeric(9,6),
   status       text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  advance_percent int NOT NULL DEFAULT 100 CHECK (advance_percent BETWEEN 10 AND 100),  -- share of the stay paid online at booking
   rating_avg   numeric(2,1) NOT NULL DEFAULT 0,
   rating_count int NOT NULL DEFAULT 0,
   created_at   timestamptz NOT NULL DEFAULT now()
@@ -85,6 +86,7 @@ CREATE TABLE bookings (
   rooms           int NOT NULL CHECK (rooms > 0),
   guests          int NOT NULL CHECK (guests > 0),
   total_amount    numeric(10,2) NOT NULL,
+  advance_amount  numeric(10,2),  -- paid online at booking; the rest is paid at the property. NULL = the full amount
   status          text NOT NULL DEFAULT 'held' CHECK (status IN ('held', 'confirmed', 'cancelled', 'expired')),
   hold_expires_at timestamptz,
   created_at      timestamptz NOT NULL DEFAULT now(),

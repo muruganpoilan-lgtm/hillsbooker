@@ -49,3 +49,9 @@ DateTime today() {
 int nightsBetween(DateTime a, DateTime b) => DateTime.utc(b.year, b.month, b.day).difference(DateTime.utc(a.year, a.month, a.day)).inDays;
 
 String plural(int n, String word) => '$n $word${n == 1 ? '' : 's'}';
+
+// Advance payment: the share (percent) of a stay paid online, rounded up to a whole rupee. The rest is paid at the property.
+num advanceFor(num total, int percent) {
+  final v = (total * percent / 100).ceil();
+  return v > total ? total : v;
+}

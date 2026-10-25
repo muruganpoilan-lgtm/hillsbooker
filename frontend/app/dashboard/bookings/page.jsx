@@ -47,6 +47,7 @@ function Bookings() {
               </div>
               <div className="right">
                 <span className="price">{money(b.total_amount)}</span>
+                {Number(b.balance_due) > 0 && b.status === "confirmed" && <p className="meta">Balance at property {money(b.balance_due)}</p>}
                 <p>
                   <span className={`status status-${b.status}`}>{b.status === "confirmed" ? "Confirmed" : "Cancelled"}</span>
                 </p>

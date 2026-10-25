@@ -81,7 +81,7 @@ def property_detail(property_id: str, check_in: date | None = None, check_out: d
 
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(
-            """SELECT id, name, type, description, city, address, lat, lng, rating_avg, rating_count
+            """SELECT id, name, type, description, city, address, lat, lng, rating_avg, rating_count, advance_percent
                FROM properties WHERE id = %s AND status = 'approved'""",
             (property_id,),
         )

@@ -78,6 +78,8 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
         ),
         Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
           Price(toNum(b['total_amount']), size: 17),
+          if (toNum(b['balance_due']) > 0 && status == 'confirmed')
+            Text('Balance ${money(toNum(b['balance_due']))}', style: const TextStyle(color: C.green, fontSize: 12.5, fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
           Pill(status == 'confirmed' ? 'Confirmed' : 'Cancelled', status == 'confirmed' ? C.green : C.soft),
         ]),
