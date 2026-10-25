@@ -297,3 +297,6 @@ label.btn[aria-busy="true"] { opacity: 0.7; cursor: progress; }
   width: clamp(5rem, 14vw, 11rem); aspect-ratio: 1; border-radius: 50%; background: var(--marigold);
 }
 @media (max-width: 639px) { .hero::before { display: none; } }
+
+.brand-logo { height: 34px; width: auto; border-radius: 6px; margin-right: 8px; vertical-align: middle; }
+.footer-logo { height: 30px; width: auto; border-radius: 6px; margin-right: 8px; vertical-align: middle; background: #faf9f4; padding: 2px 4px; }

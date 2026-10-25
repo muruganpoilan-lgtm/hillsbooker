@@ -11,12 +11,7 @@ export default function Header() {
   return (
     <header className="site-header">
       <Link href="/" className="brand">
-        <span className="mark" aria-hidden="true">
-          <i />
-          <i />
-          <i />
-          <i />
-        </span>
+        <img src="/logo-mark.png" alt="" className="brand-logo" />
         Hill Booker
       </Link>
       <nav className="nav" aria-label="Main">

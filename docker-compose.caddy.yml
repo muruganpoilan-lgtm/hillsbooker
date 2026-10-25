@@ -1,0 +1,17 @@
+# Optional https front door. Use only if nothing else on the VPS already listens on ports 80 and 443.
+# Start with: docker compose -f docker-compose.prod.yml -f docker-compose.caddy.yml up -d
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      WEB_DOMAIN: ${WEB_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+volumes:
+  caddy_data:
