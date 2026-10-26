@@ -45,6 +45,9 @@ function Dashboard() {
           <Link href="/dashboard/bookings" className="btn btn-small">
             Bookings
           </Link>
+          <Link href="/dashboard/payments" className="btn btn-small">
+            Payments
+          </Link>
           <Link href="/dashboard/new" className="btn btn-small btn-primary">
             Add a property
           </Link>

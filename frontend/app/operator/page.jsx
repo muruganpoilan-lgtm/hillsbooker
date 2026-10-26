@@ -46,6 +46,9 @@ function Operator() {
           <Link href="/operator/bookings" className="btn btn-small">
             Bookings
           </Link>
+          <Link href="/dashboard/payments" className="btn btn-small">
+            Payments
+          </Link>
           <Link href="/operator/new" className="btn btn-small btn-primary">
             Add a vehicle
           </Link>
