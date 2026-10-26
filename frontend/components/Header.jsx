@@ -18,8 +18,8 @@ export default function Header() {
         <Link href="/vehicles">Cars &amp; vans</Link>
         {ready && token ? (
           <>
-            {(role === "owner" || role === "admin") && <Link href="/dashboard">Dashboard</Link>}
-            {(role === "operator" || role === "admin") && <Link href="/operator">My vehicles</Link>}
+            {(role === "owner" || role === "operator" || role === "admin") && <Link href="/dashboard">My properties</Link>}
+            {(role === "owner" || role === "operator" || role === "admin") && <Link href="/operator">My vehicles</Link>}
             <Link href="/bookings">My bookings</Link>
             <button
               type="button"

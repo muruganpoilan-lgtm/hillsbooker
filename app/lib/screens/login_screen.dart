@@ -161,8 +161,7 @@ class _LoginScreenState extends State<LoginScreen> {
               spacing: 8,
               children: [
                 ChoiceChip(label: const Text('Book trips'), selected: _role == 'guest', onSelected: (_) => setState(() => _role = 'guest')),
-                ChoiceChip(label: const Text('List my property'), selected: _role == 'owner', onSelected: (_) => setState(() => _role = 'owner')),
-                ChoiceChip(label: const Text('Rent out vehicles'), selected: _role == 'operator', onSelected: (_) => setState(() => _role = 'operator')),
+                ChoiceChip(label: const Text('List property or vehicles'), selected: _role == 'owner', onSelected: (_) => setState(() => _role = 'owner')),
               ],
             ),
           ],

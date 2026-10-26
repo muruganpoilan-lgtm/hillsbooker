@@ -9,7 +9,7 @@ from ..schemas import InventoryIn, PropertyIn, PropertyUpdate, RoomTypeIn, RoomT
 from ..storage import delete_image, save_image
 
 router = APIRouter(prefix="/owner", tags=["owner and admin"])
-owner_only = require_role("owner", "admin")  # admins can manage every property
+owner_only = require_role("owner", "operator", "admin")  # hosts can list properties and vehicles; admins manage everything
 
 
 def _own_property(cur, property_id: str, user: dict):

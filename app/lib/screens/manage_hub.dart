@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../session.dart';
 import 'operator_home_screen.dart';
 import 'owner_home_screen.dart';
 
-// The Manage tab. Owners see their properties, operators their vehicles, and an admin can switch between both.
+// The Manage tab. Owners, operators and admins can all switch between their properties and their vehicles.
 class ManageHub extends StatefulWidget {
   const ManageHub({super.key});
 
@@ -17,9 +16,6 @@ class _ManageHubState extends State<ManageHub> {
 
   @override
   Widget build(BuildContext context) {
-    final role = session.role;
-    if (role == 'operator') return const OperatorHomeScreen();
-    if (role != 'admin') return const OwnerHomeScreen();
     return Column(
       children: [
         Padding(

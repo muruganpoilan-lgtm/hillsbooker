@@ -18,7 +18,7 @@ from .owner import _delete_photo, _upload_photos
 public = APIRouter(prefix="/vehicles", tags=["vehicles"])
 operator = APIRouter(prefix="/operator", tags=["vehicle operators"])
 guest = APIRouter(prefix="/vehicle-bookings", tags=["vehicle bookings"])
-operator_only = require_role("operator", "admin")
+operator_only = require_role("operator", "owner", "admin")  # property owners can list vehicles too
 
 _BUSY = "(vb.status = 'confirmed' OR (vb.status = 'held' AND vb.hold_expires_at > now()))"
 

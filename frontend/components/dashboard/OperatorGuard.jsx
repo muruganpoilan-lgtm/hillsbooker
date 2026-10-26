@@ -13,18 +13,18 @@ export default function OperatorGuard({ children }) {
         <div className="empty">
           <h2>Log in to manage your vehicles</h2>
           <p>
-            <Link href="/login?next=/operator">Log in</Link> or <Link href="/register?role=operator">create an operator account</Link>.
+            <Link href="/login?next=/operator">Log in</Link> or <Link href="/register?role=owner">create a host account</Link>.
           </p>
         </div>
       </main>
     );
   }
-  if (role !== "operator" && role !== "admin") {
+  if (role !== "owner" && role !== "operator" && role !== "admin") {
     return (
       <main className="page">
         <div className="empty">
           <h2>This area is for vehicle operators</h2>
-          <p>Create a separate operator account with another email to list your cars, vans or buses.</p>
+          <p>Create a separate host account with another email to list a property or vehicles.</p>
         </div>
       </main>
     );

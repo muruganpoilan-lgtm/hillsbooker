@@ -78,8 +78,7 @@ export default function RegisterPage() {
           <span>I want to</span>
           <select value={role} onChange={(e) => setRole(e.target.value)}>
             <option value="guest">Book rooms and vehicles</option>
-            <option value="owner">List my hotel or homestay</option>
-            <option value="operator">Rent out my cars, vans or buses</option>
+            <option value="owner">List my property or vehicles</option>
           </select>
         </label>
         {error && (
