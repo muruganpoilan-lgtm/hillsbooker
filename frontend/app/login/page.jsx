@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth, safeNext } from "../../components/AuthProvider";
+import GoogleButton from "../../components/GoogleButton";
 import { api } from "../../lib/api";
 
 export default function LoginPage() {
@@ -54,6 +55,9 @@ export default function LoginPage() {
           {busy ? "Logging in…" : "Log in"}
         </button>
       </form>
+      <div className="stack" style={{ marginTop: "0.8rem" }}>
+        <GoogleButton />
+      </div>
       <p className="auth-alt">
         New here? <Link href="/register">Create an account</Link>
       </p>

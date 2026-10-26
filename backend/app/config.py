@@ -32,6 +32,12 @@ class Settings(BaseSettings):
     smtp_from: str = ""        # e.g. "Hill Booker <bookings@hillbooker.com>"
     smtp_security: str = "starttls"  # starttls, ssl or none
 
+    # Sign in with Google (Google Cloud Console > APIs & Services > Credentials > OAuth client ID, type "Web application").
+    # Leave the id empty to hide the Google button.
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    site_url: str = "https://hillbooker.com"  # where web sign-ins are sent back to
+
     # Photo uploads. Local disk for development; swap storage.py for S3 or Cloudinary in production.
     upload_dir: str = "uploads"
     public_base_url: str = "http://localhost:8000"
@@ -44,3 +50,7 @@ settings = Settings()
 
 def payments_enabled() -> bool:
     return bool(settings.razorpay_key_id and settings.razorpay_key_secret)
+
+
+def google_enabled() -> bool:
+    return bool(settings.google_client_id and settings.google_client_secret)

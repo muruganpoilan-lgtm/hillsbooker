@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth, safeNext } from "../../components/AuthProvider";
+import GoogleButton from "../../components/GoogleButton";
 import { api } from "../../lib/api";
 
 export default function RegisterPage() {
@@ -90,6 +91,9 @@ export default function RegisterPage() {
           {busy ? "Creating your account…" : "Create account"}
         </button>
       </form>
+      <div className="stack" style={{ marginTop: "0.8rem" }}>
+        <GoogleButton role={role} label="Sign up with Google" />
+      </div>
       <p className="auth-alt">
         Already have an account? <Link href="/login">Log in</Link>
       </p>

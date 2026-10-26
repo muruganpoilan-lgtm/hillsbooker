@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 
 import '../api.dart';
+import '../config.dart';
 import '../session.dart';
 import '../theme.dart';
 
@@ -23,11 +26,54 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _hide = true;
   String _role = 'guest';
   String _error = '';
+  bool _googleOn = false;
 
   @override
   void initState() {
     super.initState();
     _signUp = widget.startOnSignUp;
+    _checkGoogle();
+  }
+
+  Future<void> _checkGoogle() async {
+    final res = await Api.get('/auth/google/config');
+    if (mounted && res.ok && res.data is Map && res.data['enabled'] == true) setState(() => _googleOn = true);
+  }
+
+  // Opens Google's sign-in page in the phone's browser; the server sends us back to hillbooker://auth with a token.
+  Future<void> _google() async {
+    setState(() {
+      _busy = true;
+      _error = '';
+    });
+    try {
+      final role = _signUp ? _role : 'guest';
+      final result = await FlutterWebAuth2.authenticate(url: '$apiBase/auth/google/start?target=app&role=$role', callbackUrlScheme: 'hillbooker');
+      final q = Uri.parse(result).queryParameters;
+      final token = q['token'];
+      final r = q['role'];
+      if (token == null || r == null) {
+        if (mounted) {
+          setState(() {
+            _busy = false;
+            _error = q['error'] ?? 'Google sign-in did not finish. Try again.';
+          });
+        }
+        return;
+      }
+      await session.login(token, r);
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } on PlatformException {
+      if (mounted) setState(() => _busy = false); // closed the Google page without choosing
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = 'Google sign-in did not work. Try again.';
+        });
+      }
+    }
   }
 
   @override
@@ -144,6 +190,14 @@ class _LoginScreenState extends State<LoginScreen> {
             onPressed: _busy ? null : _submit,
             child: Text(_busy ? (_signUp ? 'Creating your account…' : 'Logging in…') : (_signUp ? 'Create account' : 'Log in')),
           ),
+          if (_googleOn) ...[
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: _busy ? null : _google,
+              icon: const Icon(Icons.account_circle_outlined),
+              label: Text(_signUp ? 'Sign up with Google' : 'Continue with Google'),
+            ),
+          ],
           const SizedBox(height: 10),
           TextButton(
             onPressed: () => setState(() {

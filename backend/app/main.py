@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .db import pool
-from .routes import admin, auth_routes, bookings, invoices, owner, payments, public, vehicles
+from .routes import admin, auth_routes, bookings, google_auth, invoices, owner, payments, public, vehicles
 from .storage import upload_root
 
 
@@ -50,6 +50,7 @@ app.add_middleware(
 app.mount("/uploads", StaticFiles(directory=upload_root()), name="uploads")
 
 app.include_router(auth_routes.router)
+app.include_router(google_auth.router)
 app.include_router(owner.router)
 app.include_router(public.router)
 app.include_router(bookings.router)
