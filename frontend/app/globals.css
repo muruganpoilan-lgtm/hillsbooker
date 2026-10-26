@@ -300,3 +300,10 @@ label.btn[aria-busy="true"] { opacity: 0.7; cursor: progress; }
 
 .brand-logo { height: 34px; width: auto; border-radius: 6px; margin-right: 8px; vertical-align: middle; }
 .footer-logo { height: 30px; width: auto; border-radius: 6px; margin-right: 8px; vertical-align: middle; background: #faf9f4; padding: 2px 4px; }
+
+/* vehicles */
+.tabs { display: flex; gap: 1.2rem; margin: 0 0 1rem; }
+.tabs b { border-bottom: 3px solid var(--marigold); }
+.choice { border: 0; padding: 0; margin: 0; display: grid; gap: 0.5rem; }
+.field-label { font-size: 0.85rem; font-weight: 700; color: var(--ink-soft); padding: 0; margin-bottom: 0.3rem; }
+.home-vehicles { margin-top: 1.2rem; }

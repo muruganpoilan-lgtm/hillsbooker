@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'screens/account_screen.dart';
-import 'screens/bookings_screen.dart';
+import 'screens/bookings_hub.dart';
 import 'screens/home_screen.dart';
-import 'screens/owner_home_screen.dart';
+import 'screens/manage_hub.dart';
 import 'session.dart';
 import 'theme.dart';
 
@@ -40,7 +40,7 @@ class Shell extends StatelessWidget {
     return ListenableBuilder(
       listenable: session,
       builder: (context, _) {
-        final manager = session.token != null && (session.role == 'owner' || session.role == 'admin');
+        final manager = session.token != null && (session.role == 'owner' || session.role == 'admin' || session.role == 'operator');
         return ValueListenableBuilder<int>(
           valueListenable: tabIndex,
           builder: (context, rawIndex, _) {
@@ -50,9 +50,9 @@ class Shell extends StatelessWidget {
             // Tabs are rebuilt when opened, so lists always show fresh data.
             final pages = <Widget>[
               const HomeScreen(),
-              const BookingsScreen(),
+              const BookingsHub(),
               const AccountScreen(),
-              if (manager) const OwnerHomeScreen(),
+              if (manager) const ManageHub(),
             ];
             return Scaffold(
               body: SafeArea(top: index != 0, child: pages[index]),

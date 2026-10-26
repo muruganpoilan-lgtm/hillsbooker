@@ -44,10 +44,57 @@ def refund_payment(payment_row_id: str, provider_payment_id: str, amount: Decima
     return "refunded"
 
 
+def settle_vehicle(order_id: str, payment_id: str, user_id: str | None = None) -> dict:
+    """Same job as settle() for a vehicle booking. A late payment is accepted only while the vehicle is still
+    free for those dates (we re-check, ignoring this booking itself); otherwise it is refunded in full."""
+    refund_args = None
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT p.id, p.vehicle_booking_id, p.status, p.amount, b.user_id, b.status AS booking_status,
+                      b.vehicle_id, b.start_date, b.end_date, b.count, v.quantity
+               FROM payments p
+               JOIN vehicle_bookings b ON b.id = p.vehicle_booking_id
+               JOIN vehicles v ON v.id = b.vehicle_id
+               WHERE p.provider_order_id = %s FOR UPDATE OF p, b""",
+            (order_id,),
+        )
+        row = cur.fetchone()
+        if not row or (user_id and str(row["user_id"]) != user_id):
+            raise HTTPException(404, "Payment not found")
+        booking_id = str(row["vehicle_booking_id"])
+        if row["status"] in ("paid", "refunded"):
+            return {"booking_id": booking_id, "status": "confirmed" if row["status"] == "paid" else "refunded", "already_done": True}
+
+        cur.execute("UPDATE payments SET status = 'paid', provider_payment_id = %s, updated_at = now() WHERE id = %s", (payment_id, row["id"]))
+        outcome = "confirmed"
+        if row["booking_status"] in ("held", "expired"):
+            cur.execute("SELECT id FROM vehicles WHERE id = %s FOR UPDATE", (row["vehicle_id"],))  # take turns with new bookings
+            from .vehicles import max_used
+
+            used = max_used(cur, str(row["vehicle_id"]), row["start_date"], row["end_date"], exclude=booking_id)
+            if row["quantity"] - used >= row["count"]:
+                cur.execute("UPDATE vehicle_bookings SET status = 'confirmed', hold_expires_at = NULL WHERE id = %s", (booking_id,))
+            else:
+                outcome = "refunded"
+                refund_args = (str(row["id"]), payment_id, row["amount"], "Vehicle was taken before payment arrived")
+        elif row["booking_status"] == "cancelled":
+            outcome = "refunded"
+            refund_args = (str(row["id"]), payment_id, row["amount"], "Booking was released before payment arrived")
+    if refund_args:
+        refund_payment(*refund_args)
+    return {"booking_id": booking_id, "status": outcome}
+
+
 def settle(order_id: str, payment_id: str, user_id: str | None = None) -> dict:
     """Record a successful payment and confirm the booking. Safe to call twice (the browser and the webhook
     both report the same payment). If the guest paid after the hold ran out, the rooms are taken again when
     still free; otherwise the payment is refunded in full."""
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("SELECT vehicle_booking_id FROM payments WHERE provider_order_id = %s", (order_id,))
+        peek = cur.fetchone()
+    if peek and peek["vehicle_booking_id"]:
+        return settle_vehicle(order_id, payment_id, user_id)
+
     refund_args = None
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(
@@ -137,6 +184,36 @@ def create_order(booking_id: str, user: dict = Depends(current_user)):
                 "INSERT INTO payments (booking_id, provider_order_id, amount) VALUES (%s, %s, %s)",
                 (booking_id, order_id, amount),
             )
+    return {"order_id": order_id, "amount": paise(amount), "currency": "INR", "key_id": settings.razorpay_key_id}
+
+
+@router.post("/vehicle-bookings/{booking_id}/order")
+def create_vehicle_order(booking_id: str, user: dict = Depends(current_user)):
+    """Start a payment for a held vehicle booking. Asking twice returns the same order."""
+    if not payments_enabled():
+        raise HTTPException(503, "Online payments aren't switched on yet")
+    from .vehicles import release_expired_vehicle_holds
+
+    with get_conn() as conn, conn.cursor() as cur:
+        release_expired_vehicle_holds(cur)
+        cur.execute("SELECT id, user_id, status, advance_amount FROM vehicle_bookings WHERE id = %s FOR UPDATE", (booking_id,))
+        b = cur.fetchone()
+        if not b or str(b["user_id"]) != user["id"]:
+            raise HTTPException(404, "Booking not found")
+        if b["status"] != "held":
+            raise HTTPException(409, "Your hold ended, so this booking can't be paid. Search again" if b["status"] == "expired" else f"This booking is already {b['status']}")
+        cur.execute("SELECT provider_order_id, amount FROM payments WHERE vehicle_booking_id = %s AND status = 'created'", (booking_id,))
+        existing = cur.fetchone()
+        if existing:
+            order_id, amount = existing["provider_order_id"], existing["amount"]
+        else:
+            amount = b["advance_amount"]
+            try:
+                order = razorpay_client.create_order(paise(amount), receipt=booking_id, notes={"vehicle_booking_id": booking_id})
+            except RazorpayError as e:
+                raise HTTPException(502, f"Payment could not be started: {e}")
+            order_id = order["id"]
+            cur.execute("INSERT INTO payments (vehicle_booking_id, provider_order_id, amount) VALUES (%s, %s, %s)", (booking_id, order_id, amount))
     return {"order_id": order_id, "amount": paise(amount), "currency": "INR", "key_id": settings.razorpay_key_id}
 
 

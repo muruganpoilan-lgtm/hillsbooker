@@ -21,8 +21,9 @@ function loadCheckout() {
 
 // Opens Razorpay's payment window for a held booking.
 // Resolves to {ok:true, data:{status:"confirmed"|"refunded"}}, {ok:false, dismissed:true} or {ok:false, error}.
-export async function payForBooking({ bookingId, token, description }) {
-  const order = await api(`/payments/bookings/${bookingId}/order`, { method: "POST", token });
+export async function payForBooking({ bookingId, token, description, kind = "stay" }) {
+  const path = kind === "vehicle" ? `/payments/vehicle-bookings/${bookingId}/order` : `/payments/bookings/${bookingId}/order`;
+  const order = await api(path, { method: "POST", token });
   if (!order.ok) return order;
   try {
     await loadCheckout();

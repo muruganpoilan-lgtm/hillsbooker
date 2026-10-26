@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth, safeNext } from "../../components/AuthProvider";
@@ -10,7 +10,12 @@ export default function RegisterPage() {
   const router = useRouter();
   const { login } = useAuth();
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" });
-  const [owner, setOwner] = useState(false);
+  const [role, setRole] = useState("guest");
+
+  useEffect(() => {
+    const r = new URLSearchParams(window.location.search).get("role");
+    if (r === "owner" || r === "operator") setRole(r);
+  }, []);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -35,7 +40,7 @@ export default function RegisterPage() {
         email: form.email.trim(),
         phone: form.phone.trim() || null,
         password: form.password,
-        role: owner ? "owner" : "guest",
+        role,
       },
     });
     setBusy(false);
@@ -45,7 +50,7 @@ export default function RegisterPage() {
     }
     login(res.data.token, res.data.role);
     const next = new URLSearchParams(window.location.search).get("next");
-    router.push(safeNext(next, owner ? "/dashboard" : "/"));
+    router.push(safeNext(next, role === "owner" ? "/dashboard" : role === "operator" ? "/operator" : "/"));
   }
 
   return (
@@ -68,9 +73,13 @@ export default function RegisterPage() {
           <span>Password</span>
           <input type="password" value={form.password} onChange={set("password")} autoComplete="new-password" />
         </label>
-        <label className="check">
-          <input type="checkbox" checked={owner} onChange={(e) => setOwner(e.target.checked)} />
-          <span>I want to list my property on Hill Booker</span>
+        <label className="field">
+          <span>I want to</span>
+          <select value={role} onChange={(e) => setRole(e.target.value)}>
+            <option value="guest">Book rooms and vehicles</option>
+            <option value="owner">List my hotel or homestay</option>
+            <option value="operator">Rent out my cars, vans or buses</option>
+          </select>
         </label>
         {error && (
           <p className="form-error" role="alert">

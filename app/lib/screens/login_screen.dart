@@ -21,7 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _password = TextEditingController();
   bool _busy = false;
   bool _hide = true;
-  bool _owner = false;
+  String _role = 'guest';
   String _error = '';
 
   @override
@@ -66,7 +66,7 @@ class _LoginScreenState extends State<LoginScreen> {
         'email': email,
         'phone': phone.isEmpty ? null : phone,
         'password': password,
-        'role': _owner ? 'owner' : 'guest',
+        'role': _role,
       });
     } else {
       res = await Api.post('/auth/login', body: {'email': email, 'password': password});
@@ -108,12 +108,16 @@ class _LoginScreenState extends State<LoginScreen> {
           if (_signUp) ...[
             const SizedBox(height: 14),
             TextField(controller: _phone, keyboardType: TextInputType.phone, decoration: fieldDeco('Mobile number (optional)')),
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              value: _owner,
-              onChanged: (v) => setState(() => _owner = v ?? false),
-              title: const Text('I want to list my property'),
+            const SizedBox(height: 12),
+            const Text('I am signing up to', style: TextStyle(fontWeight: FontWeight.w700, color: C.soft)),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              children: [
+                ChoiceChip(label: const Text('Book trips'), selected: _role == 'guest', onSelected: (_) => setState(() => _role = 'guest')),
+                ChoiceChip(label: const Text('List my property'), selected: _role == 'owner', onSelected: (_) => setState(() => _role = 'owner')),
+                ChoiceChip(label: const Text('Rent out vehicles'), selected: _role == 'operator', onSelected: (_) => setState(() => _role = 'operator')),
+              ],
             ),
           ],
           const SizedBox(height: 14),

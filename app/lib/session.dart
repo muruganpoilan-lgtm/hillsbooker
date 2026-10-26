@@ -46,3 +46,6 @@ final Session session = Session();
 
 // Which tab of the bottom bar is open: 0 Search, 1 Bookings, 2 Account.
 final ValueNotifier<int> tabIndex = ValueNotifier<int>(0);
+
+// Which list the Bookings tab shows: false for stays, true for vehicles.
+final ValueNotifier<bool> showVehicleBookings = ValueNotifier<bool>(false);

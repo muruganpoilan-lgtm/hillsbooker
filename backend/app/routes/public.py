@@ -14,6 +14,24 @@ def amenities():
         return cur.fetchall()
 
 
+@router.get("/seo/properties")
+def seo_properties(city: str | None = None):
+    """Every approved property, without needing dates. Used for the sitemap and the city pages that search engines read."""
+    sql = """
+        SELECT p.id, p.name, p.type, p.city, p.description, p.rating_avg, p.rating_count, p.created_at,
+               (SELECT MIN(base_price) FROM room_types rt WHERE rt.property_id = p.id) AS price_from,
+               (SELECT url FROM property_photos ph WHERE ph.property_id = p.id ORDER BY position LIMIT 1) AS photo
+        FROM properties p WHERE p.status = 'approved'"""
+    params: dict = {}
+    if city:
+        sql += " AND lower(p.city) = lower(%(city)s)"
+        params["city"] = city
+    sql += " ORDER BY p.rating_avg DESC, p.created_at DESC LIMIT 500"
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(sql, params)
+        return cur.fetchall()
+
+
 @router.get("/search")
 def search(
     city: str | None = None,

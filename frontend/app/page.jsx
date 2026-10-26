@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Ridge from "../components/Ridge";
 import SearchForm from "../components/SearchForm";
+import { slugify } from "../lib/seo";
 
 // Approximate height above sea level, in metres. Sorted high to low so the list reads as a climb.
 const PLACES = [
@@ -43,7 +44,7 @@ export default function Home() {
         <ul className="ladder">
           {PLACES.map((p) => (
             <li key={p.city}>
-              <Link href={`/search?city=${encodeURIComponent(p.city)}`} className="ladder-row">
+              <Link href={`/stays/${slugify(p.city)}`} className="ladder-row">
                 <span className="ladder-city">{p.city}</span>
                 <span className="ladder-bar" aria-hidden="true">
                   <i style={{ width: `${Math.max((p.m / TOP) * 100, 1.5)}%` }} />
@@ -53,6 +54,13 @@ export default function Home() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="page home-section home-vehicles">
+        <h2 className="section-title">Need a ride?</h2>
+        <p className="prose">
+          Hire a car, van or bus with a driver by the day, or pick a fixed-price trip. <Link href="/vehicles">See cars, vans and buses</Link>.
+        </p>
       </section>
 
       <section className="page home-section how">

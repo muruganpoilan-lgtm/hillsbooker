@@ -34,3 +34,32 @@ def approve(property_id: str, user: dict = Depends(admin_only)):
 @router.post("/properties/{property_id}/reject")
 def reject(property_id: str, user: dict = Depends(admin_only)):
     return _set_status(property_id, "rejected")
+
+
+@router.get("/vehicles/pending")
+def pending_vehicles(user: dict = Depends(admin_only)):
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT v.id, v.name, v.kind, v.seats, v.city, v.price_per_day, v.created_at, u.name AS operator, u.email AS operator_email
+               FROM vehicles v JOIN users u ON u.id = v.operator_id
+               WHERE v.status = 'pending' ORDER BY v.created_at""",
+        )
+        return cur.fetchall()
+
+
+def _set_vehicle_status(vehicle_id: str, status: str):
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("UPDATE vehicles SET status = %s WHERE id = %s RETURNING id", (status, vehicle_id))
+        if not cur.fetchone():
+            raise HTTPException(404, "Vehicle not found")
+    return {"id": vehicle_id, "status": status}
+
+
+@router.post("/vehicles/{vehicle_id}/approve")
+def approve_vehicle(vehicle_id: str, user: dict = Depends(admin_only)):
+    return _set_vehicle_status(vehicle_id, "approved")
+
+
+@router.post("/vehicles/{vehicle_id}/reject")
+def reject_vehicle(vehicle_id: str, user: dict = Depends(admin_only)):
+    return _set_vehicle_status(vehicle_id, "rejected")

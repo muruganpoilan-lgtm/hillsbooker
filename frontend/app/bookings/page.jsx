@@ -146,6 +146,9 @@ export default function BookingsPage() {
   return (
     <main className="page">
       <h1 className="section-title">My bookings</h1>
+      <p className="tabs">
+        <b>Stays</b> <Link href="/bookings/vehicles">Vehicles</Link>
+      </p>
 
       {error && (
         <p className="form-error" role="alert">

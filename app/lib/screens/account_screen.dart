@@ -38,7 +38,7 @@ class AccountScreen extends StatelessWidget {
                 child: Row(children: [
                   const Icon(Icons.person, color: C.green),
                   const SizedBox(width: 10),
-                  Text(role == 'guest' ? 'Guest account' : (role == 'owner' ? 'Owner account' : 'Admin account'), style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Text(role == 'guest' ? 'Guest account' : (role == 'owner' ? 'Owner account' : (role == 'operator' ? 'Vehicle operator account' : 'Admin account')), style: const TextStyle(fontWeight: FontWeight.w700)),
                 ]),
               ),
               if (role != 'guest')
@@ -47,7 +47,7 @@ class AccountScreen extends StatelessWidget {
                   child: FilledButton.icon(
                     onPressed: () => tabIndex.value = 3,
                     icon: const Icon(Icons.storefront),
-                    label: const Text('Manage your properties'),
+                    label: Text(role == 'operator' ? 'Manage your vehicles' : (role == 'admin' ? 'Manage listings' : 'Manage your properties')),
                   ),
                 ),
               const SizedBox(height: 16),

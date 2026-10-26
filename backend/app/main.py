@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .db import pool
-from .routes import admin, auth_routes, bookings, invoices, owner, payments, public
+from .routes import admin, auth_routes, bookings, invoices, owner, payments, public, vehicles
 from .storage import upload_root
 
 
@@ -20,6 +20,7 @@ async def _expire_loop():
     while True:
         try:
             freed = await asyncio.to_thread(bookings.expire_holds)
+            freed += await asyncio.to_thread(vehicles.expire_holds)
             if freed:
                 log.info("Released %s expired holds", freed)
         except Exception:
@@ -55,6 +56,9 @@ app.include_router(bookings.router)
 app.include_router(payments.router)
 app.include_router(admin.router)
 app.include_router(invoices.router)
+app.include_router(vehicles.public)
+app.include_router(vehicles.operator)
+app.include_router(vehicles.guest)
 
 
 @app.get("/health")

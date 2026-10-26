@@ -5,6 +5,7 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/ridge.dart';
 import 'results_screen.dart';
+import 'vehicles_screen.dart';
 
 // What the guest is searching for. Passed from screen to screen.
 class StayQuery {
@@ -168,6 +169,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _slip(nights),
               ),
+              Padding(padding: const EdgeInsets.fromLTRB(16, 18, 16, 0), child: _vehicleCard()),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 26, 20, 2),
                 child: Text('Browse by city, from the hills down to the sea', style: display(20)),
@@ -182,6 +184,33 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _vehicleCard() {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VehiclesScreen(city: _city.text.trim()))),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(border: Border.all(color: C.line), borderRadius: BorderRadius.circular(8)),
+          child: Row(children: [
+            const Icon(Icons.directions_car_filled_outlined, color: C.green, size: 32),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Need a ride?', style: display(17)),
+                const SizedBox(height: 2),
+                const Text('Cars, vans and buses with a driver. Hire by the day or pick a fixed trip.', style: TextStyle(color: C.soft, fontSize: 13.5)),
+              ]),
+            ),
+            const Icon(Icons.chevron_right, color: C.soft),
+          ]),
+        ),
+      ),
     );
   }
 

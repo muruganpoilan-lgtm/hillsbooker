@@ -3,7 +3,7 @@ import Ridge from "../../components/Ridge";
 import SearchForm from "../../components/SearchForm";
 import { addDays, api, isISODate, money, nightsBetween, plural, todayISO } from "../../lib/api";
 
-export const metadata = { title: "Search stays: Hill Booker" };
+export const metadata = { title: "Search stays", robots: { index: false, follow: true } };
 
 const TYPE_LABEL = { hotel: "Hotel", homestay: "Homestay", apartment: "Apartment", resort: "Resort" };
 

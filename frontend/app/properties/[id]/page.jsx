@@ -2,13 +2,26 @@ import { notFound } from "next/navigation";
 import PhotoGallery from "../../../components/PhotoGallery";
 import RoomList from "../../../components/RoomList";
 import { api, isISODate, nightsBetween, plural } from "../../../lib/api";
+import { SITE_URL, jsonLd } from "../../../lib/seo";
 
 const TYPE_LABEL = { hotel: "Hotel", homestay: "Homestay", apartment: "Apartment", resort: "Resort" };
 
 export async function generateMetadata({ params }) {
   const { id } = await params;
   const res = await api(`/properties/${id}`);
-  return { title: res.ok ? `${res.data.name}: Hill Booker` : "Property: Hill Booker" };
+  if (!res.ok) return { title: "Property" };
+  const p = res.data;
+  const kind = TYPE_LABEL[p.type] || "Stay";
+  const title = `${p.name}, ${p.city}: ${kind} rooms and prices`;
+  const base = p.description ? p.description.replace(/\s+/g, " ").trim() : `${kind} in ${p.city}.`;
+  const description = `${base.slice(0, 150)}${base.length > 150 ? "…" : ""} Book rooms at ${p.name} on Hill Booker.`.slice(0, 300);
+  const url = `${SITE_URL}/properties/${id}`;
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: { title, description, url, type: "website", images: p.photos && p.photos[0] ? [p.photos[0]] : undefined },
+  };
 }
 
 export default async function PropertyPage({ params, searchParams }) {
@@ -37,8 +50,23 @@ export default async function PropertyPage({ params, searchParams }) {
   }
 
   const p = res.data;
+  const prices = p.room_types.map((r) => Number(r.base_price)).filter((n) => n > 0);
+  const ld = {
+    "@context": "https://schema.org",
+    "@type": p.type === "hotel" || p.type === "resort" ? "Hotel" : "LodgingBusiness",
+    name: p.name,
+    url: `${SITE_URL}/properties/${p.id}`,
+    description: p.description || undefined,
+    image: p.photos && p.photos.length ? p.photos : undefined,
+    address: { "@type": "PostalAddress", streetAddress: p.address || undefined, addressLocality: p.city, addressCountry: "IN" },
+    amenityFeature: p.amenities.map((a) => ({ "@type": "LocationFeatureSpecification", name: a, value: true })),
+    priceRange: prices.length ? `from INR ${Math.min(...prices)}` : undefined,
+    aggregateRating:
+      p.rating_count > 0 ? { "@type": "AggregateRating", ratingValue: Number(p.rating_avg).toFixed(1), reviewCount: p.rating_count } : undefined,
+  };
   return (
     <main className="page">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(ld) }} />
       <div className="prop-head">
         <p className="meta">{TYPE_LABEL[p.type] || p.type} in {p.city}</p>
         <h1>{p.name}</h1>
