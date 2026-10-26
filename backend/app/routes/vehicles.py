@@ -356,7 +356,9 @@ def my_vehicle_bookings(user: dict = Depends(current_user)):
                       b.passengers, b.pickup, b.total_amount, b.advance_amount,
                       b.total_amount - b.advance_amount AS balance_due, b.status, b.hold_expires_at,
                       CASE WHEN b.status = 'confirmed' THEN o.name END AS operator,
-                      CASE WHEN b.status = 'confirmed' THEN o.phone END AS operator_phone
+                      CASE WHEN b.status = 'confirmed' THEN o.phone END AS operator_phone,
+                      EXISTS (SELECT 1 FROM payments pm WHERE pm.vehicle_booking_id = b.id AND pm.provider = 'upi_direct' AND pm.status = 'created') AS upi_pending,
+                      (o.upi_id IS NOT NULL) AS host_upi
                FROM vehicle_bookings b
                JOIN vehicles v ON v.id = b.vehicle_id
                JOIN users o ON o.id = v.operator_id

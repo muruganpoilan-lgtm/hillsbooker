@@ -105,7 +105,9 @@ def my_bookings(user: dict = Depends(current_user)):
                       b.rooms, b.guests, b.total_amount,
                       COALESCE(b.advance_amount, b.total_amount) AS advance_amount,
                       b.total_amount - COALESCE(b.advance_amount, b.total_amount) AS balance_due,
-                      b.status, b.hold_expires_at
+                      b.status, b.hold_expires_at,
+                      EXISTS (SELECT 1 FROM payments pm WHERE pm.booking_id = b.id AND pm.provider = 'upi_direct' AND pm.status = 'created') AS upi_pending,
+                      (SELECT h.upi_id IS NOT NULL FROM users h WHERE h.id = p.owner_id) AS host_upi
                FROM bookings b
                JOIN properties p ON p.id = b.property_id
                JOIN room_types rt ON rt.id = b.room_type_id

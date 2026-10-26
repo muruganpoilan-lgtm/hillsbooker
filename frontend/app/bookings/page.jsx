@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../../components/AuthProvider";
 import { api, money, nightsBetween, plural, prettyDate } from "../../lib/api";
+import UpiPay from "../../components/UpiPay";
 import { payForBooking } from "../../lib/pay";
 
 const STATUS_LABEL = { held: "Waiting for payment", confirmed: "Confirmed", cancelled: "Cancelled", expired: "Hold expired" };
@@ -30,7 +31,8 @@ function HoldTimer({ until, onExpire }) {
 
   const mins = Math.floor(left / 60000);
   const secs = String(Math.floor((left % 60000) / 1000)).padStart(2, "0");
-  return <span className="scarce">{left > 0 ? `Room held for ${mins}:${secs}` : "Hold ended"}</span>;
+  const hours = Math.floor(mins / 60);
+  return <span className="scarce">{left > 0 ? (hours >= 1 ? `Room held for ${hours}h ${mins % 60}m` : `Room held for ${mins}:${secs}`) : "Hold ended"}</span>;
 }
 
 export default function BookingsPage() {
@@ -196,11 +198,16 @@ export default function BookingsPage() {
               {b.status === "held" && b.hold_expires_at && (
                 <>
                   <HoldTimer until={b.hold_expires_at} onExpire={load} />
+                {b.upi_pending && (
+                  <p className="notice" role="status">
+                    You sent a UPI payment. The host will check it and confirm your booking. You will see it here once confirmed.
+                  </p>
+                )}
                   {!payOn && (
                     <p className="meta">Payments aren't switched on yet. The button below confirms the booking for testing only.</p>
                   )}
                   <div className="booking-actions">
-                    {payOn ? (
+                    {b.upi_pending ? null : payOn ? (
                       <button type="button" className="btn btn-primary" aria-busy={busy === b.id} onClick={() => pay(b)}>
                         {busy === b.id ? "Opening payment…" : `Pay ${money(b.advance_amount)}${Number(b.balance_due) > 0 ? " now" : ""}`}
                       </button>
@@ -213,6 +220,9 @@ export default function BookingsPage() {
                       Release room
                     </button>
                   </div>
+                {!b.upi_pending && b.host_upi && (
+                  <UpiPay kind="stay" bookingId={b.id} token={token} amount={b.advance_amount} onDone={load} />
+                )}
                 </>
               )}
 

@@ -1,0 +1,179 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useAuth } from "../../../components/AuthProvider";
+import Guard from "../../../components/dashboard/Guard";
+import { api, money, prettyDate } from "../../../lib/api";
+
+const METHOD = { razorpay: "Paid online", upi_direct: "UPI to you" };
+const PAY_STATUS = { created: "Waiting", paid: "Received", failed: "Not received", refunded: "Refunded" };
+
+function Payments() {
+  const { token, logout } = useAuth();
+  const [data, setData] = useState(null);
+  const [error, setError] = useState("");
+  const [upi, setUpi] = useState("");
+  const [upiMsg, setUpiMsg] = useState("");
+  const [busy, setBusy] = useState("");
+
+  const load = useCallback(async () => {
+    const res = await api("/host/payments", { token });
+    if (res.status === 401) return logout();
+    if (!res.ok) return setError(res.error);
+    setError("");
+    setData(res.data);
+    setUpi(res.data.upi_id || "");
+  }, [token, logout]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function saveUpi(e) {
+    e.preventDefault();
+    setUpiMsg("");
+    const res = await api("/me/upi", { method: "PUT", token, body: { upi_id: upi } });
+    if (res.status === 401) return logout();
+    setUpiMsg(res.ok ? (res.data.upi_id ? "Saved. Guests can now pay you by UPI." : "Removed. Guests will pay online only.") : res.error);
+    if (res.ok) load();
+  }
+
+  async function decide(id, action) {
+    if (action === "reject" && !window.confirm("You did not receive this payment? The booking will be released.")) return;
+    setBusy(id);
+    setError("");
+    const res = await api(`/host/payments/${id}/${action}`, { method: "POST", token });
+    setBusy("");
+    if (res.status === 401) return logout();
+    if (!res.ok) setError(res.error);
+    load();
+  }
+
+  const rows = data ? data.rows : [];
+  const waiting = rows.filter((r) => r.status === "held" && r.provider === "upi_direct" && r.pay_status === "created");
+
+  return (
+    <>
+      <p className="meta">
+        <Link href="/dashboard">← Your properties</Link>
+      </p>
+      <h1 className="section-title">Payments</h1>
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+      {!data && !error && <p className="empty">Loading…</p>}
+      {data && (
+        <>
+          <div className="pay-summary">
+            <div className="pay-stat">
+              <span className="meta">Advance received</span>
+              <b className="price">{money(data.advance_received)}</b>
+            </div>
+            <div className="pay-stat">
+              <span className="meta">Balance to collect from guests</span>
+              <b className="price">{money(data.balance_to_collect)}</b>
+            </div>
+            <div className="pay-stat">
+              <span className="meta">Refunded</span>
+              <b className="price">{money(data.refunded)}</b>
+            </div>
+          </div>
+
+          <section className="prop-section">
+            <h2>Your UPI ID</h2>
+            <p className="meta">Guests can pay their advance straight to this UPI ID. You confirm each payment after checking your bank. Leave it empty to take online payments only.</p>
+            <form className="narrow" onSubmit={saveUpi}>
+              <label className="field">
+                <span>UPI ID</span>
+                <input value={upi} onChange={(e) => setUpi(e.target.value)} placeholder="name@bank" autoCapitalize="none" />
+              </label>
+              <div className="actions">
+                <button type="submit" className="btn btn-primary btn-small">
+                  Save UPI ID
+                </button>
+              </div>
+              {upiMsg && (
+                <p className="ok" role="status">
+                  {upiMsg}
+                </p>
+              )}
+            </form>
+          </section>
+
+          <section className="prop-section">
+            <h2>Waiting for you{waiting.length ? ` (${waiting.length})` : ""}</h2>
+            {waiting.length === 0 && <p className="meta">No UPI payments to check right now.</p>}
+            <ul className="rows">
+              {waiting.map((r) => (
+                <li key={r.payment_id} className="plain-row">
+                  <div>
+                    <p className="row-name">
+                      {r.guest}
+                      {r.guest_phone ? ` · ${r.guest_phone}` : ""}
+                    </p>
+                    <p className="meta">
+                      {r.item} · {prettyDate(r.start_date)}
+                      {r.end_date !== r.start_date ? ` to ${prettyDate(r.end_date)}` : ""}
+                    </p>
+                    <p className="meta">
+                      Check your bank for <b>{money(r.paid_amount)}</b>, UPI reference <b>{r.reference}</b>
+                    </p>
+                  </div>
+                  <div className="actions">
+                    <button type="button" className="btn btn-primary btn-small" aria-busy={busy === r.payment_id} onClick={() => decide(r.payment_id, "confirm")}>
+                      Received, confirm
+                    </button>
+                    <button type="button" className="btn btn-danger btn-small" aria-busy={busy === r.payment_id} onClick={() => decide(r.payment_id, "reject")}>
+                      Not received
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="prop-section">
+            <h2>All payments</h2>
+            {rows.length === 0 && <p className="meta">No payments yet.</p>}
+            <ul className="rows">
+              {rows.map((r) => (
+                <li key={`${r.kind}-${r.id}`} className="plain-row">
+                  <div>
+                    <p className="row-name">{r.guest}</p>
+                    <p className="meta">
+                      {r.item} · {prettyDate(r.start_date)}
+                      {r.end_date !== r.start_date ? ` to ${prettyDate(r.end_date)}` : ""}
+                    </p>
+                    <p className="meta">
+                      {r.provider ? METHOD[r.provider] || r.provider : "Confirmed without online payment"}
+                      {r.pay_status ? ` · ${PAY_STATUS[r.pay_status] || r.pay_status}` : ""}
+                    </p>
+                  </div>
+                  <div className="right">
+                    <p className="price">{money(r.total_amount)}</p>
+                    <p className="meta">Advance {money(r.advance_amount)}</p>
+                    {r.status === "confirmed" && Number(r.total_amount) > Number(r.advance_amount) && (
+                      <p className="meta">Collect {money(Number(r.total_amount) - Number(r.advance_amount))}</p>
+                    )}
+                    <span className={`status status-${r.status}`}>{r.status === "held" ? "Waiting" : r.status === "confirmed" ? "Confirmed" : "Cancelled"}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </>
+      )}
+    </>
+  );
+}
+
+export default function PaymentsPage() {
+  return (
+    <Guard>
+      <Payments />
+    </Guard>
+  );
+}

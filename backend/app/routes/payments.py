@@ -168,6 +168,9 @@ def create_order(booking_id: str, user: dict = Depends(current_user)):
             raise HTTPException(404, "Booking not found")
         if b["status"] != "held":
             raise HTTPException(409, "Your hold ended, so this booking can't be paid. Search again" if b["status"] == "expired" else f"This booking is already {b['status']}")
+        cur.execute("SELECT 1 FROM payments WHERE booking_id = %s AND provider = 'upi_direct' AND status = 'created'", (booking_id,))
+        if cur.fetchone():
+            raise HTTPException(409, "You already sent a UPI payment. Wait for the host to confirm it")
 
         cur.execute("SELECT provider_order_id, amount FROM payments WHERE booking_id = %s AND status = 'created'", (booking_id,))
         existing = cur.fetchone()
@@ -202,6 +205,9 @@ def create_vehicle_order(booking_id: str, user: dict = Depends(current_user)):
             raise HTTPException(404, "Booking not found")
         if b["status"] != "held":
             raise HTTPException(409, "Your hold ended, so this booking can't be paid. Search again" if b["status"] == "expired" else f"This booking is already {b['status']}")
+        cur.execute("SELECT 1 FROM payments WHERE vehicle_booking_id = %s AND provider = 'upi_direct' AND status = 'created'", (booking_id,))
+        if cur.fetchone():
+            raise HTTPException(409, "You already sent a UPI payment. Wait for the host to confirm it")
         cur.execute("SELECT provider_order_id, amount FROM payments WHERE vehicle_booking_id = %s AND status = 'created'", (booking_id,))
         existing = cur.fetchone()
         if existing:

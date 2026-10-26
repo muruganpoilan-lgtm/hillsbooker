@@ -7,6 +7,7 @@ CREATE TABLE users (
   phone         text,
   password_hash text NOT NULL,
   role          text NOT NULL DEFAULT 'guest' CHECK (role IN ('guest', 'owner', 'operator', 'admin')),
+  upi_id        text,
   created_at    timestamptz NOT NULL DEFAULT now()
 );
 

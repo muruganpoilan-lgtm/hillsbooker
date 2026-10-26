@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     site_url: str = "https://hillbooker.com"  # where web sign-ins are sent back to
 
+    # Direct UPI: how long a booking stays held while the host checks that the money arrived.
+    upi_hold_hours: int = 12
+
     # Photo uploads. Local disk for development; swap storage.py for S3 or Cloudinary in production.
     upload_dir: str = "uploads"
     public_base_url: str = "http://localhost:8000"
