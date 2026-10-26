@@ -107,8 +107,28 @@ class _PropertyManageScreenState extends State<PropertyManageScreen> {
         if (rooms.isEmpty)
           const Text('No rooms yet. Add a room type with its price, then open dates so guests can book it.', style: TextStyle(color: C.soft)),
         for (final r in rooms) _roomCard(r),
+        const SizedBox(height: 28),
+        OutlinedButton.icon(
+          onPressed: _removeListing,
+          icon: const Icon(Icons.delete_outline, size: 18, color: C.brick),
+          label: const Text('Remove this property', style: TextStyle(color: C.brick)),
+          style: OutlinedButton.styleFrom(side: const BorderSide(color: C.brick)),
+        ),
       ],
     );
+  }
+
+  Future<void> _removeListing() async {
+    final yes = await askYesNo(context, 'Remove this property?',
+        'Guests will no longer see it. It is kept for 30 days and then deleted. You cannot remove it while guests have upcoming bookings.', 'Remove');
+    if (!yes || !mounted) return;
+    final res = await Api.delete('/owner/properties/${widget.propertyId}');
+    if (!mounted) return;
+    if (!res.ok) {
+      snack(context, res.error);
+      return;
+    }
+    Navigator.of(context).pop();
   }
 
   Widget _roomCard(Map<String, dynamic> r) {

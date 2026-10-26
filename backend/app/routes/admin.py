@@ -63,3 +63,37 @@ def approve_vehicle(vehicle_id: str, user: dict = Depends(admin_only)):
 @router.post("/vehicles/{vehicle_id}/reject")
 def reject_vehicle(vehicle_id: str, user: dict = Depends(admin_only)):
     return _set_vehicle_status(vehicle_id, "rejected")
+
+
+# ---------- removed listings (kept 30 days, then deleted) ----------
+
+@router.get("/removed")
+def removed_listings(user: dict = Depends(admin_only)):
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT 'property' AS kind, p.id, p.name, p.city, p.removed_at, u.email AS host_email
+               FROM properties p JOIN users u ON u.id = p.owner_id WHERE p.status = 'removed'
+               UNION ALL
+               SELECT 'vehicle', v.id, v.name, v.city, v.removed_at, u.email
+               FROM vehicles v JOIN users u ON u.id = v.operator_id WHERE v.status = 'removed'
+               ORDER BY removed_at DESC""",
+        )
+        return cur.fetchall()
+
+
+@router.post("/properties/{property_id}/restore")
+def restore_property(property_id: str, user: dict = Depends(admin_only)):
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("UPDATE properties SET status = 'approved', removed_at = NULL WHERE id = %s AND status = 'removed' RETURNING id", (property_id,))
+        if not cur.fetchone():
+            raise HTTPException(404, "No removed property with that id")
+    return {"id": property_id, "status": "approved"}
+
+
+@router.post("/vehicles/{vehicle_id}/restore")
+def restore_vehicle(vehicle_id: str, user: dict = Depends(admin_only)):
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("UPDATE vehicles SET status = 'approved', removed_at = NULL WHERE id = %s AND status = 'removed' RETURNING id", (vehicle_id,))
+        if not cur.fetchone():
+            raise HTTPException(404, "No removed vehicle with that id")
+    return {"id": vehicle_id, "status": "approved"}

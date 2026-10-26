@@ -13,7 +13,7 @@ from ..auth import current_user, require_role
 from ..config import settings
 from ..db import get_conn
 from ..schemas import TripIn, TripUpdate, VehicleBookingIn, VehicleIn, VehicleUpdate
-from .owner import _delete_photo, _upload_photos
+from .owner import REMOVED_KEEP_DAYS, _delete_photo, _upload_photos
 
 public = APIRouter(prefix="/vehicles", tags=["vehicles"])
 operator = APIRouter(prefix="/operator", tags=["vehicle operators"])
@@ -144,10 +144,10 @@ def create_vehicle(body: VehicleIn, user: dict = Depends(operator_only)):
 def my_vehicles(user: dict = Depends(operator_only)):
     sql = """SELECT v.id, v.name, v.kind, v.seats, v.city, v.price_per_day, v.quantity, v.status,
                     (SELECT url FROM vehicle_photos WHERE vehicle_id = v.id ORDER BY position LIMIT 1) AS photo
-             FROM vehicles v"""
+             FROM vehicles v WHERE v.status <> 'removed'"""
     params: tuple = ()
     if user["role"] != "admin":
-        sql += " WHERE v.operator_id = %s"
+        sql += " AND v.operator_id = %s"
         params = (user["id"],)
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(sql + " ORDER BY v.created_at DESC", params)
@@ -187,6 +187,46 @@ def update_vehicle(vehicle_id: str, body: VehicleUpdate, user: dict = Depends(op
             cur.execute("UPDATE vehicles SET status = 'pending' WHERE id = %s AND status = 'rejected'", (vehicle_id,))
         cur.execute("SELECT status FROM vehicles WHERE id = %s", (vehicle_id,))
         return {"id": vehicle_id, "status": cur.fetchone()["status"]}
+
+
+@operator.delete("/vehicles/{vehicle_id}")
+def remove_vehicle(vehicle_id: str, user: dict = Depends(operator_only)):
+    """Hides the vehicle from guests. The data stays on the server for 30 days (admin can restore it),
+    then a nightly job deletes it for good. Refused while a guest has an upcoming or in-progress hire."""
+    with get_conn() as conn, conn.cursor() as cur:
+        _own_vehicle(cur, vehicle_id, user)
+        cur.execute(
+            """SELECT 1 FROM vehicle_bookings WHERE vehicle_id = %s
+                 AND ((status = 'confirmed' AND end_date >= current_date)
+                   OR (status = 'held' AND hold_expires_at > now())) LIMIT 1""",
+            (vehicle_id,),
+        )
+        if cur.fetchone():
+            raise HTTPException(409, "Guests have upcoming bookings for this vehicle. Wait until the trips are over, or cancel them first")
+        cur.execute("UPDATE vehicles SET status = 'removed', removed_at = now() WHERE id = %s AND status <> 'removed'", (vehicle_id,))
+    return {"id": vehicle_id, "result": "removed", "kept_days": REMOVED_KEEP_DAYS}
+
+
+def purge_removed_vehicles() -> int:
+    """Delete vehicles removed more than 30 days ago. Ones with booking history stay hidden (invoices refer to them)."""
+    done = 0
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT v.id FROM vehicles v
+               WHERE v.status = 'removed' AND v.removed_at < now() - make_interval(days => %s)
+                 AND NOT EXISTS (SELECT 1 FROM vehicle_bookings b WHERE b.vehicle_id = v.id)""",
+            (REMOVED_KEEP_DAYS,),
+        )
+        ids = [r["id"] for r in cur.fetchall()]
+        keys: list[str] = []
+        for vid in ids:
+            cur.execute("SELECT storage_key FROM vehicle_photos WHERE vehicle_id = %s", (vid,))
+            keys += [r["storage_key"] for r in cur.fetchall()]
+            cur.execute("DELETE FROM vehicles WHERE id = %s", (vid,))
+            done += 1
+    for key in keys:
+        delete_image(key)
+    return done
 
 
 @operator.post("/vehicles/{vehicle_id}/photos", status_code=201)

@@ -113,10 +113,30 @@ class _VehicleManageScreenState extends State<VehicleManageScreen> {
                   for (final t in _list('trips').where((t) => t['active'] != false)) _tripCard(t),
                   if (_list('trips').where((t) => t['active'] != false).isEmpty)
                     const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text('No trips yet.', style: TextStyle(color: C.soft))),
+        const SizedBox(height: 28),
+        OutlinedButton.icon(
+          onPressed: _removeListing,
+          icon: const Icon(Icons.delete_outline, size: 18, color: C.brick),
+          label: const Text('Remove this vehicle', style: TextStyle(color: C.brick)),
+          style: OutlinedButton.styleFrom(side: const BorderSide(color: C.brick)),
+        ),
                 ],
               ),
             ),
     );
+  }
+
+  Future<void> _removeListing() async {
+    final yes = await askYesNo(context, 'Remove this vehicle?',
+        'Guests will no longer see it. It is kept for 30 days and then deleted. You cannot remove it while guests have upcoming bookings.', 'Remove');
+    if (!yes || !mounted) return;
+    final res = await Api.delete(_base);
+    if (!mounted) return;
+    if (!res.ok) {
+      snack(context, res.error);
+      return;
+    }
+    Navigator.of(context).pop();
   }
 
   Widget _tripCard(Map<String, dynamic> t) {

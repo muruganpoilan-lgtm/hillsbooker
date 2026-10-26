@@ -20,11 +20,12 @@ CREATE TABLE properties (
   address      text,
   lat          numeric(9,6),
   lng          numeric(9,6),
-  status       text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  status       text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'removed')),
   advance_percent int NOT NULL DEFAULT 100 CHECK (advance_percent BETWEEN 10 AND 100),  -- share of the stay paid online at booking
   rating_avg   numeric(2,1) NOT NULL DEFAULT 0,
   rating_count int NOT NULL DEFAULT 0,
-  created_at   timestamptz NOT NULL DEFAULT now()
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  removed_at   timestamptz
 );
 CREATE INDEX idx_properties_city ON properties (lower(city));
 
@@ -132,9 +133,10 @@ CREATE TABLE vehicles (
   km_per_day    int CHECK (km_per_day > 0),          -- kilometres included per day; NULL = unlimited
   extra_km_rate numeric(8,2) CHECK (extra_km_rate >= 0),
   quantity      int NOT NULL DEFAULT 1 CHECK (quantity BETWEEN 1 AND 50),  -- identical vehicles the operator has
-  status        text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  status        text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'removed')),
   advance_percent int NOT NULL DEFAULT 100 CHECK (advance_percent BETWEEN 10 AND 100),
-  created_at    timestamptz NOT NULL DEFAULT now()
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  removed_at    timestamptz
 );
 CREATE INDEX idx_vehicles_city ON vehicles (lower(city));
 

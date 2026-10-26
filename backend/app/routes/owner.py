@@ -8,6 +8,8 @@ from ..db import get_conn
 from ..schemas import InventoryIn, PropertyIn, PropertyUpdate, RoomTypeIn, RoomTypeUpdate
 from ..storage import delete_image, save_image
 
+REMOVED_KEEP_DAYS = 30  # removed listings stay on the server this long before they are deleted
+
 router = APIRouter(prefix="/owner", tags=["owner and admin"])
 owner_only = require_role("owner", "operator", "admin")  # hosts can list properties and vehicles; admins manage everything
 
@@ -103,10 +105,10 @@ def create_property(body: PropertyIn, user: dict = Depends(owner_only)):
 
 @router.get("/properties")
 def my_properties(user: dict = Depends(owner_only)):
-    sql = "SELECT id, name, type, city, status, rating_avg, rating_count FROM properties"
+    sql = "SELECT id, name, type, city, status, rating_avg, rating_count FROM properties WHERE status <> 'removed'"
     params: tuple = ()
     if user["role"] != "admin":
-        sql += " WHERE owner_id = %s"
+        sql += " AND owner_id = %s"
         params = (user["id"],)
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(sql + " ORDER BY created_at DESC", params)
@@ -162,6 +164,52 @@ def update_property(property_id: str, body: PropertyUpdate, user: dict = Depends
             cur.execute("UPDATE properties SET status = 'pending' WHERE id = %s AND status = 'rejected'", (property_id,))
         cur.execute("SELECT status FROM properties WHERE id = %s", (property_id,))
         return {"id": property_id, "status": cur.fetchone()["status"]}
+
+
+@router.delete("/properties/{property_id}")
+def remove_property(property_id: str, user: dict = Depends(owner_only)):
+    """Hides the property from guests. The data stays on the server for 30 days (admin can restore it),
+    then a nightly job deletes it for good. Refused while a guest has an upcoming or in-progress stay."""
+    with get_conn() as conn, conn.cursor() as cur:
+        _own_property(cur, property_id, user)
+        cur.execute(
+            """SELECT 1 FROM bookings WHERE property_id = %s
+                 AND ((status = 'confirmed' AND check_out >= current_date)
+                   OR (status = 'held' AND hold_expires_at > now())) LIMIT 1""",
+            (property_id,),
+        )
+        if cur.fetchone():
+            raise HTTPException(409, "Guests have upcoming bookings here. Wait until their stays are over, or cancel them first")
+        cur.execute("UPDATE properties SET status = 'removed', removed_at = now() WHERE id = %s AND status <> 'removed'", (property_id,))
+    return {"id": property_id, "result": "removed", "kept_days": REMOVED_KEEP_DAYS}
+
+
+def purge_removed_properties() -> int:
+    """Delete properties removed more than 30 days ago. Ones with booking or review history are kept hidden,
+    because invoices and payments refer to them."""
+    done = 0
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT p.id FROM properties p
+               WHERE p.status = 'removed' AND p.removed_at < now() - make_interval(days => %s)
+                 AND NOT EXISTS (SELECT 1 FROM bookings b WHERE b.property_id = p.id)
+                 AND NOT EXISTS (SELECT 1 FROM reviews r WHERE r.property_id = p.id)""",
+            (REMOVED_KEEP_DAYS,),
+        )
+        ids = [r["id"] for r in cur.fetchall()]
+        keys: list[str] = []
+        for pid in ids:
+            cur.execute(
+                """SELECT storage_key FROM property_photos WHERE property_id = %s
+                   UNION ALL SELECT ph.storage_key FROM room_type_photos ph JOIN room_types rt ON rt.id = ph.room_type_id WHERE rt.property_id = %s""",
+                (pid, pid),
+            )
+            keys += [r["storage_key"] for r in cur.fetchall()]
+            cur.execute("DELETE FROM properties WHERE id = %s", (pid,))
+            done += 1
+    for key in keys:
+        delete_image(key)
+    return done
 
 
 @router.post("/properties/{property_id}/photos", status_code=201)

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "../../../../components/AuthProvider";
 import Guard from "../../../../components/dashboard/Guard";
 import PropertyForm from "../../../../components/dashboard/PropertyForm";
@@ -18,6 +18,8 @@ const STATUS_NOTE = {
 
 function Editor({ id }) {
   const { token, logout } = useAuth();
+  const router = useRouter();
+  const [removeError, setRemoveError] = useState("");
   const [prop, setProp] = useState(null);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState("");
@@ -74,6 +76,15 @@ function Editor({ id }) {
   }
 
   const setR = (k) => (e) => setRoom({ ...room, [k]: e.target.value });
+
+  async function removeListing() {
+    if (!window.confirm("Remove this property? It is hidden from guests and kept for 30 days (an admin can restore it), then deleted.")) return;
+    setRemoveError("");
+    const res = await api(`/owner/properties/${id}`, { method: "DELETE", token });
+    if (res.status === 401) return logout();
+    if (!res.ok) return setRemoveError(res.error);
+    router.push("/dashboard");
+  }
 
   if (error) {
     return (
@@ -152,6 +163,20 @@ function Editor({ id }) {
             </button>
           </div>
         </form>
+      </section>
+      <section className="prop-section">
+        <h2>Remove this property</h2>
+        <p className="meta">Guests will no longer see it. It is kept for 30 days, then deleted. You cannot remove it while guests have upcoming bookings.</p>
+        {removeError && (
+          <p className="form-error" role="alert">
+            {removeError}
+          </p>
+        )}
+        <div className="actions">
+          <button type="button" className="btn btn-danger btn-small" onClick={removeListing}>
+            Remove property
+          </button>
+        </div>
       </section>
     </>
   );

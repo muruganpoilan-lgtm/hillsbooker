@@ -28,12 +28,27 @@ async def _expire_loop():
         await asyncio.sleep(60)
 
 
+async def _purge_loop():
+    """Once a day, permanently delete listings that were removed more than 30 days ago."""
+    while True:
+        try:
+            n = await asyncio.to_thread(owner.purge_removed_properties)
+            n += await asyncio.to_thread(vehicles.purge_removed_vehicles)
+            if n:
+                log.info("Deleted %s listings removed more than 30 days ago", n)
+        except Exception:
+            log.exception("Could not purge removed listings")
+        await asyncio.sleep(24 * 3600)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     pool.open()
     task = asyncio.create_task(_expire_loop())
+    purge_task = asyncio.create_task(_purge_loop())
     yield
     task.cancel()
+    purge_task.cancel()
     pool.close()
 
 
