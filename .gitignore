@@ -6,3 +6,4 @@ uploads/
 build/
 .dart_tool/
 *.apk
+client_secret_*.json
