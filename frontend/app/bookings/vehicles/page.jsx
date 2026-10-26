@@ -78,6 +78,7 @@ export default function VehicleBookingsPage() {
     else if (action === "cancel" && res.data.refund) {
       const r = res.data.refund;
       if (r.status === "refunded") setNotice(`Cancelled. ${money(r.amount)} is being refunded to your original payment method. It usually takes 5 to 7 working days.`);
+      else if (r.status === "manual") setNotice(`Cancelled. You paid the host directly, so the host will return ${money(r.amount)} to you. Contact them if you do not receive it.`);
       else if (r.status === "pending") setNotice("Cancelled. Your refund couldn't be sent automatically. We'll process it by hand and email you.");
       else if (r.reason === "too_late") setNotice("Cancelled. This was inside the no-refund window, so no money is returned.");
     }

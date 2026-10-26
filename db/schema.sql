@@ -111,6 +111,7 @@ CREATE TABLE payments (
   status              text NOT NULL DEFAULT 'created' CHECK (status IN ('created', 'paid', 'failed', 'refunded')),
   refund_id           text,
   refunded_amount     numeric(10,2) NOT NULL DEFAULT 0,
+  commission          numeric(10,2) NOT NULL DEFAULT 0,   -- Hill Booker's share of this payment, set when it is paid
   note                text,
   created_at          timestamptz NOT NULL DEFAULT now(),
   updated_at          timestamptz NOT NULL DEFAULT now()

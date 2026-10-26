@@ -16,6 +16,7 @@ from ..auth import current_user, require_role
 from ..config import settings
 from ..db import get_conn
 from .bookings import _give_rooms_back, release_expired_holds
+from .payments import commission_for
 
 router = APIRouter(tags=["upi"])
 host_only = require_role("owner", "operator", "admin")
@@ -134,7 +135,7 @@ def upi_submit(kind: str, booking_id: str, body: UtrIn, user: dict = Depends(cur
 
 _ROWS = """
 SELECT s.*, pay.id AS payment_id, pay.provider, pay.status AS pay_status, pay.provider_payment_id AS reference,
-       pay.amount AS paid_amount, pay.refunded_amount
+       pay.amount AS paid_amount, pay.refunded_amount, pay.commission
 FROM (
   SELECT 'stay' AS kind, b.id, b.status, p.name AS item, g.name AS guest, g.phone AS guest_phone,
          b.check_in AS start_date, b.check_out AS end_date, b.total_amount,
@@ -171,12 +172,19 @@ def host_payments(user: dict = Depends(host_only)):
     refunded = sum((Decimal(r["refunded_amount"] or 0) for r in rows), Decimal(0))
     to_collect = sum((Decimal(r["total_amount"]) - Decimal(r["advance_amount"]) for r in rows if r["status"] == "confirmed" and r["end_date"] >= today), Decimal(0))
     waiting = sum(1 for r in rows if r["status"] == "held" and r["provider"] == "upi_direct" and r["pay_status"] == "created")
+    paid = [r for r in rows if r["pay_status"] == "paid"]
+    fee_total = sum((Decimal(r["commission"]) for r in paid), Decimal(0))
+    # UPI paid straight to the host: the host holds the money and owes Hill Booker the fee.
+    fee_owed_by_hosts = sum((Decimal(r["commission"]) for r in paid if r["provider"] == "upi_direct"), Decimal(0))
+    # Paid online: Hill Booker holds the money and owes the host the advance minus the fee.
+    payout_due_to_hosts = sum((Decimal(r["paid_amount"]) - Decimal(r["commission"]) for r in paid if r["provider"] == "razorpay"), Decimal(0))
     return {"upi_id": upi_id, "advance_received": received, "balance_to_collect": to_collect, "refunded": refunded,
-            "waiting_for_you": waiting, "rows": rows}
+            "waiting_for_you": waiting, "commission_percent": settings.commission_percent, "fee_total": fee_total,
+            "fee_owed_by_hosts": fee_owed_by_hosts, "payout_due_to_hosts": payout_due_to_hosts, "rows": rows}
 
 
 def _host_payment(cur, payment_id: str, user: dict) -> dict:
-    cur.execute("SELECT id, provider, status, booking_id, vehicle_booking_id FROM payments WHERE id = %s FOR UPDATE", (payment_id,))
+    cur.execute("SELECT id, provider, status, amount, booking_id, vehicle_booking_id FROM payments WHERE id = %s FOR UPDATE", (payment_id,))
     pay = cur.fetchone()
     if not pay:
         raise HTTPException(404, "Payment not found")
@@ -202,7 +210,7 @@ def confirm_upi(payment_id: str, user: dict = Depends(host_only)):
         if cur.fetchone()["status"] != "held":
             raise HTTPException(409, "This booking already expired or was cancelled, so it can't be confirmed. If the guest paid you, return their money directly")
         cur.execute(f"UPDATE {table} SET status = 'confirmed', hold_expires_at = NULL WHERE id = %s", (bid,))
-        cur.execute("UPDATE payments SET status = 'paid', note = 'Confirmed by host', updated_at = now() WHERE id = %s", (payment_id,))
+        cur.execute("UPDATE payments SET status = 'paid', commission = %s, note = 'Confirmed by host', updated_at = now() WHERE id = %s", (commission_for(pay["amount"]), payment_id))
         if pay["booking_id"]:
             stay_id = str(pay["booking_id"])
     if stay_id:

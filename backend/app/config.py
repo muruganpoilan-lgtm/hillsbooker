@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     site_url: str = "https://hillbooker.com"  # where web sign-ins are sent back to
 
+    # Hill Booker's commission, as a percent of each advance payment. Taken from the host's share; the guest pays no extra.
+    commission_percent: float = 2.0
+
     # Direct UPI: how long a booking stays held while the host checks that the money arrived.
     upi_hold_hours: int = 12
 

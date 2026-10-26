@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api.dart';
 import '../format.dart';
+import '../session.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 
@@ -33,6 +34,8 @@ class _HostPaymentsScreenState extends State<HostPaymentsScreen> {
     _upi.dispose();
     super.dispose();
   }
+
+  bool get _isAdmin => session.role == 'admin';
 
   List<Map<String, dynamic>> get _rows => ((_d?['rows'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
 
@@ -116,6 +119,21 @@ class _HostPaymentsScreenState extends State<HostPaymentsScreen> {
                   ]),
                   const SizedBox(height: 8),
                   Row(children: [_stat('Refunded', d['refunded']), const Spacer()]),
+                  const SizedBox(height: 18),
+                  Text('Hill Booker fee (${d['commission_percent']}% of each advance)', style: display(18)),
+                  const SizedBox(height: 4),
+                  const Text('The guest pays no extra. The fee is taken from the advance.', style: TextStyle(color: C.soft, fontSize: 13.5)),
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    _stat(_isAdmin ? 'Commission earned' : 'Fee on payments received', d['fee_total']),
+                    const SizedBox(width: 8),
+                    _stat(_isAdmin ? 'Hosts owe you (UPI)' : 'You owe Hill Booker (UPI)', d['fee_owed_by_hosts']),
+                  ]),
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    _stat(_isAdmin ? 'You owe hosts (online, after fee)' : 'Hill Booker pays you (online, after fee)', d['payout_due_to_hosts']),
+                    const Spacer(),
+                  ]),
                   const SizedBox(height: 22),
                   Text('Your UPI ID', style: display(18)),
                   const SizedBox(height: 4),
@@ -193,6 +211,7 @@ class _HostPaymentsScreenState extends State<HostPaymentsScreen> {
           Price(total, size: 17),
           Text('Advance ${money(advance)}', style: const TextStyle(color: C.soft, fontSize: 12.5)),
           if (status == 'confirmed' && total > advance) Text('Collect ${money(total - advance)}', style: const TextStyle(color: C.soft, fontSize: 12.5)),
+          if (payStatus == 'paid' && toNum(r['commission']) > 0) Text('Fee ${money(toNum(r['commission']))}', style: const TextStyle(color: C.soft, fontSize: 12.5)),
           Text(status == 'held' ? 'Waiting' : (status == 'confirmed' ? 'Confirmed' : 'Cancelled'),
               style: TextStyle(color: status == 'confirmed' ? C.green : C.soft, fontWeight: FontWeight.w700, fontSize: 12.5)),
         ]),

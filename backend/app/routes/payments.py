@@ -22,6 +22,11 @@ class VerifyIn(BaseModel):
     razorpay_signature: str
 
 
+def commission_for(amount) -> Decimal:
+    """Hill Booker's cut of a payment, rounded to the paisa."""
+    return (Decimal(amount) * Decimal(str(settings.commission_percent)) / Decimal(100)).quantize(Decimal("0.01"))
+
+
 def paise(amount: Decimal) -> int:
     return int((Decimal(amount) * 100).quantize(Decimal(1)))
 
@@ -37,7 +42,7 @@ def refund_payment(payment_row_id: str, provider_payment_id: str, amount: Decima
         return "pending"
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(
-            """UPDATE payments SET status = 'refunded', refund_id = %s, refunded_amount = %s, note = %s, updated_at = now()
+            """UPDATE payments SET status = 'refunded', refund_id = %s, refunded_amount = %s, note = %s, commission = 0, updated_at = now()
                WHERE id = %s""",
             (r.get("id"), amount, reason, payment_row_id),
         )
@@ -65,7 +70,7 @@ def settle_vehicle(order_id: str, payment_id: str, user_id: str | None = None) -
         if row["status"] in ("paid", "refunded"):
             return {"booking_id": booking_id, "status": "confirmed" if row["status"] == "paid" else "refunded", "already_done": True}
 
-        cur.execute("UPDATE payments SET status = 'paid', provider_payment_id = %s, updated_at = now() WHERE id = %s", (payment_id, row["id"]))
+        cur.execute("UPDATE payments SET status = 'paid', provider_payment_id = %s, commission = %s, updated_at = now() WHERE id = %s", (payment_id, commission_for(row["amount"]), row["id"]))
         outcome = "confirmed"
         if row["booking_status"] in ("held", "expired"):
             cur.execute("SELECT id FROM vehicles WHERE id = %s FOR UPDATE", (row["vehicle_id"],))  # take turns with new bookings
@@ -113,8 +118,8 @@ def settle(order_id: str, payment_id: str, user_id: str | None = None) -> dict:
             return {"booking_id": booking_id, "status": "confirmed" if row["status"] == "paid" else "refunded", "already_done": True}
 
         cur.execute(
-            "UPDATE payments SET status = 'paid', provider_payment_id = %s, updated_at = now() WHERE id = %s",
-            (payment_id, row["id"]),
+            "UPDATE payments SET status = 'paid', provider_payment_id = %s, commission = %s, updated_at = now() WHERE id = %s",
+            (payment_id, commission_for(row["amount"]), row["id"]),
         )
         outcome = "confirmed"
         if row["booking_status"] == "held":

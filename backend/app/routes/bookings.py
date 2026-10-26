@@ -187,7 +187,7 @@ def cancel_booking(booking_id: str, user: dict = Depends(current_user)):
         cur.execute("UPDATE bookings SET status = 'cancelled', hold_expires_at = NULL WHERE id = %s", (booking_id,))
 
         if b["status"] == "confirmed":
-            cur.execute("SELECT id, provider_payment_id, amount FROM payments WHERE booking_id = %s AND status = 'paid' FOR UPDATE", (booking_id,))
+            cur.execute("SELECT id, provider, provider_payment_id, amount FROM payments WHERE booking_id = %s AND status = 'paid' FOR UPDATE", (booking_id,))
             pay = cur.fetchone()
             if pay:
                 refund["reason"] = "too_late"
@@ -197,8 +197,18 @@ def cancel_booking(booking_id: str, user: dict = Depends(current_user)):
                     (b["check_in"], settings.refund_full_hours),
                 )
                 if cur.fetchone()["full"]:
-                    refund_args = (str(pay["id"]), pay["provider_payment_id"], pay["amount"], "Cancelled by guest")
-                    refund = {"status": "refunded", "amount": pay["amount"], "reason": "full"}
+                    if pay["provider"] == "upi_direct":
+                        # The guest paid the host directly, so the host returns the money. We only record it.
+                        cur.execute(
+                            "UPDATE payments SET status = 'refunded', refunded_amount = amount, commission = 0, note = 'Cancelled by guest. Host returns the money directly.', updated_at = now() WHERE id = %s",
+                            (pay["id"],),
+                        )
+                        refund = {"status": "manual", "amount": pay["amount"], "reason": "upi_direct"}
+                    else:
+                        refund_args = (str(pay["id"]), pay["provider_payment_id"], pay["amount"], "Cancelled by guest")
+                        refund = {"status": "refunded", "amount": pay["amount"], "reason": "full"}
+        else:
+            cur.execute("UPDATE payments SET status = 'failed', note = 'Booking cancelled before the host confirmed', updated_at = now() WHERE booking_id = %s AND status = 'created' AND provider = 'upi_direct'", (booking_id,))
     if refund_args:
         from .payments import refund_payment  # imported here because payments.py imports this module
 

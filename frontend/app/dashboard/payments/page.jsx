@@ -10,7 +10,7 @@ const METHOD = { razorpay: "Paid online", upi_direct: "UPI to you" };
 const PAY_STATUS = { created: "Waiting", paid: "Received", failed: "Not received", refunded: "Refunded" };
 
 function Payments() {
-  const { token, logout } = useAuth();
+  const { token, role, logout } = useAuth();
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [upi, setUpi] = useState("");
@@ -81,6 +81,25 @@ function Payments() {
               <b className="price">{money(data.refunded)}</b>
             </div>
           </div>
+
+          <section className="prop-section">
+            <h2>Hill Booker fee ({data.commission_percent}% of each advance)</h2>
+            <p className="meta">The guest pays no extra. The fee is taken from the advance.</p>
+            <div className="pay-summary">
+              <div className="pay-stat">
+                <span className="meta">{role === "admin" ? "Commission earned" : "Fee on payments received"}</span>
+                <b className="price">{money(data.fee_total)}</b>
+              </div>
+              <div className="pay-stat">
+                <span className="meta">{role === "admin" ? "Hosts owe you (paid to them by UPI)" : "You owe Hill Booker (paid to you by UPI)"}</span>
+                <b className="price">{money(data.fee_owed_by_hosts)}</b>
+              </div>
+              <div className="pay-stat">
+                <span className="meta">{role === "admin" ? "You owe hosts (paid online, after fee)" : "Hill Booker pays you (paid online, after fee)"}</span>
+                <b className="price">{money(data.payout_due_to_hosts)}</b>
+              </div>
+            </div>
+          </section>
 
           <section className="prop-section">
             <h2>Your UPI ID</h2>
@@ -155,6 +174,7 @@ function Payments() {
                   <div className="right">
                     <p className="price">{money(r.total_amount)}</p>
                     <p className="meta">Advance {money(r.advance_amount)}</p>
+                    {r.pay_status === "paid" && Number(r.commission) > 0 && <p className="meta">Fee {money(r.commission)}</p>}
                     {r.status === "confirmed" && Number(r.total_amount) > Number(r.advance_amount) && (
                       <p className="meta">Collect {money(Number(r.total_amount) - Number(r.advance_amount))}</p>
                     )}

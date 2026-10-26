@@ -185,6 +185,8 @@ class _BookingsScreenState extends State<BookingsScreen> {
       var text = '';
       if (r['status'] == 'refunded') {
         text = 'Cancelled. ${money(amount)} is being refunded to your original payment method. It usually takes 5 to 7 working days.';
+      } else if (r['status'] == 'manual') {
+        text = 'Cancelled. You paid the host directly, so the host will return ${money(amount)} to you. Contact them if you do not receive it.';
       } else if (r['status'] == 'pending') {
         text = "Cancelled. Your refund couldn't be sent automatically. We'll process it by hand and email you.";
       } else if (r['reason'] == 'too_late') {
