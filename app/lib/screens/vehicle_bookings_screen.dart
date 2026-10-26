@@ -8,6 +8,7 @@ import '../format.dart';
 import '../session.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/upi_pay.dart';
 import 'login_screen.dart';
 import 'vehicle_common.dart';
 
@@ -263,13 +264,13 @@ class _VehicleBookingsScreenState extends State<VehicleBookingsScreen> {
         ],
         if (status == 'held' && until != null) ...[
           const SizedBox(height: 10),
-          Text(left == Duration.zero ? 'Hold ended' : 'Vehicle held for ${left.inMinutes}:${two(left.inSeconds % 60)}', style: const TextStyle(color: C.goldText, fontWeight: FontWeight.w800, fontSize: 16)),
+          Text(left == Duration.zero ? 'Hold ended' : 'Vehicle held for ${holdLeft(left)}', style: const TextStyle(color: C.goldText, fontWeight: FontWeight.w800, fontSize: 16)),
           if (!_payOn) const Padding(padding: EdgeInsets.only(top: 4), child: Text("Payments aren't switched on yet. The button below confirms the booking for testing only.", style: TextStyle(color: C.soft, fontSize: 13))),
           const SizedBox(height: 10),
           Row(children: [
             Expanded(
               child: FilledButton(
-                onPressed: _busy == id || left == Duration.zero ? null : (_payOn ? () => _pay(b) : () => _act(id, 'confirm')),
+                onPressed: _busy == id || left == Duration.zero || b['upi_pending'] == true ? null : (_payOn ? () => _pay(b) : () => _act(id, 'confirm')),
                 child: Text(_busy == id ? 'Opening payment…' : (_payOn ? 'Pay ${money(toNum(b['advance_amount']))}${balance > 0 ? ' now' : ''}' : 'Confirm booking (test)')),
               ),
             ),
@@ -280,6 +281,13 @@ class _VehicleBookingsScreenState extends State<VehicleBookingsScreen> {
               child: const Text('Release'),
             ),
           ]),
+          if (b['upi_pending'] == true)
+            const Padding(
+              padding: EdgeInsets.only(top: 10),
+              child: Text('You sent a UPI payment. The host will check it and confirm your booking. You will see it here once confirmed.', style: TextStyle(color: C.green, fontWeight: FontWeight.w700)),
+            )
+          else if (b['host_upi'] == true)
+            UpiPay(kind: 'vehicle', bookingId: id, amount: toNum(b['advance_amount']), onDone: _load),
         ],
         if (status == 'confirmed') ...[
           const SizedBox(height: 10),

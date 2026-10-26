@@ -5,6 +5,7 @@ import '../format.dart';
 import '../session.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import 'host_payments_screen.dart';
 import 'operator_bookings_screen.dart';
 import 'owner_home_screen.dart' show propertyStatusColor, propertyStatusLabel;
 import 'vehicle_common.dart';
@@ -84,6 +85,11 @@ class _OperatorHomeScreenState extends State<OperatorHomeScreen> {
             tooltip: 'Bookings',
             icon: const Icon(Icons.confirmation_number_outlined),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OperatorBookingsScreen())),
+          ),
+          IconButton(
+            tooltip: 'Payments',
+            icon: const Icon(Icons.payments_outlined),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const HostPaymentsScreen())),
           ),
         ],
       ),

@@ -55,3 +55,6 @@ num advanceFor(num total, int percent) {
   final v = (total * percent / 100).ceil();
   return v > total ? total : v;
 }
+
+/// Time left on a hold: "9:41" for a short hold, "11h 20m" for a long one (direct UPI holds last hours).
+String holdLeft(Duration d) => d.inMinutes >= 60 ? '${d.inHours}h ${d.inMinutes % 60}m' : '${d.inMinutes}:${two(d.inSeconds % 60)}';

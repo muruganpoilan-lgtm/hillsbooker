@@ -4,6 +4,7 @@ import '../api.dart';
 import '../session.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import 'host_payments_screen.dart';
 import 'owner_bookings_screen.dart';
 import 'property_form_screen.dart';
 import 'property_manage_screen.dart';
@@ -93,6 +94,11 @@ class _OwnerHomeScreenState extends State<OwnerHomeScreen> {
             tooltip: 'Bookings',
             icon: const Icon(Icons.confirmation_number_outlined),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OwnerBookingsScreen())),
+          ),
+          IconButton(
+            tooltip: 'Payments',
+            icon: const Icon(Icons.payments_outlined),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const HostPaymentsScreen())),
           ),
         ],
       ),

@@ -9,6 +9,7 @@ import '../format.dart';
 import '../session.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/upi_pay.dart';
 import 'login_screen.dart';
 
 const _statusLabel = {
@@ -298,8 +299,6 @@ class _BookingsScreenState extends State<BookingsScreen> {
       left = until.difference(DateTime.now());
       if (left.isNegative) left = Duration.zero;
     }
-    final mins = left.inMinutes;
-    final secs = two(left.inSeconds % 60);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -327,7 +326,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
           ],
           if (status == 'held' && until != null) ...[
             const SizedBox(height: 10),
-            Text(left == Duration.zero ? 'Hold ended' : 'Room held for $mins:$secs', style: const TextStyle(color: C.goldText, fontWeight: FontWeight.w800, fontSize: 16)),
+            Text(left == Duration.zero ? 'Hold ended' : 'Room held for ${holdLeft(left)}', style: const TextStyle(color: C.goldText, fontWeight: FontWeight.w800, fontSize: 16)),
             const SizedBox(height: 4),
             if (!_payOn)
               const Text("Payments aren't switched on yet. The button below confirms the booking for testing only.", style: TextStyle(color: C.soft, fontSize: 13)),
@@ -335,7 +334,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
             Row(children: [
               Expanded(
                 child: FilledButton(
-                  onPressed: _busy == id || left == Duration.zero ? null : (_payOn ? () => _pay(b) : () => _act(id, 'confirm')),
+                  onPressed: _busy == id || left == Duration.zero || b['upi_pending'] == true ? null : (_payOn ? () => _pay(b) : () => _act(id, 'confirm')),
                   child: Text(_busy == id ? 'Opening payment…' : (_payOn ? 'Pay ${money(toNum(b['advance_amount']))}${toNum(b['balance_due']) > 0 ? ' now' : ''}' : 'Confirm booking (test)')),
                 ),
               ),
@@ -346,6 +345,13 @@ class _BookingsScreenState extends State<BookingsScreen> {
                 child: const Text('Release room'),
               ),
             ]),
+            if (b['upi_pending'] == true)
+              const Padding(
+                padding: EdgeInsets.only(top: 10),
+                child: Text('You sent a UPI payment. The host will check it and confirm your booking. You will see it here once confirmed.', style: TextStyle(color: C.green, fontWeight: FontWeight.w700)),
+              )
+            else if (b['host_upi'] == true)
+              UpiPay(kind: 'stay', bookingId: id, amount: toNum(b['advance_amount']), onDone: _load),
           ],
           if (status == 'confirmed') ...[
             const SizedBox(height: 10),
