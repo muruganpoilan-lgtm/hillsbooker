@@ -239,6 +239,7 @@ def confirm_upi(payment_id: str, user: dict = Depends(host_only)):
             stay_id = str(pay["booking_id"])
     if stay_id:
         invoice.email_in_background(stay_id)
+        notify.guest_invoice_in_background(stay_id)
     return {"payment_id": payment_id, "status": "paid"}
 
 

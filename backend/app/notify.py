@@ -62,13 +62,13 @@ def _details(kind: str, booking_id: str):
         return cur.fetchone()
 
 
-def _send(to: str, params: list[str]) -> None:
+def _send(to: str, params: list[str], template: str | None = None) -> None:
     body = {
         "messaging_product": "whatsapp",
         "to": to,
         "type": "template",
         "template": {
-            "name": settings.whatsapp_template,
+            "name": template or settings.whatsapp_template,
             "language": {"code": settings.whatsapp_lang},
             "components": [{"type": "body", "parameters": [{"type": "text", "text": _clean(p)} for p in params]}],
         },
@@ -117,3 +117,34 @@ def host_in_background(kind: str, booking_id, event: str = "confirmed") -> None:
     """Call right after a booking is confirmed (event "confirmed") or a UPI payment is reported (event "upi")."""
     if enabled():
         threading.Thread(target=_run, args=(kind, str(booking_id), event), daemon=True).start()
+
+
+def _guest_invoice(booking_id: str) -> None:
+    try:
+        from . import invoice
+
+        with get_conn() as conn, conn.cursor() as cur:
+            cur.execute(
+                """SELECT g.name AS guest, g.phone, p.name AS property, b.check_in, b.check_out
+                   FROM bookings b JOIN properties p ON p.id = b.property_id JOIN users g ON g.id = b.user_id
+                   WHERE b.id = %s AND b.status = 'confirmed'""",
+                (booking_id,),
+            )
+            d = cur.fetchone()
+        if not d:
+            return
+        to = wa_number(d["phone"])
+        if not to:
+            return  # the guest has no mobile number saved
+        when = f"{_day(d['check_in'])} to {_day(d['check_out'])}"
+        # Template body (create it in Meta Business Manager, in this order):
+        # Hi {{1}}, your Hill Booker stay at {{2}} is confirmed for {{3}}. Your invoice: {{4}}
+        _send(to, [d["guest"], d["property"], when, invoice.link_for(booking_id)], settings.whatsapp_invoice_template)
+    except Exception as e:
+        log.warning("Guest invoice message failed: %s", e)
+
+
+def guest_invoice_in_background(booking_id) -> None:
+    """Sends the guest their invoice link on WhatsApp right after a stay is confirmed. Off until a template name is set."""
+    if enabled() and settings.whatsapp_invoice_template:
+        threading.Thread(target=_guest_invoice, args=(str(booking_id),), daemon=True).start()

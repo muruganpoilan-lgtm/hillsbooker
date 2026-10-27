@@ -143,6 +143,7 @@ def confirm_booking(booking_id: str, user: dict = Depends(current_user)):
         cur.execute("UPDATE bookings SET status = 'confirmed', hold_expires_at = NULL WHERE id = %s", (booking_id,))
     invoice.email_in_background(booking_id)
     notify.host_in_background("stay", booking_id)
+    notify.guest_invoice_in_background(booking_id)
     return {"booking_id": booking_id, "status": "confirmed"}
 
 
