@@ -154,3 +154,35 @@ def guest_invoice_in_background(booking_id) -> None:
     """Sends the guest their invoice link on WhatsApp right after a stay is confirmed. Off until a template name is set."""
     if enabled() and settings.whatsapp_invoice_template:
         threading.Thread(target=_guest_invoice, args=(str(booking_id),), daemon=True).start()
+
+
+def _host_copy(booking_id: str) -> None:
+    try:
+        from . import invoice
+
+        with get_conn() as conn, conn.cursor() as cur:
+            cur.execute(
+                """SELECT h.name AS host, h.phone AS host_phone, g.name AS guest, p.name AS property, b.check_in, b.check_out
+                   FROM bookings b JOIN properties p ON p.id = b.property_id JOIN users h ON h.id = p.owner_id
+                   JOIN users g ON g.id = b.user_id WHERE b.id = %s AND b.status = 'confirmed'""",
+                (booking_id,),
+            )
+            d = cur.fetchone()
+        if not d:
+            return
+        to = wa_number(d["host_phone"])
+        if not to:
+            return
+        when = f"{_day(d['check_in'])} to {_day(d['check_out'])}"
+        # Template (create it in Meta Business Manager): header type DOCUMENT (a PDF), body:
+        # Hi {{1}}, a booking at {{2}} is confirmed for {{3}}. Guest: {{4}}. Your copy of the invoice is attached.
+        safe = re.sub(r"[^A-Za-z0-9]+", "-", d["property"]).strip("-")[:40] or "Booking"
+        _send(to, [d["host"], d["property"], when, d["guest"]], settings.whatsapp_host_copy_template, (invoice.link_for(booking_id), f"Hill-Booker-Invoice-{safe}.pdf"))
+    except Exception as e:
+        log.warning("Owner copy failed: %s", e)
+
+
+def host_copy_in_background(booking_id) -> None:
+    """Sends the property owner a copy of the guest's invoice on WhatsApp. Off until a template name is set."""
+    if enabled() and settings.whatsapp_host_copy_template:
+        threading.Thread(target=_host_copy, args=(str(booking_id),), daemon=True).start()

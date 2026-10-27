@@ -74,11 +74,13 @@ def load(cur, booking_id: str) -> dict | None:
         """SELECT b.id, b.invoice_no, b.check_in, b.check_out, b.rooms, b.guests, b.total_amount,
                   COALESCE(b.advance_amount, b.total_amount) AS advance_amount, b.created_at,
                   u.name AS guest, u.email AS guest_email, u.phone AS guest_phone,
+                  h.name AS host_name, h.email AS host_email,
                   p.name AS property, p.address, p.city, rt.name AS room_type,
                   pay.provider_payment_id, pay.amount AS paid_amount, pay.updated_at AS paid_at
            FROM bookings b
            JOIN users u ON u.id = b.user_id
            JOIN properties p ON p.id = b.property_id
+           JOIN users h ON h.id = p.owner_id
            JOIN room_types rt ON rt.id = b.room_type_id
            LEFT JOIN payments pay ON pay.booking_id = b.id AND pay.status = 'paid'
            WHERE b.id = %s""",
@@ -207,21 +209,35 @@ def email_enabled() -> bool:
     return bool(settings.smtp_host and settings.smtp_from)
 
 
-def send_email(d: dict, pdf: bytes) -> bool:
+def send_email(d: dict, pdf: bytes, to_host: bool = False) -> bool:
+    """Emails the invoice PDF to the guest, or (to_host) a copy of it to the property owner."""
     if not email_enabled():
         return False
     msg = EmailMessage()
-    msg["Subject"] = f"Your {settings.business_name} invoice {d['invoice_no']}"
-    msg["From"] = settings.smtp_from
-    msg["To"] = d["guest_email"]
     nights = (d["check_out"] - d["check_in"]).days
-    msg.set_content(
-        f"Hello {d['guest']},\n\n"
-        f"Your booking at {d['property']} is confirmed.\n"
-        f"Check-in {day(d['check_in'])}, check-out {day(d['check_out'])} ({nights} night{'s' if nights != 1 else ''}).\n"
-        f"Your invoice {d['invoice_no']} is attached.\n\n"
-        f"{settings.business_name}\n"
-    )
+    stay = f"Check-in {day(d['check_in'])}, check-out {day(d['check_out'])} ({nights} night{'s' if nights != 1 else ''})."
+    if to_host:
+        msg["Subject"] = f"New booking at {d['property']}: {d['guest']}, {day(d['check_in'])}"
+        msg["To"] = d["host_email"]
+        msg.set_content(
+            f"Hello {d['host_name']},\n\n"
+            f"A booking at {d['property']} is confirmed.\n"
+            f"Guest: {d['guest']}{' (' + d['guest_phone'] + ')' if d.get('guest_phone') else ''}\n"
+            f"{d['room_type']}, {d['rooms']} room(s), {d['guests']} guest(s). {stay}\n"
+            f"Invoice {d['invoice_no']} is attached as your copy.\n\n"
+            f"{settings.business_name}\n"
+        )
+    else:
+        msg["Subject"] = f"Your {settings.business_name} invoice {d['invoice_no']}"
+        msg["To"] = d["guest_email"]
+        msg.set_content(
+            f"Hello {d['guest']},\n\n"
+            f"Your booking at {d['property']} is confirmed.\n"
+            f"{stay}\n"
+            f"Your invoice {d['invoice_no']} is attached.\n\n"
+            f"{settings.business_name}\n"
+        )
+    msg["From"] = settings.smtp_from
     msg.add_attachment(pdf, maintype="application", subtype="pdf", filename=f"{d['invoice_no']}.pdf")
     try:
         if settings.smtp_security == "ssl":
@@ -240,15 +256,19 @@ def send_email(d: dict, pdf: bytes) -> bool:
         return False
 
 
-def email_invoice(booking_id: str) -> bool:
+def email_invoice(booking_id: str, copy_to_host: bool = False) -> bool:
     with get_conn() as conn, conn.cursor() as cur:
         d = load(cur, booking_id)
     if not d:
         return False
-    return send_email(d, build_pdf(d))
+    pdf = build_pdf(d)
+    ok = send_email(d, pdf)
+    if copy_to_host and d.get("host_email"):
+        send_email(d, pdf, to_host=True)  # the owner's copy; a failure here never blocks the guest's
+    return ok
 
 
 def email_in_background(booking_id: str) -> None:
     """Called right after a booking is confirmed. Runs on its own thread so the guest never waits for the mail server."""
     if email_enabled():
-        threading.Thread(target=email_invoice, args=(str(booking_id),), daemon=True).start()
+        threading.Thread(target=email_invoice, args=(str(booking_id), True), daemon=True).start()

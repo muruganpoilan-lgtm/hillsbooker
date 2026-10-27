@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     whatsapp_phone_id: str = ""    # the sender number's Phone Number ID
     whatsapp_template: str = "new_booking"
     whatsapp_lang: str = "en"
+    whatsapp_host_copy_template: str = ""  # approved template with a PDF header that sends the owner a copy; empty = off
     whatsapp_invoice_template: str = ""  # approved template that sends the guest their invoice link; empty = off
 
     # Photo uploads. Local disk for development; swap storage.py for S3 or Cloudinary in production.

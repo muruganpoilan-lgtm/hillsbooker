@@ -155,6 +155,7 @@ def settle(order_id: str, payment_id: str, user_id: str | None = None) -> dict:
         invoice.email_in_background(booking_id)  # after the commit, so the mail reads the paid booking
         notify.host_in_background("stay", booking_id)
         notify.guest_invoice_in_background(booking_id)
+        notify.host_copy_in_background(booking_id)
     return {"booking_id": booking_id, "status": outcome}
 
 
