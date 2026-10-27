@@ -22,6 +22,8 @@ class _HostPaymentsScreenState extends State<HostPaymentsScreen> {
   String _error = '';
   String _busy = '';
   final _upi = TextEditingController();
+  final _phone = TextEditingController();
+  bool _alertsOn = false;
 
   @override
   void initState() {
@@ -32,6 +34,7 @@ class _HostPaymentsScreenState extends State<HostPaymentsScreen> {
   @override
   void dispose() {
     _upi.dispose();
+    _phone.dispose();
     super.dispose();
   }
 
@@ -52,6 +55,23 @@ class _HostPaymentsScreenState extends State<HostPaymentsScreen> {
       _d = d;
       _upi.text = '${d['upi_id'] ?? ''}';
     });
+    final p = await Api.get('/me/phone');
+    if (!mounted || !p.ok) return;
+    setState(() {
+      _phone.text = '${p.data['phone'] ?? ''}';
+      _alertsOn = p.data['alerts_on'] == true;
+    });
+  }
+
+  Future<void> _savePhone() async {
+    final res = await Api.put('/me/phone', body: {'phone': _phone.text});
+    if (!mounted) return;
+    if (!res.ok) {
+      snack(context, res.error);
+      return;
+    }
+    final saved = res.data is Map && res.data['phone'] != null;
+    snack(context, saved ? 'Saved. You will get a WhatsApp message for every new booking.' : 'Removed. No WhatsApp alerts will be sent.');
   }
 
   Future<void> _saveUpi() async {
@@ -143,6 +163,17 @@ class _HostPaymentsScreenState extends State<HostPaymentsScreen> {
                   TextField(controller: _upi, autocorrect: false, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'UPI ID', hintText: 'name@bank')),
                   const SizedBox(height: 10),
                   Align(alignment: Alignment.centerLeft, child: FilledButton(onPressed: _saveUpi, child: const Text('Save UPI ID'))),
+                  const SizedBox(height: 24),
+                  Text('WhatsApp alerts', style: display(18)),
+                  const SizedBox(height: 4),
+                  Text(
+                    'We message this number on WhatsApp when a guest books, with the check-in date, room and guest details.${_alertsOn ? '' : ' Alerts are not switched on yet. Your number is saved and alerts start once they are.'}',
+                    style: const TextStyle(color: C.soft, fontSize: 13.5),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(controller: _phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Your WhatsApp number', hintText: '98765 43210')),
+                  const SizedBox(height: 10),
+                  Align(alignment: Alignment.centerLeft, child: FilledButton(onPressed: _savePhone, child: const Text('Save number'))),
                   const SizedBox(height: 24),
                   Text('Waiting for you${waiting.isEmpty ? '' : ' (${waiting.length})'}', style: display(18)),
                   const SizedBox(height: 6),

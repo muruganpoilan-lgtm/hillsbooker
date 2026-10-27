@@ -9,6 +9,7 @@ from decimal import ROUND_CEILING, Decimal
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
+from .. import notify
 from ..auth import current_user, require_role
 from ..config import settings
 from ..db import get_conn
@@ -382,6 +383,7 @@ def confirm_vehicle_booking(booking_id: str, user: dict = Depends(current_user))
         if b["status"] != "held" or b["late"]:
             raise HTTPException(409, "Your hold ended. Search again" if b["status"] in ("held", "expired") else f"This booking is already {b['status']}")
         cur.execute("UPDATE vehicle_bookings SET status = 'confirmed', hold_expires_at = NULL WHERE id = %s", (booking_id,))
+    notify.host_in_background("vehicle", booking_id)
     return {"booking_id": booking_id, "status": "confirmed"}
 
 

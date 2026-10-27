@@ -4,7 +4,7 @@ from decimal import ROUND_CEILING, Decimal
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from .. import invoice
+from .. import invoice, notify
 from ..auth import current_user
 from ..config import settings
 from ..db import get_conn
@@ -142,6 +142,7 @@ def confirm_booking(booking_id: str, user: dict = Depends(current_user)):
             raise HTTPException(409, "Your hold expired. Search again")
         cur.execute("UPDATE bookings SET status = 'confirmed', hold_expires_at = NULL WHERE id = %s", (booking_id,))
     invoice.email_in_background(booking_id)
+    notify.host_in_background("stay", booking_id)
     return {"booking_id": booking_id, "status": "confirmed"}
 
 

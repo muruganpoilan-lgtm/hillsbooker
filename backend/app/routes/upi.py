@@ -11,7 +11,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from .. import invoice
+from .. import invoice, notify
 from ..auth import current_user, require_role
 from ..config import settings
 from ..db import get_conn
@@ -27,6 +27,10 @@ UTR_RE = re.compile(r"^\d{12}$")
 
 class UpiIdIn(BaseModel):
     upi_id: str = ""
+
+
+class PhoneIn(BaseModel):
+    phone: str = ""
 
 
 class UtrIn(BaseModel):
@@ -50,6 +54,25 @@ def set_upi(body: UpiIdIn, user: dict = Depends(host_only)):
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute("UPDATE users SET upi_id = %s WHERE id = %s", (upi or None, user["id"]))
     return {"upi_id": upi or None}
+
+
+# ---------- the host's WhatsApp number for booking alerts ----------
+
+@router.get("/me/phone")
+def my_phone(user: dict = Depends(host_only)):
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("SELECT phone FROM users WHERE id = %s", (user["id"],))
+        return {"phone": cur.fetchone()["phone"], "alerts_on": notify.enabled()}
+
+
+@router.put("/me/phone")
+def set_phone(body: PhoneIn, user: dict = Depends(host_only)):
+    phone = body.phone.strip()
+    if phone and not notify.wa_number(phone):
+        raise HTTPException(400, "Enter a valid mobile number, for example 98765 43210")
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("UPDATE users SET phone = %s WHERE id = %s", (phone or None, user["id"]))
+    return {"phone": phone or None}
 
 
 # ---------- guest side ----------
@@ -128,6 +151,7 @@ def upi_submit(kind: str, booking_id: str, body: UtrIn, user: dict = Depends(cur
         table = "bookings" if kind == "stay" else "vehicle_bookings"
         cur.execute(f"UPDATE {table} SET hold_expires_at = now() + make_interval(hours => %s) WHERE id = %s RETURNING hold_expires_at", (settings.upi_hold_hours, booking_id))
         hold = cur.fetchone()["hold_expires_at"]
+    notify.host_in_background(kind, booking_id, "upi")
     return {"status": "awaiting_host", "hold_expires_at": hold}
 
 

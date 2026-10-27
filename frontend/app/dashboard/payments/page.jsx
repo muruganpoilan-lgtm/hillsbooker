@@ -15,6 +15,9 @@ function Payments() {
   const [error, setError] = useState("");
   const [upi, setUpi] = useState("");
   const [upiMsg, setUpiMsg] = useState("");
+  const [phone, setPhone] = useState("");
+  const [phoneMsg, setPhoneMsg] = useState("");
+  const [alertsOn, setAlertsOn] = useState(false);
   const [busy, setBusy] = useState("");
 
   const load = useCallback(async () => {
@@ -24,6 +27,11 @@ function Payments() {
     setError("");
     setData(res.data);
     setUpi(res.data.upi_id || "");
+    const p = await api("/me/phone", { token });
+    if (p.ok) {
+      setPhone(p.data.phone || "");
+      setAlertsOn(Boolean(p.data.alerts_on));
+    }
   }, [token, logout]);
 
   useEffect(() => {
@@ -37,6 +45,14 @@ function Payments() {
     if (res.status === 401) return logout();
     setUpiMsg(res.ok ? (res.data.upi_id ? "Saved. Guests can now pay you by UPI." : "Removed. Guests will pay online only.") : res.error);
     if (res.ok) load();
+  }
+
+  async function savePhone(e) {
+    e.preventDefault();
+    setPhoneMsg("");
+    const res = await api("/me/phone", { method: "PUT", token, body: { phone } });
+    if (res.status === 401) return logout();
+    setPhoneMsg(res.ok ? (res.data.phone ? "Saved. You will get a WhatsApp message for every new booking." : "Removed. No WhatsApp alerts will be sent.") : res.error);
   }
 
   async function decide(id, action) {
@@ -117,6 +133,30 @@ function Payments() {
               {upiMsg && (
                 <p className="ok" role="status">
                   {upiMsg}
+                </p>
+              )}
+            </form>
+          </section>
+
+          <section className="prop-section">
+            <h2>WhatsApp alerts</h2>
+            <p className="meta">
+              We message this number on WhatsApp when a guest books, with the check-in date, room and guest details.
+              {!alertsOn && " (WhatsApp alerts are not switched on yet. Your number is saved and alerts start once they are.)"}
+            </p>
+            <form className="narrow" onSubmit={savePhone}>
+              <label className="field">
+                <span>Your WhatsApp number</span>
+                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="98765 43210" autoComplete="tel" />
+              </label>
+              <div className="actions">
+                <button type="submit" className="btn btn-primary btn-small">
+                  Save number
+                </button>
+              </div>
+              {phoneMsg && (
+                <p className="ok" role="status">
+                  {phoneMsg}
                 </p>
               )}
             </form>

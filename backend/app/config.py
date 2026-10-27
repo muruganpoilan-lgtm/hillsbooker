@@ -44,6 +44,12 @@ class Settings(BaseSettings):
     # Direct UPI: how long a booking stays held while the host checks that the money arrived.
     upi_hold_hours: int = 12
 
+    # WhatsApp alerts to hosts (Meta WhatsApp Business Cloud API). Leave the token empty to keep alerts off.
+    whatsapp_token: str = ""       # permanent access token
+    whatsapp_phone_id: str = ""    # the sender number's Phone Number ID
+    whatsapp_template: str = "new_booking"
+    whatsapp_lang: str = "en"
+
     # Photo uploads. Local disk for development; swap storage.py for S3 or Cloudinary in production.
     upload_dir: str = "uploads"
     public_base_url: str = "http://localhost:8000"
