@@ -61,7 +61,15 @@ export default function VehicleBookingsPage() {
   }, [token, logout]);
 
   useEffect(() => {
-    if (ready && token) load();
+    if (!(ready && token)) return;
+    load();
+    const id = setInterval(load, 30000);
+    const onShow = () => document.visibilityState === "visible" && load();
+    document.addEventListener("visibilitychange", onShow);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onShow);
+    };
   }, [ready, token, load]);
 
   async function act(id, action) {

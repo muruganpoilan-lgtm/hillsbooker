@@ -1,3 +1,4 @@
+from urllib.parse import quote
 from datetime import date
 from decimal import ROUND_CEILING, Decimal
 
@@ -159,6 +160,35 @@ def invoice_link(booking_id: str, user: dict = Depends(current_user)):
     with get_conn() as conn, conn.cursor() as cur:
         _own_confirmed(cur, booking_id, user)
     return {"url": invoice.link_for(booking_id)}
+
+
+def _wa_number(phone: str | None) -> str:
+    """Digits only, with India's 91 in front of a 10-digit number. Empty when there is no usable number."""
+    digits = "".join(c for c in (phone or "") if c.isdigit())
+    if len(digits) == 11 and digits.startswith("0"):
+        digits = digits[1:]
+    if len(digits) == 10:
+        digits = "91" + digits
+    return digits if 11 <= len(digits) <= 15 else ""
+
+
+@router.get("/{booking_id}/invoice/whatsapp")
+def invoice_whatsapp(booking_id: str, user: dict = Depends(current_user)):
+    """A WhatsApp link that opens a chat with the guest's own number, with the invoice link already typed in.
+    Without a saved phone number the link opens WhatsApp's contact picker instead."""
+    with get_conn() as conn, conn.cursor() as cur:
+        _own_confirmed(cur, booking_id, user)
+        cur.execute(
+            """SELECT p.name AS property, b.check_in, b.check_out, u.phone
+               FROM bookings b JOIN properties p ON p.id = b.property_id JOIN users u ON u.id = b.user_id
+               WHERE b.id = %s""",
+            (booking_id,),
+        )
+        row = cur.fetchone()
+    text = f"Hill Booker invoice for {row['property']}, {row['check_in']:%d %b %Y} to {row['check_out']:%d %b %Y}: {invoice.link_for(booking_id)}"
+    number = _wa_number(row["phone"])
+    url = f"https://wa.me/{number}?text={quote(text)}"
+    return {"url": url, "has_number": bool(number)}
 
 
 @router.post("/{booking_id}/invoice/email")

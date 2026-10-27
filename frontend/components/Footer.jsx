@@ -19,6 +19,17 @@ export default function Footer() {
           <Link href="/register">List your property</Link>
           <Link href="/bookings">My bookings</Link>
         </nav>
+        <address className="footer-contact">
+          <p>
+            <b>Office:</b> Hillbooker, No: 105A, Villagio, Green Groove, Jeyam Nagar, Kanchivakkam, Sriperumbudur, Chennai - 601301
+          </p>
+          <p>
+            <b>Customer care:</b> <a href="tel:+918300841442">+91 83008 41442</a> ·{" "}
+            <a href="https://wa.me/918300841442" target="_blank" rel="noopener noreferrer">
+              WhatsApp us
+            </a>
+          </p>
+        </address>
       </div>
     </footer>
   );

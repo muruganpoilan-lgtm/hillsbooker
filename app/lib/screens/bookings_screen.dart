@@ -210,12 +210,17 @@ class _BookingsScreenState extends State<BookingsScreen> {
     if (!ok && mounted) snack(context, "Couldn't open the invoice. Try again.");
   }
 
-  Future<void> _emailInvoice(String id) async {
+  Future<void> _whatsappInvoice(String id) async {
     setState(() => _busy = id);
-    final res = await Api.post('/bookings/$id/invoice/email');
+    final res = await Api.get('/bookings/$id/invoice/whatsapp');
     if (!mounted) return;
     setState(() => _busy = '');
-    snack(context, res.ok ? 'Your invoice was emailed to you.' : res.error);
+    if (!res.ok) {
+      snack(context, res.error);
+      return;
+    }
+    final ok = await launchUrl(Uri.parse('${res.data['url']}'), mode: LaunchMode.externalApplication);
+    if (!ok && mounted) snack(context, "Couldn't open WhatsApp. Is it installed?");
   }
 
   Future<void> _confirmCancel(String id) async {
@@ -360,7 +365,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
             Row(children: [
               Expanded(child: OutlinedButton.icon(onPressed: _busy == id ? null : () => _openInvoice(id), icon: const Icon(Icons.receipt_long, size: 18), label: const Text('Invoice'))),
               const SizedBox(width: 10),
-              Expanded(child: OutlinedButton.icon(onPressed: _busy == id ? null : () => _emailInvoice(id), icon: const Icon(Icons.mail_outline, size: 18), label: const Text('Email me'))),
+              Expanded(child: OutlinedButton.icon(onPressed: _busy == id ? null : () => _whatsappInvoice(id), icon: const Icon(Icons.chat_outlined, size: 18), label: const Text('WhatsApp'))),
             ]),
             const SizedBox(height: 10),
             OutlinedButton(

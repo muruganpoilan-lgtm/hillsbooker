@@ -320,3 +320,7 @@ label.btn[aria-busy="true"] { opacity: 0.7; cursor: progress; }
 .channel-box { margin-top: 0.6rem; }
 .channel-link { display: flex; gap: 0.5rem; align-items: center; margin: 0.4rem 0; }
 .channel-link input { flex: 1; min-width: 0; min-height: 40px; padding: 0.4rem 0.6rem; border: 1px solid #aab5ac; border-radius: 4px; font: inherit; font-size: 0.85rem; background: #fff; }
+
+.footer-contact { font-style: normal; display: grid; gap: 0.3rem; margin-top: 0.8rem; color: var(--ink-soft, inherit); font-size: 0.95rem; }
+.footer-contact p { margin: 0; }
+.footer-contact a { font-weight: 600; }

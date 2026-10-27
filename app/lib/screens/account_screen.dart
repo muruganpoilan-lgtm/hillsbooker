@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../api.dart';
 import '../session.dart';
@@ -19,6 +20,8 @@ class AccountScreen extends StatelessWidget {
           padding: const EdgeInsets.all(20),
           children: [
             Text('Account', style: display(30)),
+            const SizedBox(height: 16),
+            _contactCard(),
             const SizedBox(height: 16),
             if (!loggedIn) ...[
               const Text('Log in to reserve rooms and see your bookings.', style: TextStyle(color: C.soft, fontSize: 15)),
@@ -75,6 +78,31 @@ class AccountScreen extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  Widget _contactCard() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(8)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('Customer care', style: TextStyle(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 4),
+        const Text('Hillbooker, No: 105A, Villagio, Green Groove, Jeyam Nagar, Kanchivakkam, Sriperumbudur, Chennai - 601301', style: TextStyle(color: C.soft, fontSize: 13.5)),
+        const SizedBox(height: 8),
+        Wrap(spacing: 8, children: [
+          OutlinedButton.icon(
+            onPressed: () => launchUrl(Uri.parse('tel:+918300841442')),
+            icon: const Icon(Icons.call, size: 18),
+            label: const Text('+91 83008 41442'),
+          ),
+          OutlinedButton.icon(
+            onPressed: () => launchUrl(Uri.parse('https://wa.me/918300841442'), mode: LaunchMode.externalApplication),
+            icon: const Icon(Icons.chat_outlined, size: 18),
+            label: const Text('WhatsApp'),
+          ),
+        ]),
+      ]),
     );
   }
 }

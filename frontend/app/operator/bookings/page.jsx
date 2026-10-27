@@ -11,12 +11,23 @@ function Bookings() {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState("");
 
+  // Loads now, then again every 30 seconds and whenever the tab is opened, so cancellations and new bookings appear by themselves.
   useEffect(() => {
-    api("/operator/vehicle-bookings", { token }).then((res) => {
-      if (res.status === 401) return logout();
-      if (!res.ok) return setError(res.error);
-      setRows(res.data);
-    });
+    const load = () =>
+      api("/operator/vehicle-bookings", { token }).then((res) => {
+        if (res.status === 401) return logout();
+        if (!res.ok) return setError(res.error);
+        setError("");
+        setRows(res.data);
+      });
+    load();
+    const id = setInterval(load, 30000);
+    const onShow = () => document.visibilityState === "visible" && load();
+    document.addEventListener("visibilitychange", onShow);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onShow);
+    };
   }, [token, logout]);
 
   return (

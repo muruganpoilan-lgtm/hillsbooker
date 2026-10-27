@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../api.dart';
@@ -16,11 +18,20 @@ class OwnerBookingsScreen extends StatefulWidget {
 class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
   List<Map<String, dynamic>>? _rows;
   String _error = '';
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
     _load();
+    // Refresh every 30 seconds so cancellations and new bookings appear by themselves.
+    _timer = Timer.periodic(const Duration(seconds: 30), (_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {

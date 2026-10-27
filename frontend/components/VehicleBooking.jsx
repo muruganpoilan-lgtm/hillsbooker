@@ -71,7 +71,7 @@ export default function VehicleBooking({ vehicle: v }) {
       setError(res.error);
       return;
     }
-    router.push(`/bookings/vehicles?new=${res.data.booking_id}`);
+    router.push(`/pay?kind=vehicle&id=${res.data.booking_id}`);
   }
 
   return (

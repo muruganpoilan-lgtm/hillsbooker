@@ -173,6 +173,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
               const SizedBox(height: 8),
               _datesBar(),
               const SizedBox(height: 4),
+              if (_p?['too_soon'] == true) _tooSoonBanner(),
               if (rooms.isEmpty) const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text("The owner hasn't added rooms yet.", style: TextStyle(color: C.soft))),
               for (final r in rooms) _room(r),
             ],
@@ -252,6 +253,31 @@ class _PropertyScreenState extends State<PropertyScreen> {
     );
   }
 
+  Widget _tooSoonBanner() {
+    final earliest = DateTime.tryParse('${_p?['earliest_check_in']}');
+    final nice = earliest == null ? '' : prettyDayYear(earliest);
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: const Color(0xFFFDF1E0), border: Border.all(color: C.line), borderRadius: BorderRadius.circular(8)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(
+          "${prettyDayYear(_q.checkIn)} can't be booked online. Stays here need advance notice, so the earliest check-in is $nice.",
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+        if (earliest != null)
+          TextButton(
+            onPressed: () {
+              final out = _q.checkOut.isAfter(earliest) ? _q.checkOut : earliest.add(const Duration(days: 1));
+              setState(() => _q = StayQuery(city: _q.city, checkIn: earliest, checkOut: out, guests: _q.guests));
+              _load();
+            },
+            child: Text('Use $nice'),
+          ),
+      ]),
+    );
+  }
+
   Widget _room(Map<String, dynamic> r) {
     final id = r['id'].toString();
     final bookable = r['bookable'] == true;
@@ -294,7 +320,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
                   else if (!bookable)
                     Text(
                       _p?['too_soon'] == true
-                          ? 'Too soon to book online. Earliest check-in is ${_p?['earliest_check_in']}'
+                          ? 'Too soon to book online'
                           : 'Not free on all of these dates',
                       style: const TextStyle(color: C.soft),
                     ),

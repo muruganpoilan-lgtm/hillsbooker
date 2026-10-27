@@ -67,7 +67,15 @@ export default function BookingsPage() {
   }, [token, logout]);
 
   useEffect(() => {
-    if (ready && token) load();
+    if (!(ready && token)) return;
+    load();
+    const id = setInterval(load, 30000);
+    const onShow = () => document.visibilityState === "visible" && load();
+    document.addEventListener("visibilitychange", onShow);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onShow);
+    };
   }, [ready, token, load]);
 
   async function openInvoice(id) {
@@ -80,14 +88,15 @@ export default function BookingsPage() {
     else window.open(res.data.url, "_blank");
   }
 
-  async function emailInvoice(id) {
+  async function whatsappInvoice(id) {
     setError("");
     setNotice("");
     setBusy(id);
-    const res = await api(`/bookings/${id}/invoice/email`, { method: "POST", token });
+    const res = await api(`/bookings/${id}/invoice/whatsapp`, { token });
     setBusy("");
-    if (!res.ok) setError(res.error);
-    else setNotice("Your invoice was emailed to you.");
+    if (!res.ok) return setError(res.error);
+    if (!res.data.has_number) setNotice("Add your phone number to your account to send it straight to your own WhatsApp. For now, choose who to send it to.");
+    window.open(res.data.url, "_blank");
   }
 
   async function act(id, action) {
@@ -232,8 +241,8 @@ export default function BookingsPage() {
                   <button type="button" className="btn" aria-busy={busy === b.id} onClick={() => openInvoice(b.id)}>
                     Invoice
                   </button>
-                  <button type="button" className="btn" aria-busy={busy === b.id} onClick={() => emailInvoice(b.id)}>
-                    Email invoice
+                  <button type="button" className="btn" aria-busy={busy === b.id} onClick={() => whatsappInvoice(b.id)}>
+                    Send invoice on WhatsApp
                   </button>
                   <button
                     type="button"

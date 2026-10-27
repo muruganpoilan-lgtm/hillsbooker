@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "./AuthProvider";
 import Ridge from "./Ridge";
-import { advanceFor, api, money, plural, todayISO } from "../lib/api";
+import { addDays, advanceFor, api, money, plural, prettyDate, todayISO } from "../lib/api";
 
 export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, nights, advancePercent = 100, tooSoon = false, earliest = "" }) {
   const router = useRouter();
@@ -29,6 +29,10 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
     e.preventDefault();
     if (!checkIn || !checkOut || checkOut <= checkIn) {
       setError("Choose a check-out date after check-in.");
+      return;
+    }
+    if (earliest && checkIn < earliest) {
+      setError(`${prettyDate(checkIn)} can't be booked online. Stays here need advance notice, so the earliest check-in is ${prettyDate(earliest)}. Please choose that date or later.`);
       return;
     }
     setError("");
@@ -61,7 +65,7 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
       setError(res.error);
       return;
     }
-    router.push(`/bookings?new=${res.data.booking_id}`);
+    router.push(`/pay?kind=stay&id=${res.data.booking_id}`);
   }
 
   return (
@@ -69,7 +73,7 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
       <form className="dates-bar" onSubmit={updateDates} noValidate>
         <label className="field">
           <span>Check-in</span>
-          <input type="date" value={checkIn} min={today || undefined} onChange={(e) => setCheckIn(e.target.value)} />
+          <input type="date" value={checkIn} min={earliest || today || undefined} onChange={(e) => setCheckIn(e.target.value)} />
         </label>
         <label className="field">
           <span>Check-out</span>
@@ -93,6 +97,15 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
       {error && (
         <p className="form-error" role="alert">
           {error}
+        </p>
+      )}
+
+      {tooSoon && hasDates && (
+        <p className="form-error" role="alert">
+          {prettyDate(ci)} can't be booked online. Stays here need advance notice, so the earliest check-in is {prettyDate(earliest)}.{" "}
+          <button type="button" className="link-btn" onClick={() => router.replace(`${pathname}?${new URLSearchParams({ check_in: earliest, check_out: co > earliest ? co : addDays(earliest, 1), guests: String(g) }).toString()}`)}>
+            Use {prettyDate(earliest)}
+          </button>
         </p>
       )}
 
@@ -132,7 +145,7 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
               {bookable && left <= 2 && <p className="scarce">Only {left} left for these dates</p>}
               {hasDates && !bookable && (
                 <p className="unavailable">
-                  {tooSoon ? `Too soon to book online. Earliest check-in is ${earliest}` : "Not free on all of these dates"}
+                  {tooSoon ? `Too soon to book online. Earliest check-in is ${prettyDate(earliest)}` : "Not free on all of these dates"}
                 </p>
               )}
               {!hasDates && <p className="unavailable">Choose dates to see if it's free</p>}
