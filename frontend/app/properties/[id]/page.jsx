@@ -33,6 +33,7 @@ export default async function PropertyPage({ params, searchParams }) {
   const co = isISODate(get("check_out")) ? get("check_out") : "";
   const hasDates = Boolean(ci && co && co > ci);
   const guests = Math.min(Math.max(Number(get("guests")) || 2, 1), 40);
+  const children = Math.min(Math.max(Number(get("children")) || 0, 0), guests - 1);
 
   const qs = hasDates ? `?${new URLSearchParams({ check_in: ci, check_out: co }).toString()}` : "";
   const res = await api(`/properties/${id}${qs}`);
@@ -112,6 +113,7 @@ export default async function PropertyPage({ params, searchParams }) {
           checkIn={hasDates ? ci : ""}
           checkOut={hasDates ? co : ""}
           guests={guests}
+          children={children}
           nights={hasDates ? nightsBetween(ci, co) : 0}
           advancePercent={p.advance_percent || 100}
           tooSoon={Boolean(p.too_soon)}

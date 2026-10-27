@@ -10,7 +10,8 @@ export default function SearchForm({ initial = {}, compact = false }) {
   const [city, setCity] = useState(initial.city || "");
   const [checkIn, setCheckIn] = useState(initial.check_in || "");
   const [checkOut, setCheckOut] = useState(initial.check_out || "");
-  const [guests, setGuests] = useState(String(initial.guests || 2));
+  const [children, setChildren] = useState(String(initial.children || 0));
+  const [adults, setAdults] = useState(String(Math.max(1, (initial.guests || 2) - (initial.children || 0))));
   const [error, setError] = useState("");
   const [today, setToday] = useState("");
 
@@ -38,7 +39,8 @@ export default function SearchForm({ initial = {}, compact = false }) {
       return;
     }
     setError("");
-    const params = new URLSearchParams({ check_in: checkIn, check_out: checkOut, guests });
+    const params = new URLSearchParams({ check_in: checkIn, check_out: checkOut, guests: String(Number(adults) + Number(children)) });
+    if (Number(children) > 0) params.set("children", children);
     if (city.trim()) params.set("city", city.trim());
     router.push(`/search?${params.toString()}`);
   }
@@ -72,9 +74,19 @@ export default function SearchForm({ initial = {}, compact = false }) {
           />
         </label>
         <label className="field">
-          <span>Guests</span>
-          <select value={guests} onChange={(e) => setGuests(e.target.value)}>
+          <span>Adults</span>
+          <select value={adults} onChange={(e) => setAdults(e.target.value)}>
             {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span>Children</span>
+          <select value={children} onChange={(e) => setChildren(e.target.value)}>
+            {[0, 1, 2, 3, 4, 5, 6].map((n) => (
               <option key={n} value={n}>
                 {n}
               </option>

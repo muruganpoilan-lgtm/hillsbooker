@@ -93,8 +93,8 @@ export function prettyDate(iso) {
 export function isISODate(s) {
   return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
 }
-export function plural(n, word) {
-  return `${n} ${word}${n === 1 ? "" : "s"}`;
+export function plural(n, word, many) {
+  return `${n} ${n === 1 ? word : many || `${word}s`}`;
 }
 
 // Advance payment: the share (percent) of a stay paid online, rounded up to a whole rupee. The rest is paid at the property.

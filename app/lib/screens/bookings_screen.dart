@@ -300,6 +300,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
     final nights = nightsBetween(checkIn, checkOut);
     final rooms = toNum(b['rooms']).toInt();
     final guests = toNum(b['guests']).toInt();
+    final kids = toNum(b['children']).toInt();
     final until = _until(b);
     var left = Duration.zero;
     if (status == 'held' && until != null) {
@@ -318,7 +319,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
           const SizedBox(height: 8),
           Text('${b['property']}', style: display(19)),
           const SizedBox(height: 2),
-          Text('${b['room_type']}, ${plural(rooms, 'room')}, ${plural(guests, 'guest')} · ${b['city']}', style: const TextStyle(color: C.soft)),
+          Text('${b['room_type']}, ${plural(rooms, 'room')}, ${peopleText(guests, kids)} · ${b['city']}', style: const TextStyle(color: C.soft)),
           const SizedBox(height: 8),
           Row(children: [
             Expanded(child: Text('${prettyDayYear(checkIn)} to ${prettyDayYear(checkOut)} (${plural(nights, 'night')})')),

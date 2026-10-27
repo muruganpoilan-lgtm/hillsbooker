@@ -144,7 +144,7 @@ export default function PayPage() {
   const detail =
     kind === "vehicle"
       ? `${b.trip || "Hire by the day"} · ${plural(b.passengers, "passenger")} · ${b.city}`
-      : `${b.room_type}, ${plural(b.rooms, "room")}, ${plural(b.guests, "guest")} · ${b.city}`;
+      : `${b.room_type}, ${plural(b.rooms, "room")}, ${plural(b.guests - (b.children || 0), "adult")}${b.children > 0 ? `, ${plural(b.children, "child", "children")}` : ""} · ${b.city}`;
   const when =
     kind === "vehicle"
       ? b.start_date === b.end_date

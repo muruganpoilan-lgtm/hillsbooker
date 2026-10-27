@@ -67,6 +67,8 @@ def create_booking(body: BookingIn, user: dict = Depends(current_user)):
                 400,
                 f"Bookings here need {rt['min_notice_days']} days' notice. The earliest check-in is {rt['earliest_check_in']:%d %b %Y}",
             )
+        if body.children >= body.guests:
+            raise HTTPException(400, "At least one adult is needed")
         if body.guests > rt["max_guests"] * body.rooms:
             raise HTTPException(400, f"This room sleeps {rt['max_guests']} guests. Add more rooms or choose a bigger one")
 
@@ -91,12 +93,12 @@ def create_booking(body: BookingIn, user: dict = Depends(current_user)):
             (body.rooms, body.room_type_id, body.check_in, body.check_out),
         )
         cur.execute(
-            """INSERT INTO bookings (user_id, property_id, room_type_id, check_in, check_out, rooms, guests,
+            """INSERT INTO bookings (user_id, property_id, room_type_id, check_in, check_out, rooms, guests, children,
                                      total_amount, advance_amount, status, hold_expires_at)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'held', now() + make_interval(mins => %s))
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'held', now() + make_interval(mins => %s))
                RETURNING id, total_amount, advance_amount, hold_expires_at""",
             (user["id"], rt["property_id"], body.room_type_id, body.check_in, body.check_out,
-             body.rooms, body.guests, total, advance, settings.hold_minutes),
+             body.rooms, body.guests, body.children, total, advance, settings.hold_minutes),
         )
         booking = cur.fetchone()
     return {"booking_id": booking["id"], "status": "held", "total_amount": booking["total_amount"],
@@ -110,7 +112,7 @@ def my_bookings(user: dict = Depends(current_user)):
         release_expired_holds(cur)  # so a guest never sees a hold that has already run out
         cur.execute(
             """SELECT b.id, p.name AS property, p.city, rt.name AS room_type, b.check_in, b.check_out,
-                      b.rooms, b.guests, b.total_amount,
+                      b.rooms, b.guests, b.children, b.total_amount,
                       COALESCE(b.advance_amount, b.total_amount) AS advance_amount,
                       b.total_amount - COALESCE(b.advance_amount, b.total_amount) AS balance_due,
                       b.status, b.hold_expires_at,

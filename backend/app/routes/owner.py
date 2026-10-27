@@ -331,7 +331,7 @@ def get_inventory(room_type_id: str, start: date | None = None, days: int = 60, 
 @router.get("/bookings")
 def owner_bookings(user: dict = Depends(owner_only)):
     sql = """SELECT b.id, p.name AS property, rt.name AS room_type, u.name AS guest,
-                    b.check_in, b.check_out, b.rooms, b.guests, b.total_amount,
+                    b.check_in, b.check_out, b.rooms, b.guests, b.children, b.total_amount,
                     COALESCE(b.advance_amount, b.total_amount) AS advance_amount,
                     b.total_amount - COALESCE(b.advance_amount, b.total_amount) AS balance_due, b.status
              FROM bookings b

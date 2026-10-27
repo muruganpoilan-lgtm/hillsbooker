@@ -15,6 +15,7 @@ export default async function SearchPage({ searchParams }) {
   const checkOutRaw = isISODate(get("check_out")) ? get("check_out") : "";
   const checkOut = checkOutRaw && checkOutRaw > checkIn ? checkOutRaw : addDays(checkIn, 1);
   const guests = Math.min(Math.max(Number(get("guests")) || 2, 1), 40);
+  const children = Math.min(Math.max(Number(get("children")) || 0, 0), guests - 1);
   const city = get("city");
   const sort = get("sort") === "rating" ? "rating" : "price";
   const type = Object.hasOwn(TYPE_LABEL, get("type")) ? get("type") : "";
@@ -27,11 +28,13 @@ export default async function SearchPage({ searchParams }) {
   if (maxPrice) q.set("max_price", maxPrice);
   const res = await api(`/search?${q.toString()}`);
 
-  const detailQuery = new URLSearchParams({ check_in: checkIn, check_out: checkOut, guests: String(guests) }).toString();
+  const detailParams = new URLSearchParams({ check_in: checkIn, check_out: checkOut, guests: String(guests) });
+  if (children > 0) detailParams.set("children", String(children));
+  const detailQuery = detailParams.toString();
 
   return (
     <main className="page">
-      <SearchForm compact initial={{ city, check_in: checkIn, check_out: checkOut, guests }} />
+      <SearchForm compact initial={{ city, check_in: checkIn, check_out: checkOut, guests, children }} />
 
       <div className="results-layout">
         <form className="filters" method="get" action="/search">
@@ -40,6 +43,7 @@ export default async function SearchPage({ searchParams }) {
           <input type="hidden" name="check_in" value={checkIn} />
           <input type="hidden" name="check_out" value={checkOut} />
           <input type="hidden" name="guests" value={guests} />
+          <input type="hidden" name="children" value={children} />
           <fieldset className="radios">
             <legend>Type of place</legend>
             {[["", "Any"], ...Object.entries(TYPE_LABEL)].map(([v, label]) => (

@@ -95,7 +95,7 @@ img { max-width: 100%; }
 .slip.compact { box-shadow: 4px 4px 0 var(--marigold); padding: 0.9rem; max-width: none; }
 .slip-grid { display: grid; gap: 0.9rem; grid-template-columns: 1fr; }
 @media (min-width: 760px) {
-  .slip-grid { grid-template-columns: 1.4fr 1fr 1fr 0.7fr auto; align-items: end; }
+  .slip-grid { grid-template-columns: 1.4fr 1fr 1fr 0.6fr 0.6fr auto; align-items: end; }
 }
 .field { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
 .field > span { font-size: 0.85rem; font-weight: 700; color: var(--ink-soft); }
@@ -222,7 +222,7 @@ img { max-width: 100%; }
 .amenity-list li { padding-left: 1.5rem; position: relative; }
 .amenity-list li::before { content: ""; position: absolute; left: 0.2rem; top: 0.38em; width: 0.35rem; height: 0.7rem; border: solid var(--green); border-width: 0 2.5px 2.5px 0; transform: rotate(40deg); }
 .dates-bar { display: grid; gap: 0.8rem; grid-template-columns: 1fr 1fr; align-items: end; margin: 0.4rem 0 1rem; padding: 0.9rem; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); }
-@media (min-width: 640px) { .dates-bar { grid-template-columns: repeat(3, 1fr) auto; } }
+@media (min-width: 640px) { .dates-bar { grid-template-columns: repeat(4, 1fr) auto; } }
 .room { display: grid; gap: 0.8rem 1rem; grid-template-columns: 88px 1fr; padding: 1.1rem 0; border-bottom: 1px solid var(--line); }
 .room:first-of-type { border-top: 1px solid var(--line); }
 .room-name { font-family: var(--font-display), system-ui, sans-serif; font-weight: 700; font-size: 1.15rem; }

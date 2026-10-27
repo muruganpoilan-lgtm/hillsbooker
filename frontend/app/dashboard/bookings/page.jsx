@@ -50,7 +50,7 @@ function Bookings() {
               <div>
                 <p className="row-name">{b.guest}</p>
                 <p className="meta">
-                  {b.property} · {b.room_type} · {plural(b.rooms, "room")}, {plural(b.guests, "guest")}
+                  {b.property} · {b.room_type} · {plural(b.rooms, "room")}, {plural(b.guests - (b.children || 0), "adult")}{b.children > 0 ? `, ${plural(b.children, "child", "children")}` : ""}
                 </p>
                 <p className="meta">
                   {prettyDate(b.check_in)} to {prettyDate(b.check_out)}

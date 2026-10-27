@@ -6,14 +6,15 @@ import { useAuth } from "./AuthProvider";
 import Ridge from "./Ridge";
 import { addDays, advanceFor, api, money, plural, prettyDate, todayISO } from "../lib/api";
 
-export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, nights, advancePercent = 100, tooSoon = false, earliest = "" }) {
+export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, children: kids = 0, nights, advancePercent = 100, tooSoon = false, earliest = "" }) {
   const router = useRouter();
   const pathname = usePathname();
   const { token, logout } = useAuth();
 
   const [checkIn, setCheckIn] = useState(ci);
   const [checkOut, setCheckOut] = useState(co);
-  const [guests, setGuests] = useState(String(g));
+  const [children, setChildren] = useState(String(kids));
+  const [adults, setAdults] = useState(String(Math.max(1, g - kids)));
   const [qty, setQty] = useState({});
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
@@ -23,7 +24,7 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
   useEffect(() => setToday(todayISO()), []);
 
   const hasDates = Boolean(ci && co);
-  const here = `${pathname}?${new URLSearchParams({ check_in: ci, check_out: co, guests: String(g) }).toString()}`;
+  const here = `${pathname}?${new URLSearchParams({ check_in: ci, check_out: co, guests: String(g), children: String(kids) }).toString()}`;
 
   function updateDates(e) {
     e.preventDefault();
@@ -36,7 +37,7 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
       return;
     }
     setError("");
-    router.replace(`${pathname}?${new URLSearchParams({ check_in: checkIn, check_out: checkOut, guests }).toString()}`);
+    router.replace(`${pathname}?${new URLSearchParams({ check_in: checkIn, check_out: checkOut, guests: String(Number(adults) + Number(children)), children }).toString()}`);
   }
 
   function goToLogin() {
@@ -53,7 +54,7 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
     const res = await api("/bookings", {
       method: "POST",
       token,
-      body: { room_type_id: room.id, check_in: ci, check_out: co, rooms: Number(qty[room.id] || 1), guests: Number(g) },
+      body: { room_type_id: room.id, check_in: ci, check_out: co, rooms: Number(qty[room.id] || 1), guests: Number(g), children: Number(kids) },
     });
     setBusy("");
     if (res.status === 401) {
@@ -80,9 +81,19 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
           <input type="date" value={checkOut} min={checkIn || today || undefined} onChange={(e) => setCheckOut(e.target.value)} />
         </label>
         <label className="field">
-          <span>Guests</span>
-          <select value={guests} onChange={(e) => setGuests(e.target.value)}>
+          <span>Adults</span>
+          <select value={adults} onChange={(e) => setAdults(e.target.value)}>
             {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span>Children</span>
+          <select value={children} onChange={(e) => setChildren(e.target.value)}>
+            {[0, 1, 2, 3, 4, 5, 6].map((n) => (
               <option key={n} value={n}>
                 {n}
               </option>
@@ -103,7 +114,7 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
       {tooSoon && hasDates && (
         <p className="form-error" role="alert">
           {prettyDate(ci)} can't be booked online. Stays here need advance notice, so the earliest check-in is {prettyDate(earliest)}.{" "}
-          <button type="button" className="link-btn" onClick={() => router.replace(`${pathname}?${new URLSearchParams({ check_in: earliest, check_out: co > earliest ? co : addDays(earliest, 1), guests: String(g) }).toString()}`)}>
+          <button type="button" className="link-btn" onClick={() => router.replace(`${pathname}?${new URLSearchParams({ check_in: earliest, check_out: co > earliest ? co : addDays(earliest, 1), guests: String(g), children: String(kids) }).toString()}`)}>
             Use {prettyDate(earliest)}
           </button>
         </p>

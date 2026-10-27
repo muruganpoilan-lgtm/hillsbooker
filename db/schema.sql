@@ -91,6 +91,7 @@ CREATE TABLE bookings (
   check_out       date NOT NULL,
   rooms           int NOT NULL CHECK (rooms > 0),
   guests          int NOT NULL CHECK (guests > 0),
+  children        int NOT NULL DEFAULT 0 CHECK (children >= 0 AND children < guests),  -- how many of the guests are children (adults = guests - children)
   total_amount    numeric(10,2) NOT NULL,
   invoice_no      text UNIQUE,  -- assigned the first time an invoice is made, e.g. HB-2026-000123
   advance_amount  numeric(10,2),  -- paid online at booking; the rest is paid at the property. NULL = the full amount

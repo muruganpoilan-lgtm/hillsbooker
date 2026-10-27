@@ -37,6 +37,13 @@ DateTime parseDay(String iso) {
 
 const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+// "2 adults, 1 child" from the total number of guests and how many of them are children.
+String peopleText(int guests, int children) {
+  final adults = guests - children;
+  final a = '$adults ${adults == 1 ? 'adult' : 'adults'}';
+  return children > 0 ? '$a, $children ${children == 1 ? 'child' : 'children'}' : a;
+}
+
 String prettyDay(DateTime d) => '${d.day} ${_months[d.month - 1]}';
 
 String prettyDayYear(DateTime d) => '${d.day} ${_months[d.month - 1]} ${d.year}';

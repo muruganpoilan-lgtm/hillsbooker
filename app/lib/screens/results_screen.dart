@@ -53,6 +53,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
       'check_in': isoDate(q.checkIn),
       'check_out': isoDate(q.checkOut),
       'guests': '${q.guests}',
+      if (q.children > 0) 'children': '${q.children}',
       'sort': _sort,
     };
     if (q.city.isNotEmpty) params['city'] = q.city;
@@ -86,7 +87,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
             child: Text(
-              '${q.dates} · ${plural(q.nights, 'night')} · ${plural(q.guests, 'guest')}',
+              '${q.dates} · ${plural(q.nights, 'night')} · ${peopleText(q.guests, q.children)}',
               style: const TextStyle(color: C.soft),
             ),
           ),

@@ -69,7 +69,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
     if (picked == null) return;
     var end = picked.end;
     if (!end.isAfter(picked.start)) end = picked.start.add(const Duration(days: 1));
-    setState(() => _q = StayQuery(city: _q.city, checkIn: picked.start, checkOut: end, guests: _q.guests));
+    setState(() => _q = StayQuery(city: _q.city, checkIn: picked.start, checkOut: end, guests: _q.guests, children: _q.children));
     _load();
   }
 
@@ -86,6 +86,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
       'check_out': isoDate(_q.checkOut),
       'rooms': _qty[id] ?? 1,
       'guests': _q.guests,
+      'children': _q.children,
     });
     if (!mounted) return;
     setState(() => _busy = '');
@@ -243,7 +244,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('${_q.dates} · ${plural(_q.nights, 'night')}', style: const TextStyle(fontWeight: FontWeight.w700)),
-                Text(plural(_q.guests, 'guest'), style: const TextStyle(color: C.soft, fontSize: 13)),
+                Text(peopleText(_q.guests, _q.children), style: const TextStyle(color: C.soft, fontSize: 13)),
               ]),
             ),
             const Text('Change', style: TextStyle(color: C.green, fontWeight: FontWeight.w700)),
@@ -269,7 +270,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
           TextButton(
             onPressed: () {
               final out = _q.checkOut.isAfter(earliest) ? _q.checkOut : earliest.add(const Duration(days: 1));
-              setState(() => _q = StayQuery(city: _q.city, checkIn: earliest, checkOut: out, guests: _q.guests));
+              setState(() => _q = StayQuery(city: _q.city, checkIn: earliest, checkOut: out, guests: _q.guests, children: _q.children));
               _load();
             },
             child: Text('Use $nice'),

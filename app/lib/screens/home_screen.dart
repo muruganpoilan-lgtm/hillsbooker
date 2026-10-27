@@ -12,8 +12,9 @@ class StayQuery {
   final String city;
   final DateTime checkIn;
   final DateTime checkOut;
-  final int guests;
-  const StayQuery({required this.city, required this.checkIn, required this.checkOut, required this.guests});
+  final int guests; // adults + children
+  final int children; // how many of the guests are children
+  const StayQuery({required this.city, required this.checkIn, required this.checkOut, required this.guests, this.children = 0});
 
   int get nights => nightsBetween(checkIn, checkOut);
   String get dates => '${prettyDay(checkIn)} to ${prettyDay(checkOut)}';
@@ -47,7 +48,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final _city = TextEditingController();
   late DateTime _checkIn;
   late DateTime _checkOut;
-  int _guests = 2;
+  int _adults = 2;
+  int _children = 0;
   String _error = '';
 
   @override
@@ -96,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     setState(() => _error = '');
-    final q = StayQuery(city: city.trim(), checkIn: _checkIn, checkOut: _checkOut, guests: _guests);
+    final q = StayQuery(city: city.trim(), checkIn: _checkIn, checkOut: _checkOut, guests: _adults + _children, children: _children);
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => ResultsScreen(query: q)));
   }
 
@@ -243,18 +245,35 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 10),
           Row(
             children: [
-              const Text('Guests', style: TextStyle(fontWeight: FontWeight.w700, color: C.soft)),
+              const Text('Adults', style: TextStyle(fontWeight: FontWeight.w700, color: C.soft)),
               const Spacer(),
               IconButton(
-                onPressed: _guests > 1 ? () => setState(() => _guests--) : null,
+                onPressed: _adults > 1 ? () => setState(() => _adults--) : null,
                 icon: const Icon(Icons.remove_circle_outline),
-                tooltip: 'Fewer guests',
+                tooltip: 'Fewer adults',
               ),
-              SizedBox(width: 24, child: Text('$_guests', textAlign: TextAlign.center, style: display(18))),
+              SizedBox(width: 24, child: Text('$_adults', textAlign: TextAlign.center, style: display(18))),
               IconButton(
-                onPressed: _guests < 20 ? () => setState(() => _guests++) : null,
+                onPressed: _adults + _children < 20 ? () => setState(() => _adults++) : null,
                 icon: const Icon(Icons.add_circle_outline),
-                tooltip: 'More guests',
+                tooltip: 'More adults',
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              const Text('Children', style: TextStyle(fontWeight: FontWeight.w700, color: C.soft)),
+              const Spacer(),
+              IconButton(
+                onPressed: _children > 0 ? () => setState(() => _children--) : null,
+                icon: const Icon(Icons.remove_circle_outline),
+                tooltip: 'Fewer children',
+              ),
+              SizedBox(width: 24, child: Text('$_children', textAlign: TextAlign.center, style: display(18))),
+              IconButton(
+                onPressed: _adults + _children < 20 ? () => setState(() => _children++) : null,
+                icon: const Icon(Icons.add_circle_outline),
+                tooltip: 'More children',
               ),
             ],
           ),

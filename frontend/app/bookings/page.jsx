@@ -196,7 +196,7 @@ export default function BookingsPage() {
               <span className={`status status-${b.status}`}>{STATUS_LABEL[b.status] || b.status}</span>
               <h2 className="booking-name">{b.property}</h2>
               <p className="meta">
-                {b.room_type}, {plural(b.rooms, "room")}, {plural(b.guests, "guest")} · {b.city}
+                {b.room_type}, {plural(b.rooms, "room")}, {plural(b.guests - (b.children || 0), "adult")}{b.children > 0 ? `, ${plural(b.children, "child", "children")}` : ""} · {b.city}
               </p>
               <p>
                 {prettyDate(b.check_in)} to {prettyDate(b.check_out)} ({plural(nights, "night")}) ·{" "}

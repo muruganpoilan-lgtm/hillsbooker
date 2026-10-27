@@ -43,7 +43,7 @@ def _details(kind: str, booking_id: str):
         if kind == "stay":
             cur.execute(
                 """SELECT h.phone AS host_phone, p.name AS item, g.name AS guest, g.phone AS guest_phone,
-                          b.check_in AS d1, b.check_out AS d2, rt.name AS what, b.rooms AS qty, b.guests AS people,
+                          b.check_in AS d1, b.check_out AS d2, rt.name AS what, b.rooms AS qty, b.guests AS people, b.children AS kids,
                           b.total_amount, COALESCE(b.advance_amount, b.total_amount) AS advance
                    FROM bookings b JOIN properties p ON p.id = b.property_id JOIN users h ON h.id = p.owner_id
                    JOIN users g ON g.id = b.user_id JOIN room_types rt ON rt.id = b.room_type_id
@@ -54,7 +54,7 @@ def _details(kind: str, booking_id: str):
             cur.execute(
                 """SELECT h.phone AS host_phone, v.name AS item, g.name AS guest, g.phone AS guest_phone,
                           b.start_date AS d1, b.end_date AS d2, COALESCE(t.title, 'Hire by the day') AS what,
-                          b.count AS qty, b.passengers AS people, b.total_amount, b.advance_amount AS advance
+                          b.count AS qty, b.passengers AS people, 0 AS kids, b.total_amount, b.advance_amount AS advance
                    FROM vehicle_bookings b JOIN vehicles v ON v.id = b.vehicle_id JOIN users h ON h.id = v.operator_id
                    JOIN users g ON g.id = b.user_id LEFT JOIN vehicle_trips t ON t.id = b.trip_id WHERE b.id = %s""",
                 (booking_id,),
@@ -103,7 +103,12 @@ def _run(kind: str, booking_id: str, event: str) -> None:
             return  # the host hasn't saved a WhatsApp number yet
         when = _day(d["d1"]) if d["d1"] == d["d2"] else f"{_day(d['d1'])} to {_day(d['d2'])}"
         unit = "room" if kind == "stay" else "vehicle"
-        what = f"{d['what']}, {d['qty']} {unit}{'s' if d['qty'] != 1 else ''}, {d['people']} {'guests' if kind == 'stay' else 'passengers'}"
+        if kind == "stay":
+            adults = d["people"] - d["kids"]
+            who = f"{adults} adult{'s' if adults != 1 else ''}" + (f", {d['kids']} child{'ren' if d['kids'] != 1 else ''}" if d["kids"] else "")
+        else:
+            who = f"{d['people']} passengers"
+        what = f"{d['what']}, {d['qty']} {unit}{'s' if d['qty'] != 1 else ''}, {who}"
         money = f"Total Rs {d['total_amount']:,.0f}, advance Rs {d['advance']:,.0f}"
         status = (
             "CONFIRMED and paid online"

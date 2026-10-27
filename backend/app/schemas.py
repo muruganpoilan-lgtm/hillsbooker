@@ -76,7 +76,8 @@ class BookingIn(BaseModel):
     check_in: date
     check_out: date
     rooms: int = Field(default=1, ge=1, le=10)
-    guests: int = Field(default=1, ge=1, le=40)
+    guests: int = Field(default=1, ge=1, le=40)  # adults + children
+    children: int = Field(default=0, ge=0, le=39)  # how many of the guests are children; at least one adult is needed
 
     @model_validator(mode="after")
     def check_dates(self):

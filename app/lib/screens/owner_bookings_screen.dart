@@ -82,7 +82,7 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
             Text('${b['guest']}', style: display(17)),
             const SizedBox(height: 2),
             Text('${b['property']} · ${b['room_type']}', style: const TextStyle(color: C.soft)),
-            Text('${plural(toNum(b['rooms']).toInt(), 'room')}, ${plural(toNum(b['guests']).toInt(), 'guest')}', style: const TextStyle(color: C.soft)),
+            Text('${plural(toNum(b['rooms']).toInt(), 'room')}, ${peopleText(toNum(b['guests']).toInt(), toNum(b['children']).toInt())}', style: const TextStyle(color: C.soft)),
             const SizedBox(height: 4),
             Text('${prettyDayYear(checkIn)} to ${prettyDayYear(checkOut)}'),
           ]),
