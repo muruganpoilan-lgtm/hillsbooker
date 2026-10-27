@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../api.dart';
 import '../session.dart';
 import '../theme.dart';
 import 'login_screen.dart';
@@ -41,6 +42,24 @@ class AccountScreen extends StatelessWidget {
                   Text(role == 'guest' ? 'Guest account' : (role == 'admin' ? 'Admin account' : 'Host account (properties and vehicles)'), style: const TextStyle(fontWeight: FontWeight.w700)),
                 ]),
               ),
+              if (role == 'guest')
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      final res = await Api.post('/auth/become-host');
+                      if (!context.mounted) return;
+                      if (res.ok) {
+                        await session.login(res.data['token'] as String, res.data['role'] as String);
+                        tabIndex.value = 3;
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res.error.isEmpty ? 'Could not switch to a host account' : res.error)));
+                      }
+                    },
+                    icon: const Icon(Icons.storefront),
+                    label: const Text('Become a host'),
+                  ),
+                ),
               if (role != 'guest')
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
