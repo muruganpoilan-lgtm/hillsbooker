@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "../../components/AuthProvider";
 import { api, money, nightsBetween, plural, prettyDate } from "../../lib/api";
 import UpiPay from "../../components/UpiPay";
+import PhoneBox from "../../components/PhoneBox";
 import { payForBooking } from "../../lib/pay";
 
 const STATUS_LABEL = { held: "Waiting for payment", confirmed: "Confirmed", cancelled: "Cancelled", expired: "Hold expired" };
@@ -161,6 +162,8 @@ export default function BookingsPage() {
       <p className="tabs">
         <b>Stays</b> <Link href="/bookings/vehicles">Vehicles</Link>
       </p>
+
+      <PhoneBox token={token} />
 
       {error && (
         <p className="form-error" role="alert">

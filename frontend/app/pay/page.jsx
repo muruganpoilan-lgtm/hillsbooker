@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../components/AuthProvider";
 import UpiPay from "../../components/UpiPay";
+import PhoneBox from "../../components/PhoneBox";
 import { api, money, nightsBetween, plural, prettyDate } from "../../lib/api";
 import { payForBooking } from "../../lib/pay";
 
@@ -172,6 +173,8 @@ export default function PayPage() {
             </p>
           )}
         </article>
+
+        <PhoneBox token={token} compact />
 
         {error && (
           <p className="form-error" role="alert">

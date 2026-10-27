@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../../../components/AuthProvider";
 import { api, money, plural, prettyDate } from "../../../lib/api";
+import PhoneBox from "../../../components/PhoneBox";
 import UpiPay from "../../../components/UpiPay";
 import { payForBooking } from "../../../lib/pay";
 import { KIND_LABEL } from "../../../lib/vehicles";
@@ -131,6 +132,8 @@ export default function VehicleBookingsPage() {
       <p className="tabs">
         <Link href="/bookings">Stays</Link> <b>Vehicles</b>
       </p>
+
+      <PhoneBox token={token} />
 
       {error && (
         <p className="form-error" role="alert">

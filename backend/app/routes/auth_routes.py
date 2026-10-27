@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from psycopg.errors import UniqueViolation
 
+from .. import notify
 from ..auth import check_password, current_user, hash_password, make_token
 from ..db import get_conn
 from ..schemas import LoginIn, RegisterIn
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -44,3 +46,25 @@ def become_host(user: dict = Depends(current_user)):
         if not cur.fetchone():
             raise HTTPException(404, "Account not found")
     return {"token": make_token(user["id"], "owner"), "role": "owner"}
+
+
+class PhoneIn(BaseModel):
+    phone: str = ""
+
+
+@router.get("/phone")
+def my_phone(user: dict = Depends(current_user)):
+    """The mobile number on this account (used for WhatsApp invoices and for hosts to reach the guest)."""
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("SELECT phone FROM users WHERE id = %s", (user["id"],))
+        return {"phone": cur.fetchone()["phone"]}
+
+
+@router.put("/phone")
+def set_my_phone(body: PhoneIn, user: dict = Depends(current_user)):
+    phone = body.phone.strip()
+    if phone and not notify.wa_number(phone):
+        raise HTTPException(400, "Enter a valid mobile number, for example 98765 43210")
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("UPDATE users SET phone = %s WHERE id = %s", (phone or None, user["id"]))
+    return {"phone": phone or None}
