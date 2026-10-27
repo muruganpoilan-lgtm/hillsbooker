@@ -6,7 +6,7 @@ import { useAuth } from "./AuthProvider";
 import Ridge from "./Ridge";
 import { advanceFor, api, money, plural, todayISO } from "../lib/api";
 
-export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, nights, advancePercent = 100 }) {
+export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, nights, advancePercent = 100, tooSoon = false, earliest = "" }) {
   const router = useRouter();
   const pathname = usePathname();
   const { token, logout } = useAuth();
@@ -130,7 +130,11 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
                 );
               })()}
               {bookable && left <= 2 && <p className="scarce">Only {left} left for these dates</p>}
-              {hasDates && !bookable && <p className="unavailable">Not free on all of these dates</p>}
+              {hasDates && !bookable && (
+                <p className="unavailable">
+                  {tooSoon ? `Too soon to book online. Earliest check-in is ${earliest}` : "Not free on all of these dates"}
+                </p>
+              )}
               {!hasDates && <p className="unavailable">Choose dates to see if it's free</p>}
             </div>
             {bookable && (

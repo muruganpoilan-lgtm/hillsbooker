@@ -52,13 +52,20 @@ def create_booking(body: BookingIn, user: dict = Depends(current_user)):
         release_expired_holds(cur)
 
         cur.execute(
-            """SELECT rt.id, rt.property_id, rt.max_guests, rt.base_price, p.status, p.advance_percent
+            """SELECT rt.id, rt.property_id, rt.max_guests, rt.base_price, p.status, p.advance_percent,
+                      ((now() AT TIME ZONE 'Asia/Kolkata')::date + p.min_notice_days) AS earliest_check_in,
+                      p.min_notice_days
                FROM room_types rt JOIN properties p ON p.id = rt.property_id WHERE rt.id = %s""",
             (body.room_type_id,),
         )
         rt = cur.fetchone()
         if not rt or rt["status"] != "approved":
             raise HTTPException(404, "Room type not found")
+        if body.check_in < rt["earliest_check_in"]:
+            raise HTTPException(
+                400,
+                f"Bookings here need {rt['min_notice_days']} days' notice. The earliest check-in is {rt['earliest_check_in']:%d %b %Y}",
+            )
         if body.guests > rt["max_guests"] * body.rooms:
             raise HTTPException(400, f"This room sleeps {rt['max_guests']} guests. Add more rooms or choose a bigger one")
 

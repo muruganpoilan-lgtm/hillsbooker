@@ -27,6 +27,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
   late final TextEditingController _description;
   String _type = 'hotel';
   int _advance = 30;
+  int _notice = 2;
   final Set<int> _amenityIds = {};
   List<Map<String, dynamic>> _amenities = [];
   bool _busy = false;
@@ -45,6 +46,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
     if (i != null) {
       _type = '${i['type'] ?? 'hotel'}';
       _advance = (i['advance_percent'] is num) ? (i['advance_percent'] as num).toInt() : 100;
+      _notice = (i['min_notice_days'] is num) ? (i['min_notice_days'] as num).toInt() : 2;
       final ids = i['amenity_ids'];
       if (ids is List) {
         for (final v in ids) {
@@ -86,6 +88,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
       'address': _address.text.trim().isEmpty ? null : _address.text.trim(),
       'description': _description.text.trim().isEmpty ? null : _description.text.trim(),
       'advance_percent': _advance,
+      'min_notice_days': _notice,
       'amenity_ids': _amenityIds.toList(),
     };
     final ApiResult res;
@@ -144,6 +147,21 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
           Text(
             _advance == 100 ? 'Guests pay the full amount online.' : 'Guests pay $_advance% online and the rest at your property.',
             style: const TextStyle(color: C.soft, fontSize: 13),
+          ),
+          const SizedBox(height: 18),
+          const Text('Earliest booking guests can make', style: TextStyle(fontWeight: FontWeight.w700, color: C.soft)),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            children: [
+              for (final n in const [0, 1, 2, 3, 7])
+                ChoiceChip(label: Text(n == 0 ? 'Same day' : '$n days ahead'), selected: _notice == n, onSelected: (_) => setState(() => _notice = n)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Recommended: 2 days ahead (no same-day or next-day). It stops double bookings while other sites you sync with are still updating.',
+            style: TextStyle(color: C.soft, fontSize: 13),
           ),
           if (_amenities.isNotEmpty) ...[
             const SizedBox(height: 18),

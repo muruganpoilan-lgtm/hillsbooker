@@ -152,7 +152,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
       return SingleChildScrollView(
         child: ErrorBox(
           title: 'No rooms free for all ${plural(widget.query.nights, 'night')}',
-          message: 'Try other dates, a shorter stay, or another type of place. Rooms only show up when they are free on every night.',
+          message: 'Try other dates, a shorter stay, or another type of place. Rooms only show up when they are free on every night. Stays can\'t start today or tomorrow, so pick a check-in at least 2 days from now.',
         ),
       );
     }

@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .db import pool
-from .routes import admin, auth_routes, bookings, google_auth, invoices, owner, payments, public, upi, vehicles
+from .routes import admin, auth_routes, bookings, channels, google_auth, invoices, owner, payments, public, upi, vehicles
 from .storage import upload_root
 
 
@@ -41,14 +41,29 @@ async def _purge_loop():
         await asyncio.sleep(24 * 3600)
 
 
+async def _channel_loop():
+    """Every 15 minutes, read the calendar links hosts added from other booking sites."""
+    await asyncio.sleep(60)
+    while True:
+        try:
+            n = await asyncio.to_thread(channels.sync_all)
+            if n:
+                log.info("Read %s calendar links", n)
+        except Exception:
+            log.exception("Could not sync calendar links")
+        await asyncio.sleep(15 * 60)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     pool.open()
     task = asyncio.create_task(_expire_loop())
     purge_task = asyncio.create_task(_purge_loop())
+    channel_task = asyncio.create_task(_channel_loop())
     yield
     task.cancel()
     purge_task.cancel()
+    channel_task.cancel()
     pool.close()
 
 
@@ -67,6 +82,8 @@ app.mount("/uploads", StaticFiles(directory=upload_root()), name="uploads")
 app.include_router(auth_routes.router)
 app.include_router(google_auth.router)
 app.include_router(owner.router)
+app.include_router(channels.router)
+app.include_router(channels.public)
 app.include_router(public.router)
 app.include_router(bookings.router)
 app.include_router(payments.router)

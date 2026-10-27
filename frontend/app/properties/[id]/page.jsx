@@ -114,6 +114,8 @@ export default async function PropertyPage({ params, searchParams }) {
           guests={guests}
           nights={hasDates ? nightsBetween(ci, co) : 0}
           advancePercent={p.advance_percent || 100}
+          tooSoon={Boolean(p.too_soon)}
+          earliest={p.earliest_check_in || ""}
         />
       </section>
     </main>

@@ -14,12 +14,12 @@ export default function SearchForm({ initial = {}, compact = false }) {
   const [error, setError] = useState("");
   const [today, setToday] = useState("");
 
-  // Default to tomorrow for one night. Done after load so the server and browser always agree on first paint.
+  // Default to two days from now for one night (stays can't start today or tomorrow). Done after load so the server and browser always agree on first paint.
   useEffect(() => {
     const t = todayISO();
     setToday(t);
-    setCheckIn((v) => v || addDays(t, 1));
-    setCheckOut((v) => v || addDays(t, 2));
+    setCheckIn((v) => v || addDays(t, 2));
+    setCheckOut((v) => v || addDays(t, 3));
   }, []);
 
   function onCheckIn(value) {

@@ -292,7 +292,12 @@ class _PropertyScreenState extends State<PropertyScreen> {
                   if (bookable && left <= 2)
                     Text('Only $left left for these dates', style: const TextStyle(color: C.goldText, fontWeight: FontWeight.w700))
                   else if (!bookable)
-                    const Text('Not free on all of these dates', style: TextStyle(color: C.soft)),
+                    Text(
+                      _p?['too_soon'] == true
+                          ? 'Too soon to book online. Earliest check-in is ${_p?['earliest_check_in']}'
+                          : 'Not free on all of these dates',
+                      style: const TextStyle(color: C.soft),
+                    ),
                 ]),
               ),
             ],

@@ -23,6 +23,7 @@ CREATE TABLE properties (
   lng          numeric(9,6),
   status       text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'removed')),
   advance_percent int NOT NULL DEFAULT 100 CHECK (advance_percent BETWEEN 10 AND 100),  -- share of the stay paid online at booking
+  min_notice_days int NOT NULL DEFAULT 2 CHECK (min_notice_days BETWEEN 0 AND 14),  -- guests can't book a stay starting sooner than this many days from today (India time)
   rating_avg   numeric(2,1) NOT NULL DEFAULT 0,
   rating_count int NOT NULL DEFAULT 0,
   created_at   timestamptz NOT NULL DEFAULT now(),
@@ -56,7 +57,8 @@ CREATE TABLE room_types (
   name        text NOT NULL,
   max_guests  int NOT NULL DEFAULT 2,
   base_price  numeric(10,2) NOT NULL CHECK (base_price >= 0),
-  total_rooms int NOT NULL CHECK (total_rooms > 0)
+  total_rooms int NOT NULL CHECK (total_rooms > 0),
+  ical_token  text UNIQUE            -- secret part of this room's calendar link for other booking sites
 );
 
 CREATE TABLE room_type_photos (
@@ -206,3 +208,28 @@ CREATE TABLE reviews (
 INSERT INTO amenities (name) VALUES
   ('Wi-Fi'), ('Air conditioning'), ('Parking'), ('Breakfast'), ('Swimming pool'),
   ('Kitchen'), ('TV'), ('Hot water'), ('Power backup'), ('Pets allowed');
+
+
+-- ---------- channel manager (calendar sync with other booking sites) ----------
+CREATE TABLE room_feeds (
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  room_type_id   uuid NOT NULL REFERENCES room_types(id) ON DELETE CASCADE,
+  name           text NOT NULL,
+  url            text NOT NULL,
+  last_synced_at timestamptz,
+  last_status    text,
+  last_error     text,
+  events         int NOT NULL DEFAULT 0,
+  created_at     timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_room_feeds_room ON room_feeds (room_type_id);
+
+CREATE TABLE external_nights (
+  feed_id      uuid NOT NULL REFERENCES room_feeds(id) ON DELETE CASCADE,
+  room_type_id uuid NOT NULL REFERENCES room_types(id) ON DELETE CASCADE,
+  day          date NOT NULL,
+  wanted       int NOT NULL CHECK (wanted > 0),
+  applied      int NOT NULL CHECK (applied >= 0),
+  PRIMARY KEY (feed_id, day)
+);
+CREATE INDEX idx_external_nights_room ON external_nights (room_type_id, day);

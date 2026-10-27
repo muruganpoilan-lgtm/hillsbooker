@@ -19,6 +19,7 @@ export default function PropertyForm({ initial, submitLabel, onSubmit }) {
     address: initial?.address || "",
     description: initial?.description || "",
     advance_percent: String(initial?.advance_percent ?? 30),
+    min_notice_days: String(initial?.min_notice_days ?? 2),
   });
   const [amenityIds, setAmenityIds] = useState(initial?.amenity_ids || []);
   const [amenities, setAmenities] = useState([]);
@@ -47,6 +48,7 @@ export default function PropertyForm({ initial, submitLabel, onSubmit }) {
       address: form.address.trim() || null,
       description: form.description.trim() || null,
       advance_percent: Number(form.advance_percent),
+      min_notice_days: Number(form.min_notice_days),
       amenity_ids: amenityIds,
     });
     setBusy(false);
@@ -92,6 +94,15 @@ export default function PropertyForm({ initial, submitLabel, onSubmit }) {
             </option>
           ))}
         </select>
+      </label>
+      <label className="field">
+        <span>Earliest booking guests can make</span>
+        <select value={form.min_notice_days} onChange={set("min_notice_days")}>
+          {[[0, "Same day is fine"], [1, "At least 1 day ahead (no same-day)"], [2, "At least 2 days ahead (no same-day or next-day)"], [3, "At least 3 days ahead"], [7, "At least 7 days ahead"]].map(([n, label]) => (
+            <option key={n} value={n}>{label}</option>
+          ))}
+        </select>
+        <small>Recommended: 2 days. It stops double bookings while other sites you sync with are still updating.</small>
       </label>
       {amenities.length > 0 && (
         <fieldset className="amenities">

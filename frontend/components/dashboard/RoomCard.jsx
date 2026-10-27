@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, addDays, money, plural, prettyDate, todayISO } from "../../lib/api";
+import ChannelSync from "./ChannelSync";
 import PhotoManager from "./PhotoManager";
 
 // One room type: details, photos, and the calendar of open nights.
@@ -171,6 +172,8 @@ export default function RoomCard({ room, token, reload, onAuthError }) {
         </details>
       )}
       {nights && nights.length === 0 && <p className="unavailable">No nights are open yet, so guests can't book this room.</p>}
+
+      <ChannelSync roomId={room.id} token={token} onAuthError={onAuthError} />
 
       {msg.text && (
         <p className={msg.bad ? "form-error" : "ok"} role={msg.bad ? "alert" : "status"}>

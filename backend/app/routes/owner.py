@@ -88,9 +88,9 @@ def create_property(body: PropertyIn, user: dict = Depends(owner_only)):
         # Listings made by an admin are trusted and go live at once; owners' listings wait for approval.
         status = "approved" if user["role"] == "admin" else "pending"
         cur.execute(
-            """INSERT INTO properties (owner_id, name, type, description, city, address, lat, lng, status, advance_percent)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
-            (owner_id, body.name, body.type, body.description, body.city, body.address, body.lat, body.lng, status, body.advance_percent),
+            """INSERT INTO properties (owner_id, name, type, description, city, address, lat, lng, status, advance_percent, min_notice_days)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+            (owner_id, body.name, body.type, body.description, body.city, body.address, body.lat, body.lng, status, body.advance_percent, body.min_notice_days),
         )
         pid = cur.fetchone()["id"]
         for amenity_id in body.amenity_ids:
@@ -121,7 +121,7 @@ def my_property_detail(property_id: str, user: dict = Depends(owner_only)):
     with get_conn() as conn, conn.cursor() as cur:
         _own_property(cur, property_id, user)
         cur.execute(
-            "SELECT id, name, type, description, city, address, lat, lng, status, advance_percent FROM properties WHERE id = %s",
+            "SELECT id, name, type, description, city, address, lat, lng, status, advance_percent, min_notice_days FROM properties WHERE id = %s",
             (property_id,),
         )
         prop = cur.fetchone()
@@ -290,16 +290,25 @@ def set_inventory(room_type_id: str, body: InventoryIn, user: dict = Depends(own
             raise HTTPException(400, f"This room type only has {rt['total_rooms']} rooms")
         cur.execute(
             """INSERT INTO room_inventory (room_type_id, day, available, price)
-               SELECT %(rt)s, d::date, GREATEST(%(open)s - COALESCE(b.booked, 0), 0), %(price)s
+               SELECT %(rt)s, d::date, GREATEST(%(open)s - COALESCE(b.booked, 0) - COALESCE(x.ext, 0), 0), %(price)s
                FROM generate_series(%(start)s::date, %(end)s::date, interval '1 day') AS d
                LEFT JOIN LATERAL (
                  SELECT SUM(rooms) AS booked FROM bookings
                  WHERE room_type_id = %(rt)s AND status IN ('held', 'confirmed')
                    AND check_in <= d::date AND check_out > d::date
                ) b ON true
+               LEFT JOIN LATERAL (
+                 SELECT SUM(wanted) AS ext FROM external_nights
+                 WHERE room_type_id = %(rt)s AND day = d::date
+               ) x ON true
                ON CONFLICT (room_type_id, day)
                DO UPDATE SET available = EXCLUDED.available, price = EXCLUDED.price""",
             {"rt": room_type_id, "open": body.rooms_open, "price": body.price, "start": body.start, "end": body.end},
+        )
+        # Nights taken on other sites are subtracted above, so they count as fully applied now.
+        cur.execute(
+            "UPDATE external_nights SET applied = wanted WHERE room_type_id = %s AND day BETWEEN %s AND %s",
+            (room_type_id, body.start, body.end),
         )
         return {"nights_updated": (body.end - body.start).days + 1}
 

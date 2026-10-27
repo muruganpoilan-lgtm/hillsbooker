@@ -11,7 +11,7 @@ export default async function SearchPage({ searchParams }) {
   const sp = await searchParams;
   const get = (k) => (Array.isArray(sp[k]) ? sp[k][0] : sp[k]) || "";
 
-  const checkIn = isISODate(get("check_in")) ? get("check_in") : addDays(todayISO(), 1);
+  const checkIn = isISODate(get("check_in")) ? get("check_in") : addDays(todayISO(), 2);
   const checkOutRaw = isISODate(get("check_out")) ? get("check_out") : "";
   const checkOut = checkOutRaw && checkOutRaw > checkIn ? checkOutRaw : addDays(checkIn, 1);
   const guests = Math.min(Math.max(Number(get("guests")) || 2, 1), 40);
@@ -74,7 +74,7 @@ export default async function SearchPage({ searchParams }) {
           ) : res.data.results.length === 0 ? (
             <div className="empty">
               <h2>No rooms free for all {plural(nights, "night")}</h2>
-              <p>Try other dates, a shorter stay, or remove the price limit. Rooms only show up when they are free on every night.</p>
+              <p>Try other dates, a shorter stay, or remove the price limit. Rooms only show up when they are free on every night. Stays can't start today or tomorrow, so pick a check-in at least 2 days from now.</p>
             </div>
           ) : (
             <>

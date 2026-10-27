@@ -25,6 +25,7 @@ class PropertyIn(BaseModel):
     lat: float | None = None
     lng: float | None = None
     advance_percent: int = Field(default=100, ge=10, le=100)  # share paid online when booking
+    min_notice_days: int = Field(default=2, ge=0, le=14)  # earliest check-in = today + this many days
     amenity_ids: list[int] = []
     photo_urls: list[str] = []
     owner_id: str | None = None  # admins only: create the property on behalf of this owner
@@ -37,6 +38,7 @@ class PropertyUpdate(BaseModel):
     city: str | None = Field(default=None, min_length=1, max_length=80)
     address: str | None = None
     advance_percent: int | None = Field(default=None, ge=10, le=100)
+    min_notice_days: int | None = Field(default=None, ge=0, le=14)
     amenity_ids: list[int] | None = None
 
 

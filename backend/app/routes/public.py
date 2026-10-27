@@ -63,6 +63,7 @@ def search(
             HAVING COUNT(*) = %(nights)s AND MIN(ri.available) >= 1
         ) x ON x.property_id = p.id
         WHERE p.status = 'approved'
+          AND %(ci)s >= (now() AT TIME ZONE 'Asia/Kolkata')::date + p.min_notice_days
     """
     params = {"ci": check_in, "co": check_out, "guests": guests, "nights": nights}
     if city:
@@ -99,7 +100,8 @@ def property_detail(property_id: str, check_in: date | None = None, check_out: d
 
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(
-            """SELECT id, name, type, description, city, address, lat, lng, rating_avg, rating_count, advance_percent
+            """SELECT id, name, type, description, city, address, lat, lng, rating_avg, rating_count, advance_percent,
+                      min_notice_days, ((now() AT TIME ZONE 'Asia/Kolkata')::date + min_notice_days) AS earliest_check_in
                FROM properties WHERE id = %s AND status = 'approved'""",
             (property_id,),
         )
@@ -141,6 +143,8 @@ def property_detail(property_id: str, check_in: date | None = None, check_out: d
         r["photos"] = photos_by_room[r["id"]]
         if nights is not None:
             r["rooms_left"] = int(r["min_available"] or 0) if r["nights_open"] == nights else 0
+            if check_in < prop["earliest_check_in"]:
+                r["rooms_left"] = 0  # too soon to book online
             r["bookable"] = r["rooms_left"] > 0
             if not r["bookable"]:
                 r["stay_total"] = None
@@ -148,5 +152,6 @@ def property_detail(property_id: str, check_in: date | None = None, check_out: d
             r.pop(key, None)
         if nights is None:
             r.pop("stay_total", None)
+    prop["too_soon"] = bool(check_in and check_in < prop["earliest_check_in"])
     prop["room_types"] = rooms
     return prop

@@ -54,8 +54,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     final t = today();
-    _checkIn = t.add(const Duration(days: 1));
-    _checkOut = t.add(const Duration(days: 2));
+    _checkIn = t.add(const Duration(days: 2));
+    _checkOut = t.add(const Duration(days: 3));
   }
 
   @override

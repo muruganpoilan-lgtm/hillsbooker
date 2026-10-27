@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../api.dart';
 import '../format.dart';
 import '../theme.dart';
+import '../widgets/channel_sync.dart';
 import '../widgets/common.dart';
 import '../widgets/photo_strip.dart';
 
@@ -237,6 +238,8 @@ class _RoomManageScreenState extends State<RoomManageScreen> {
                 runSpacing: 8,
                 children: [for (final n in _nights) _nightChip(n)],
               ),
+            const SizedBox(height: 28),
+            ChannelSync(roomId: _roomId!),
           ],
         ],
       ),
