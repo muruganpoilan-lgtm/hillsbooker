@@ -62,7 +62,12 @@ def _details(kind: str, booking_id: str):
         return cur.fetchone()
 
 
-def _send(to: str, params: list[str], template: str | None = None) -> None:
+def _send(to: str, params: list[str], template: str | None = None, document: tuple[str, str] | None = None) -> None:
+    """document is (link, filename): sent as the template's PDF header, so the guest gets the file itself."""
+    components = []
+    if document:
+        components.append({"type": "header", "parameters": [{"type": "document", "document": {"link": document[0], "filename": document[1]}}]})
+    components.append({"type": "body", "parameters": [{"type": "text", "text": _clean(p)} for p in params]})
     body = {
         "messaging_product": "whatsapp",
         "to": to,
@@ -70,7 +75,7 @@ def _send(to: str, params: list[str], template: str | None = None) -> None:
         "template": {
             "name": template or settings.whatsapp_template,
             "language": {"code": settings.whatsapp_lang},
-            "components": [{"type": "body", "parameters": [{"type": "text", "text": _clean(p)} for p in params]}],
+            "components": components,
         },
     }
     req = urllib.request.Request(
@@ -137,9 +142,10 @@ def _guest_invoice(booking_id: str) -> None:
         if not to:
             return  # the guest has no mobile number saved
         when = f"{_day(d['check_in'])} to {_day(d['check_out'])}"
-        # Template body (create it in Meta Business Manager, in this order):
-        # Hi {{1}}, your Hill Booker stay at {{2}} is confirmed for {{3}}. Your invoice: {{4}}
-        _send(to, [d["guest"], d["property"], when, invoice.link_for(booking_id)], settings.whatsapp_invoice_template)
+        # Template (create it in Meta Business Manager): header type DOCUMENT (a PDF), body:
+        # Hi {{1}}, your Hill Booker stay at {{2}} is confirmed for {{3}}. Your invoice is attached.
+        safe = re.sub(r"[^A-Za-z0-9]+", "-", d["property"]).strip("-")[:40] or "Booking"
+        _send(to, [d["guest"], d["property"], when], settings.whatsapp_invoice_template, (invoice.link_for(booking_id), f"Hill-Booker-Invoice-{safe}.pdf"))
     except Exception as e:
         log.warning("Guest invoice message failed: %s", e)
 
