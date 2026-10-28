@@ -159,7 +159,7 @@ export default function PayPage() {
         <h1 className="section-title">
           {b.status === "confirmed" ? "Booking confirmed" : b.status === "held" ? "Pay your advance" : "Booking"}
         </h1>
-        <ol className="steps" aria-label="Progress">
+        <ol className="pay-steps" aria-label="Progress">
           <li className={b.status === "confirmed" ? "done" : "now"}>1. Pay advance</li>
           <li className={b.status === "confirmed" ? "now" : ""}>2. Booking confirmed</li>
         </ol>
