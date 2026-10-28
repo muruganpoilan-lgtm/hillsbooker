@@ -201,7 +201,7 @@ def host_payments(user: dict = Depends(host_only)):
     # UPI paid straight to the host: the host holds the money and owes Hill Booker the fee.
     fee_owed_by_hosts = sum((Decimal(r["commission"]) for r in paid if r["provider"] == "upi_direct"), Decimal(0))
     # Paid online: Hill Booker holds the money and owes the host the advance minus the fee.
-    payout_due_to_hosts = sum((Decimal(r["paid_amount"]) - Decimal(r["commission"]) for r in paid if r["provider"] == "razorpay"), Decimal(0))
+    payout_due_to_hosts = sum((Decimal(r["paid_amount"]) - Decimal(r["commission"]) for r in paid if r["provider"] in ("razorpay", "cashfree")), Decimal(0))
     return {"upi_id": upi_id, "advance_received": received, "balance_to_collect": to_collect, "refunded": refunded,
             "waiting_for_you": waiting, "commission_percent": settings.commission_percent, "fee_total": fee_total,
             "fee_owed_by_hosts": fee_owed_by_hosts, "payout_due_to_hosts": payout_due_to_hosts, "rows": rows}

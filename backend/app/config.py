@@ -16,6 +16,15 @@ class Settings(BaseSettings):
     razorpay_key_secret: str = ""
     razorpay_webhook_secret: str = ""
     razorpay_api_base: str = "https://api.razorpay.com/v1"
+    # Cashfree (https://merchant.cashfree.com > Developers > API Keys). Leave empty to keep it off.
+    # CASHFREE_ENV is "sandbox" while testing and "production" for real money.
+    cashfree_app_id: str = ""
+    cashfree_secret_key: str = ""
+    cashfree_env: str = "sandbox"
+    # If both gateways have keys, this picks one: "razorpay" or "cashfree". Empty = Razorpay first.
+    payment_gateway: str = ""
+    # Public address of this API, where Cashfree sends payment notices (must be https).
+    api_public_url: str = "https://api.hillbooker.com"
     # Cancelling at least this many hours before check-in refunds everything; later cancellations get no refund.
     refund_full_hours: int = 48
 
@@ -62,8 +71,22 @@ class Settings(BaseSettings):
 settings = Settings()
 
 
+def active_gateway() -> str:
+    """Which online gateway takes payments right now: "razorpay", "cashfree", or "" when neither has keys."""
+    rz = bool(settings.razorpay_key_id and settings.razorpay_key_secret)
+    cf = bool(settings.cashfree_app_id and settings.cashfree_secret_key)
+    want = (settings.payment_gateway or "").strip().lower()
+    if want == "cashfree" and cf:
+        return "cashfree"
+    if want == "razorpay" and rz:
+        return "razorpay"
+    if rz:
+        return "razorpay"
+    return "cashfree" if cf else ""
+
+
 def payments_enabled() -> bool:
-    return bool(settings.razorpay_key_id and settings.razorpay_key_secret)
+    return bool(active_gateway())
 
 
 def google_enabled() -> bool:

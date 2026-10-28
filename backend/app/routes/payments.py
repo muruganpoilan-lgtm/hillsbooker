@@ -1,13 +1,16 @@
 import asyncio
 import json
+import secrets
+from urllib.parse import urlencode
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from .. import invoice, notify, razorpay_client
+from .. import cashfree_client, invoice, notify, razorpay_client
 from ..auth import current_user
-from ..config import payments_enabled, settings
+from ..cashfree_client import CashfreeError
+from ..config import active_gateway, payments_enabled, settings
 from ..db import get_conn
 from ..razorpay_client import RazorpayError
 from .bookings import release_expired_holds
@@ -32,19 +35,29 @@ def paise(amount: Decimal) -> int:
 
 
 def refund_payment(payment_row_id: str, provider_payment_id: str, amount: Decimal, reason: str) -> str:
-    """Refund in full or part. Returns 'refunded' or 'pending' (Razorpay refused; the note says why).
-    Called after the database transaction has ended, so a slow Razorpay never holds row locks."""
+    """Refund in full or part. Returns 'refunded' or 'pending' (the gateway refused; the note says why).
+    Called after the database transaction has ended, so a slow gateway never holds row locks."""
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("SELECT provider, provider_order_id FROM payments WHERE id = %s", (payment_row_id,))
+        pay = cur.fetchone()
+    cashfree = bool(pay) and pay["provider"] == "cashfree"
     try:
-        r = razorpay_client.refund(provider_payment_id, paise(amount), {"reason": reason})
-    except RazorpayError as e:
+        if cashfree:
+            r = cashfree_client.refund(pay["provider_order_id"], "rf" + str(payment_row_id).replace("-", ""), amount, reason)
+            refund_ref = str(r.get("cf_refund_id") or r.get("refund_id") or "")
+        else:
+            r = razorpay_client.refund(provider_payment_id, paise(amount), {"reason": reason})
+            refund_ref = r.get("id")
+    except (RazorpayError, CashfreeError) as e:
+        where = "Cashfree" if cashfree else "Razorpay"
         with get_conn() as conn, conn.cursor() as cur:
-            cur.execute("UPDATE payments SET note = %s, updated_at = now() WHERE id = %s", (f"Refund failed: {e}. Refund by hand in the Razorpay dashboard.", payment_row_id))
+            cur.execute("UPDATE payments SET note = %s, updated_at = now() WHERE id = %s", (f"Refund failed: {e}. Refund by hand in the {where} dashboard.", payment_row_id))
         return "pending"
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(
             """UPDATE payments SET status = 'refunded', refund_id = %s, refunded_amount = %s, note = %s, commission = 0, updated_at = now()
                WHERE id = %s""",
-            (r.get("id"), amount, reason, payment_row_id),
+            (refund_ref, amount, reason, payment_row_id),
         )
     return "refunded"
 
@@ -161,8 +174,53 @@ def settle(order_id: str, payment_id: str, user_id: str | None = None) -> dict:
 
 @router.get("/config")
 def config():
-    on = payments_enabled()
-    return {"enabled": on, "key_id": settings.razorpay_key_id if on else None}
+    gw = active_gateway()
+    return {"enabled": bool(gw), "gateway": gw or None, "key_id": settings.razorpay_key_id if gw == "razorpay" else None}
+
+
+def _customer(cur, user_id: str) -> dict:
+    cur.execute("SELECT name, email, phone FROM users WHERE id = %s", (user_id,))
+    return cur.fetchone() or {}
+
+
+def _order_reply(provider: str, order_id: str, amount, session_id: str | None = None) -> dict:
+    """What the website or app needs to open the payment window for this order."""
+    if provider == "cashfree":
+        if not session_id:
+            try:
+                session_id = cashfree_client.get_order(order_id).get("payment_session_id")
+            except CashfreeError as e:
+                raise HTTPException(502, f"Payment could not be started: {e}")
+        mode = "production" if settings.cashfree_env.strip().lower() == "production" else "sandbox"
+        q = urlencode({"session": session_id, "order_id": order_id, "mode": mode})
+        return {"gateway": "cashfree", "order_id": order_id, "amount": paise(amount), "currency": "INR", "checkout_url": f"{settings.site_url.rstrip('/')}/pay/cashfree?{q}"}
+    return {"gateway": "razorpay", "order_id": order_id, "amount": paise(amount), "currency": "INR", "key_id": settings.razorpay_key_id}
+
+
+def _start_order(cur, *, vehicle: bool, booking_id: str, user_id: str, amount, description: str) -> dict:
+    """Create the gateway order and our payments row, or return the open one. Never makes a second open order."""
+    col = "vehicle_booking_id" if vehicle else "booking_id"
+    cur.execute(f"SELECT provider, provider_order_id, amount FROM payments WHERE {col} = %s AND status = 'created'", (booking_id,))
+    existing = cur.fetchone()
+    if existing:
+        return _order_reply(existing["provider"], existing["provider_order_id"], existing["amount"])
+    gw = active_gateway()
+    if gw == "cashfree":
+        order_id = ("hbv_" if vehicle else "hb_") + booking_id.replace("-", "") + "_" + secrets.token_hex(2)
+        c = _customer(cur, user_id)
+        return_url = f"{settings.site_url.rstrip('/')}/pay/cashfree?order_id={{order_id}}"
+        try:
+            order = cashfree_client.create_order(order_id, amount, user_id, c.get("name"), c.get("email"), c.get("phone"), return_url, description)
+        except CashfreeError as e:
+            raise HTTPException(502, f"Payment could not be started: {e}")
+        cur.execute(f"INSERT INTO payments ({col}, provider, provider_order_id, amount) VALUES (%s, 'cashfree', %s, %s)", (booking_id, order_id, amount))
+        return _order_reply("cashfree", order_id, amount, order.get("payment_session_id"))
+    try:
+        order = razorpay_client.create_order(paise(amount), receipt=booking_id, notes={col: booking_id})
+    except RazorpayError as e:
+        raise HTTPException(502, f"Payment could not be started: {e}")
+    cur.execute(f"INSERT INTO payments ({col}, provider_order_id, amount) VALUES (%s, %s, %s)", (booking_id, order["id"], amount))
+    return _order_reply("razorpay", order["id"], amount)
 
 
 @router.post("/bookings/{booking_id}/order")
@@ -181,23 +239,7 @@ def create_order(booking_id: str, user: dict = Depends(current_user)):
         cur.execute("SELECT 1 FROM payments WHERE booking_id = %s AND provider = 'upi_direct' AND status = 'created'", (booking_id,))
         if cur.fetchone():
             raise HTTPException(409, "You already sent a UPI payment. Wait for the host to confirm it")
-
-        cur.execute("SELECT provider_order_id, amount FROM payments WHERE booking_id = %s AND status = 'created'", (booking_id,))
-        existing = cur.fetchone()
-        if existing:
-            order_id, amount = existing["provider_order_id"], existing["amount"]
-        else:
-            amount = b["pay_now"]
-            try:
-                order = razorpay_client.create_order(paise(amount), receipt=booking_id, notes={"booking_id": booking_id})
-            except RazorpayError as e:
-                raise HTTPException(502, f"Payment could not be started: {e}")
-            order_id = order["id"]
-            cur.execute(
-                "INSERT INTO payments (booking_id, provider_order_id, amount) VALUES (%s, %s, %s)",
-                (booking_id, order_id, amount),
-            )
-    return {"order_id": order_id, "amount": paise(amount), "currency": "INR", "key_id": settings.razorpay_key_id}
+        return _start_order(cur, vehicle=False, booking_id=booking_id, user_id=user["id"], amount=b["pay_now"], description="Hill Booker stay advance")
 
 
 @router.post("/vehicle-bookings/{booking_id}/order")
@@ -218,19 +260,7 @@ def create_vehicle_order(booking_id: str, user: dict = Depends(current_user)):
         cur.execute("SELECT 1 FROM payments WHERE vehicle_booking_id = %s AND provider = 'upi_direct' AND status = 'created'", (booking_id,))
         if cur.fetchone():
             raise HTTPException(409, "You already sent a UPI payment. Wait for the host to confirm it")
-        cur.execute("SELECT provider_order_id, amount FROM payments WHERE vehicle_booking_id = %s AND status = 'created'", (booking_id,))
-        existing = cur.fetchone()
-        if existing:
-            order_id, amount = existing["provider_order_id"], existing["amount"]
-        else:
-            amount = b["advance_amount"]
-            try:
-                order = razorpay_client.create_order(paise(amount), receipt=booking_id, notes={"vehicle_booking_id": booking_id})
-            except RazorpayError as e:
-                raise HTTPException(502, f"Payment could not be started: {e}")
-            order_id = order["id"]
-            cur.execute("INSERT INTO payments (vehicle_booking_id, provider_order_id, amount) VALUES (%s, %s, %s)", (booking_id, order_id, amount))
-    return {"order_id": order_id, "amount": paise(amount), "currency": "INR", "key_id": settings.razorpay_key_id}
+        return _start_order(cur, vehicle=True, booking_id=booking_id, user_id=user["id"], amount=b["advance_amount"], description="Hill Booker vehicle advance")
 
 
 @router.post("/verify")
@@ -256,6 +286,47 @@ async def webhook(request: Request):
             await asyncio.to_thread(settle, entity["order_id"], entity["id"])
     except HTTPException:
         pass  # a payment we have no booking for: answer 200 so Razorpay stops retrying
+    except (KeyError, ValueError, TypeError):
+        pass  # an event shape we don't use
+    return {"ok": True}
+
+
+@router.get("/cashfree/confirm")
+def cashfree_confirm(order_id: str):
+    """Where the Cashfree payment page sends the guest back to. We ask Cashfree itself whether the order was paid,
+    so nothing the browser says is trusted. Safe to call again and again."""
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("SELECT booking_id, vehicle_booking_id, status FROM payments WHERE provider = 'cashfree' AND provider_order_id = %s", (order_id,))
+        row = cur.fetchone()
+    if not row:
+        raise HTTPException(404, "Payment not found")
+    kind = "vehicle" if row["vehicle_booking_id"] else "stay"
+    booking_id = str(row["vehicle_booking_id"] or row["booking_id"])
+    if row["status"] in ("paid", "refunded"):
+        return {"status": "confirmed" if row["status"] == "paid" else "refunded", "kind": kind, "booking_id": booking_id}
+    try:
+        payment_id = cashfree_client.successful_payment_id(order_id)
+    except CashfreeError as e:
+        raise HTTPException(502, f"Couldn't check the payment with Cashfree: {e}")
+    if not payment_id:
+        return {"status": "pending", "kind": kind, "booking_id": booking_id}
+    return {**settle(order_id, payment_id), "kind": kind, "booking_id": booking_id}
+
+
+@router.post("/cashfree/webhook")
+async def cashfree_webhook(request: Request):
+    """Cashfree calls this when a payment succeeds, even if the guest closed the browser first.
+    Dashboard setup: Developers > Webhooks > add https://api.hillbooker.com/payments/cashfree/webhook (payment success)."""
+    raw = await request.body()
+    if not cashfree_client.valid_webhook_signature(raw, request.headers.get("x-webhook-timestamp", ""), request.headers.get("x-webhook-signature", "")):
+        raise HTTPException(400, "Bad signature")
+    try:
+        event = json.loads(raw)
+        data = event.get("data") or {}
+        if str(event.get("type", "")).startswith("PAYMENT_SUCCESS") and (data.get("payment") or {}).get("payment_status") == "SUCCESS":
+            await asyncio.to_thread(settle, data["order"]["order_id"], str(data["payment"]["cf_payment_id"]))
+    except HTTPException:
+        pass  # a payment we have no booking for: answer 200 so Cashfree stops retrying
     except (KeyError, ValueError, TypeError):
         pass  # an event shape we don't use
     return {"ok": True}

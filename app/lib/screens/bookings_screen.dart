@@ -26,7 +26,7 @@ class BookingsScreen extends StatefulWidget {
   State<BookingsScreen> createState() => _BookingsScreenState();
 }
 
-class _BookingsScreenState extends State<BookingsScreen> {
+class _BookingsScreenState extends State<BookingsScreen> with WidgetsBindingObserver {
   List<Map<String, dynamic>>? _rows;
   String _error = '';
   String _busy = '';
@@ -41,6 +41,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
   void initState() {
     super.initState();
     session.addListener(_onSession);
+    WidgetsBinding.instance.addObserver(this);
     _rzp = Razorpay();
     _rzp.on(Razorpay.EVENT_PAYMENT_SUCCESS, _onPaid);
     _rzp.on(Razorpay.EVENT_PAYMENT_ERROR, _onPayError);
@@ -64,8 +65,15 @@ class _BookingsScreenState extends State<BookingsScreen> {
     });
   }
 
+  // Back from Cashfree's payment page in the browser: look again, the server has usually confirmed it by now.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && session.token != null) _load();
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _rzp.clear();
     session.removeListener(_onSession);
@@ -94,6 +102,15 @@ class _BookingsScreenState extends State<BookingsScreen> {
       return;
     }
     final d = res.data as Map;
+    if (d['gateway'] == 'cashfree') {
+      // Cashfree's payment page opens in the phone's browser. The server confirms the payment itself,
+      // and this list refreshes when you come back to the app.
+      final opened = await launchUrl(Uri.parse('${d['checkout_url']}'), mode: LaunchMode.externalApplication);
+      if (!mounted) return;
+      setState(() => _busy = '');
+      if (!opened) snack(context, "Couldn't open the payment page. Try again.");
+      return;
+    }
     _payingId = id;
     try {
       _rzp.open({

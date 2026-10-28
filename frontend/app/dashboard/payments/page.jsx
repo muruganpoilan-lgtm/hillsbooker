@@ -6,7 +6,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import Guard from "../../../components/dashboard/Guard";
 import { api, money, prettyDate } from "../../../lib/api";
 
-const METHOD = { razorpay: "Paid online", upi_direct: "UPI to you" };
+const METHOD = { razorpay: "Paid online", cashfree: "Paid online", upi_direct: "UPI to you" };
 const PAY_STATUS = { created: "Waiting", paid: "Received", failed: "Not received", refunded: "Refunded" };
 
 function Payments() {

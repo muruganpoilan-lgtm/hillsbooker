@@ -6,7 +6,7 @@ import '../session.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 
-const _method = {'razorpay': 'Paid online', 'upi_direct': 'UPI to you'};
+const _method = {'razorpay': 'Paid online', 'cashfree': 'Paid online', 'upi_direct': 'UPI to you'};
 const _payStatus = {'created': 'Waiting', 'paid': 'Received', 'failed': 'Not received', 'refunded': 'Refunded'};
 
 /// The host's payments: totals, their own UPI ID, UPI payments waiting to be confirmed, and every payment.

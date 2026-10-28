@@ -19,12 +19,17 @@ function loadCheckout() {
   return scriptPromise;
 }
 
-// Opens Razorpay's payment window for a held booking.
+// Opens the payment window for a held booking: Razorpay's popup, or Cashfree's page.
 // Resolves to {ok:true, data:{status:"confirmed"|"refunded"}}, {ok:false, dismissed:true} or {ok:false, error}.
 export async function payForBooking({ bookingId, token, description, kind = "stay" }) {
   const path = kind === "vehicle" ? `/payments/vehicle-bookings/${bookingId}/order` : `/payments/bookings/${bookingId}/order`;
   const order = await api(path, { method: "POST", token });
   if (!order.ok) return order;
+  if (order.data.gateway === "cashfree") {
+    // Cashfree's payment page takes over this tab and brings the guest back to /pay/cashfree afterwards.
+    window.location.assign(order.data.checkout_url);
+    return { ok: false, dismissed: true };
+  }
   try {
     await loadCheckout();
   } catch {
