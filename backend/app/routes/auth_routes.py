@@ -12,6 +12,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register", status_code=201)
 def register(body: RegisterIn):
+    if not notify.wa_number(body.phone):
+        raise HTTPException(400, "Enter a valid mobile number, for example 98765 43210")
     try:
         with get_conn() as conn, conn.cursor() as cur:
             cur.execute(

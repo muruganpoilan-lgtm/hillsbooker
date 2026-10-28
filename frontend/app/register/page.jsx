@@ -29,6 +29,10 @@ export default function RegisterPage() {
       setError("Enter your name and email.");
       return;
     }
+    if (form.phone.replace(/\D/g, "").length < 10) {
+      setError("Enter your 10-digit mobile number.");
+      return;
+    }
     if (form.password.length < 8) {
       setError("Your password needs at least 8 characters.");
       return;
@@ -39,7 +43,7 @@ export default function RegisterPage() {
       body: {
         name: form.name.trim(),
         email: form.email.trim(),
-        phone: form.phone.trim() || null,
+        phone: form.phone.trim(),
         password: form.password,
         role,
       },
@@ -67,7 +71,7 @@ export default function RegisterPage() {
           <input type="email" value={form.email} onChange={set("email")} autoComplete="email" />
         </label>
         <label className="field">
-          <span>Mobile number (optional)</span>
+          <span>Mobile number</span>
           <input type="tel" value={form.phone} onChange={set("phone")} autoComplete="tel" />
         </label>
         <label className="field">

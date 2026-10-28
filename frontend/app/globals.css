@@ -325,3 +325,8 @@ label.btn[aria-busy="true"] { opacity: 0.7; cursor: progress; }
 .footer-contact p { margin: 0; }
 .footer-contact a { font-weight: 600; }
 .phone-box { margin: 0.8rem 0 1.2rem; max-width: 26rem; }
+
+.steps { display: flex; gap: 0.5rem; list-style: none; padding: 0; margin: 0.2rem 0 1rem; flex-wrap: wrap; }
+.steps li { padding: 0.25rem 0.8rem; border: 1px solid var(--line); border-radius: 999px; font-weight: 600; font-size: 0.9rem; color: var(--ink-soft); }
+.steps li.now { background: var(--ink); color: #fff; border-color: var(--ink); }
+.steps li.done { color: var(--ink); border-color: var(--ink); }

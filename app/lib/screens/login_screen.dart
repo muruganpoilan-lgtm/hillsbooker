@@ -107,10 +107,17 @@ class _LoginScreenState extends State<LoginScreen> {
     final ApiResult res;
     if (_signUp) {
       final phone = _phone.text.trim();
+      if (phone.replaceAll(RegExp(r'\D'), '').length < 10) {
+        setState(() {
+          _busy = false;
+          _error = 'Enter your 10-digit mobile number.';
+        });
+        return;
+      }
       res = await Api.post('/auth/register', body: {
         'name': _name.text.trim(),
         'email': email,
-        'phone': phone.isEmpty ? null : phone,
+        'phone': phone,
         'password': password,
         'role': _role,
       });
@@ -153,7 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           if (_signUp) ...[
             const SizedBox(height: 14),
-            TextField(controller: _phone, keyboardType: TextInputType.phone, decoration: fieldDeco('Mobile number (optional)')),
+            TextField(controller: _phone, keyboardType: TextInputType.phone, decoration: fieldDeco('Mobile number')),
             const SizedBox(height: 12),
             const Text('I am signing up to', style: TextStyle(fontWeight: FontWeight.w700, color: C.soft)),
             const SizedBox(height: 6),

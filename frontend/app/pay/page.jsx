@@ -157,8 +157,12 @@ export default function PayPage() {
     <main className="page">
       <div className="narrow">
         <h1 className="section-title">
-          {b.status === "confirmed" ? "Booking confirmed" : b.status === "held" ? "Complete your payment" : "Booking"}
+          {b.status === "confirmed" ? "Booking confirmed" : b.status === "held" ? "Pay your advance" : "Booking"}
         </h1>
+        <ol className="steps" aria-label="Progress">
+          <li className={b.status === "confirmed" ? "done" : "now"}>1. Pay advance</li>
+          <li className={b.status === "confirmed" ? "now" : ""}>2. Booking confirmed</li>
+        </ol>
 
         <article className="booking">
           <h2 className="booking-name">{name}</h2>
@@ -196,10 +200,10 @@ export default function PayPage() {
               </p>
             ) : (
               <>
-                {!payOn && <p className="meta">Online payments aren't switched on yet, so the button below only confirms the booking for testing.</p>}
+                {!payOn && <p className="meta">Test mode: online payments aren't switched on yet, so no money is taken. The button below pays the advance in test mode.</p>}
                 <div className="booking-actions">
                   <button type="button" className="btn btn-primary" aria-busy={busy} onClick={payOn ? pay : () => act("confirm")}>
-                    {payOn ? `Pay ${money(b.advance_amount)}${hasBalance ? " now" : ""}` : "Confirm booking (test)"}
+                    {`Pay ${money(b.advance_amount)} advance${payOn ? "" : " (test)"}`}
                   </button>
                 </div>
                 {b.host_upi && <UpiPay kind={kind} bookingId={b.id} token={token} amount={b.advance_amount} onDone={load} />}
