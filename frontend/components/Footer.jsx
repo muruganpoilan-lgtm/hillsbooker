@@ -19,9 +19,19 @@ export default function Footer() {
           <Link href="/register">List your property</Link>
           <Link href="/bookings">My bookings</Link>
         </nav>
+        <nav className="footer-links" aria-label="About and policies">
+          <Link href="/about">About us</Link>
+          <Link href="/contact">Contact us</Link>
+          <Link href="/terms">Terms and Conditions</Link>
+          <Link href="/privacy">Privacy Policy</Link>
+          <Link href="/refund-policy">Refund and Cancellation Policy</Link>
+        </nav>
         <address className="footer-contact">
           <p>
             <b>Office:</b> Hillbooker, No: 105A, Villagio, Green Groove, Jeyam Nagar, Kanchivakkam, Sriperumbudur, Chennai - 601301
+          </p>
+          <p>
+            <b>Email:</b> <a href="mailto:hillbookerbookings@gmail.com">hillbookerbookings@gmail.com</a>
           </p>
           <p>
             <b>Customer care:</b> <a href="tel:+918300841442">+91 83008 41442</a> ·{" "}
