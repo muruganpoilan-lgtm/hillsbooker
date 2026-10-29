@@ -1,5 +1,12 @@
 import Link from "next/link";
 
+const SOCIAL = [
+  { name: "Instagram", href: "https://www.instagram.com/hillbookerbooking/" },
+  { name: "Facebook", href: "https://www.facebook.com/profile.php?id=61595981792268" },
+  { name: "YouTube", href: "https://www.youtube.com/channel/UCVHdOrRa9Ej6LSA1WKXQx4w" },
+  { name: "WhatsApp", href: "https://wa.me/918300841442" },
+];
+
 export default function Footer() {
   return (
     <footer className="site-footer">
@@ -25,6 +32,14 @@ export default function Footer() {
           <Link href="/terms">Terms and Conditions</Link>
           <Link href="/privacy">Privacy Policy</Link>
           <Link href="/refund-policy">Refund and Cancellation Policy</Link>
+        </nav>
+        <nav className="social-links" aria-label="Follow Hill Booker">
+          <span>Follow us</span>
+          {SOCIAL.map((x) => (
+            <a key={x.name} href={x.href} target="_blank" rel="noopener noreferrer" aria-label={`Hill Booker on ${x.name}`}>
+              {x.name}
+            </a>
+          ))}
         </nav>
         <address className="footer-contact">
           <p>

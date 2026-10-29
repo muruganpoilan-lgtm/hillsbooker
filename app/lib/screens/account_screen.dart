@@ -102,6 +102,20 @@ class AccountScreen extends StatelessWidget {
             label: const Text('WhatsApp'),
           ),
         ]),
+        const SizedBox(height: 12),
+        const Text('Follow us', style: TextStyle(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 6),
+        Wrap(spacing: 8, runSpacing: 4, children: [
+          for (final s in const [
+            ['Instagram', 'https://www.instagram.com/hillbookerbooking/'],
+            ['Facebook', 'https://www.facebook.com/profile.php?id=61595981792268'],
+            ['YouTube', 'https://www.youtube.com/channel/UCVHdOrRa9Ej6LSA1WKXQx4w'],
+          ])
+            OutlinedButton(
+              onPressed: () => launchUrl(Uri.parse(s[1]), mode: LaunchMode.externalApplication),
+              child: Text(s[0]),
+            ),
+        ]),
       ]),
     );
   }

@@ -32,7 +32,17 @@ export const metadata = {
 const SITE_LD = {
   "@context": "https://schema.org",
   "@graph": [
-    { "@type": "Organization", name: SITE_NAME, url: SITE_URL, logo: `${SITE_URL}/logo.png` },
+    {
+      "@type": "Organization",
+      name: SITE_NAME,
+      url: SITE_URL,
+      logo: `${SITE_URL}/logo.png`,
+      sameAs: [
+        "https://www.instagram.com/hillbookerbooking/",
+        "https://www.facebook.com/profile.php?id=61595981792268",
+        "https://www.youtube.com/channel/UCVHdOrRa9Ej6LSA1WKXQx4w",
+      ],
+    },
     { "@type": "WebSite", name: SITE_NAME, url: SITE_URL },
   ],
 };
