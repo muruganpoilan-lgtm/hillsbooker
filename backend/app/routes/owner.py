@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from pydantic import BaseModel, Field
 
 from ..auth import require_role
 from ..config import settings
@@ -302,7 +303,7 @@ def set_inventory(room_type_id: str, body: InventoryIn, user: dict = Depends(own
                  WHERE room_type_id = %(rt)s AND day = d::date
                ) x ON true
                ON CONFLICT (room_type_id, day)
-               DO UPDATE SET available = EXCLUDED.available, price = EXCLUDED.price""",
+               DO UPDATE SET available = EXCLUDED.available, price = EXCLUDED.price, blocked = false""",
             {"rt": room_type_id, "open": body.rooms_open, "price": body.price, "start": body.start, "end": body.end},
         )
         # Nights taken on other sites are subtracted above, so they count as fully applied now.
@@ -313,6 +314,47 @@ def set_inventory(room_type_id: str, body: InventoryIn, user: dict = Depends(own
         return {"nights_updated": (body.end - body.start).days + 1}
 
 
+class BlockIn(BaseModel):
+    days: list[date] = Field(min_length=1, max_length=366)
+    blocked: bool
+
+
+@router.put("/room-types/{room_type_id}/block")
+def block_dates(room_type_id: str, body: BlockIn, user: dict = Depends(owner_only)):
+    """Block nights so guests cannot book them online, or open them again with all rooms.
+    Bookings that already exist are kept. Opening only changes nights that were blocked or never opened."""
+    today = date.today()
+    days = sorted(set(body.days))
+    if days[0] < today:
+        raise HTTPException(400, "Past dates can't be changed")
+    with get_conn() as conn, conn.cursor() as cur:
+        rt = _own_room_type(cur, room_type_id, user)
+        if body.blocked:
+            cur.execute(
+                """INSERT INTO room_inventory (room_type_id, day, available, price, blocked)
+                   SELECT %s, d, 0, NULL, true FROM unnest(%s::date[]) AS d
+                   ON CONFLICT (room_type_id, day) DO UPDATE SET available = 0, blocked = true""",
+                (room_type_id, days),
+            )
+        else:
+            cur.execute(
+                """INSERT INTO room_inventory (room_type_id, day, available, price, blocked)
+                   SELECT %(rt)s, d, GREATEST(%(total)s - COALESCE(b.booked, 0) - COALESCE(x.ext, 0), 0), NULL, false
+                   FROM unnest(%(days)s::date[]) AS d
+                   LEFT JOIN LATERAL (
+                     SELECT SUM(rooms) AS booked FROM bookings
+                     WHERE room_type_id = %(rt)s AND status IN ('held', 'confirmed') AND check_in <= d AND check_out > d
+                   ) b ON true
+                   LEFT JOIN LATERAL (
+                     SELECT SUM(wanted) AS ext FROM external_nights WHERE room_type_id = %(rt)s AND day = d
+                   ) x ON true
+                   ON CONFLICT (room_type_id, day) DO UPDATE SET available = EXCLUDED.available, blocked = false
+                   WHERE room_inventory.blocked""",
+                {"rt": room_type_id, "total": rt["total_rooms"], "days": days},
+            )
+        return {"changed": len(days), "blocked": body.blocked}
+
+
 @router.get("/room-types/{room_type_id}/inventory")
 def get_inventory(room_type_id: str, start: date | None = None, days: int = 60, user: dict = Depends(owner_only)):
     """Open rooms and price for each night, so owners can see what guests will see."""
@@ -321,8 +363,12 @@ def get_inventory(room_type_id: str, start: date | None = None, days: int = 60, 
     with get_conn() as conn, conn.cursor() as cur:
         _own_room_type(cur, room_type_id, user)
         cur.execute(
-            """SELECT day, available, price FROM room_inventory
-               WHERE room_type_id = %s AND day >= %s AND day < %s ORDER BY day""",
+            """SELECT ri.day, ri.available, ri.price, ri.blocked,
+                      (SELECT COALESCE(SUM(b.rooms), 0) FROM bookings b
+                        WHERE b.room_type_id = ri.room_type_id AND b.status IN ('held', 'confirmed')
+                          AND b.check_in <= ri.day AND b.check_out > ri.day) AS booked
+               FROM room_inventory ri
+               WHERE ri.room_type_id = %s AND ri.day >= %s AND ri.day < %s ORDER BY ri.day""",
             (room_type_id, start, start + timedelta(days=days)),
         )
         return cur.fetchall()

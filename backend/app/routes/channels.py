@@ -100,7 +100,7 @@ def remove_channel(feed_id: str, user: dict = Depends(owner_only)):
         for row in cur.fetchall():
             if row["applied"]:
                 cur.execute(
-                    "UPDATE room_inventory SET available = LEAST(available + %s, %s) WHERE room_type_id = %s AND day = %s",
+                    "UPDATE room_inventory SET available = LEAST(available + %s, %s) WHERE room_type_id = %s AND day = %s AND NOT blocked",
                     (row["applied"], total, f["room_type_id"], row["day"]),
                 )
         cur.execute("DELETE FROM room_feeds WHERE id = %s", (feed_id,))

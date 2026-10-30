@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, addDays, money, plural, prettyDate, todayISO } from "../../lib/api";
+import AvailabilityCalendar from "./AvailabilityCalendar";
 import ChannelSync from "./ChannelSync";
 import PhotoManager from "./PhotoManager";
 
@@ -147,6 +148,10 @@ export default function RoomCard({ room, token, reload, onAuthError }) {
           </button>
         </div>
       </form>
+
+      <h4>Block dates</h4>
+      <p className="meta">Tap the nights you don't want to sell, for example for family stays or repairs, then press Block.</p>
+      <AvailabilityCalendar roomId={room.id} token={token} onAuthError={onAuthError} onChanged={loadNights} />
 
       {nights && nights.length > 0 && (
         <details className="nights">

@@ -22,7 +22,7 @@ def _give_rooms_back(cur, b: dict) -> None:
     )
     cur.execute(
         """UPDATE room_inventory SET available = available + %s
-           WHERE room_type_id = %s AND day >= %s AND day < %s""",
+           WHERE room_type_id = %s AND day >= %s AND day < %s AND NOT blocked""",
         (b["rooms"], b["room_type_id"], b["check_in"], b["check_out"]),
     )
 

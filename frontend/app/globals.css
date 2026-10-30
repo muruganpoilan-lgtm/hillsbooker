@@ -432,3 +432,20 @@ label.btn[aria-busy="true"] { opacity: 0.7; cursor: progress; }
 .hb-why span { display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: 50%; background: var(--green); color: #fff; font-weight: 800; }
 .hb-why b { font-family: var(--font-display), system-ui, sans-serif; }
 .hb-why p { color: var(--ink-soft); font-size: 0.95rem; }
+
+/* host availability calendar */
+.cal { max-width: 34rem; margin: 0.6rem 0 1rem; }
+.cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-week { text-align: center; font-size: 0.8rem; font-weight: 700; color: var(--ink-soft); margin-bottom: 4px; }
+.cal-day { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-height: 3.4rem; padding: 2px; border-radius: 6px; border: 2px solid var(--line); background: var(--paper); color: var(--ink); font: inherit; cursor: pointer; }
+.cal-day b { font-size: 0.95rem; }
+.cal-day small { font-size: 0.68rem; line-height: 1.1; color: var(--ink-soft); }
+.cal-open { background: #e3f3ec; border-color: #9fd3bf; }
+.cal-blocked { background: #ececec; border-color: #b9b9b9; background-image: repeating-linear-gradient(45deg, transparent 0 5px, rgba(0,0,0,0.07) 5px 7px); }
+.cal-full { background: #fdeccd; border-color: #f0c778; }
+.cal-closed { background: var(--paper); }
+.cal-past { opacity: 0.4; cursor: default; }
+.cal-sel { border-color: var(--indigo); box-shadow: 0 0 0 2px var(--indigo); }
+.cal-legend { display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; align-items: center; margin: 0.6rem 0; }
+.cal-key { display: inline-block; width: 0.9rem; height: 0.9rem; border-radius: 3px; border: 2px solid var(--line); vertical-align: middle; margin-right: 0.25rem; }
