@@ -349,10 +349,33 @@ def block_dates(room_type_id: str, body: BlockIn, user: dict = Depends(owner_onl
                      SELECT SUM(wanted) AS ext FROM external_nights WHERE room_type_id = %(rt)s AND day = d
                    ) x ON true
                    ON CONFLICT (room_type_id, day) DO UPDATE SET available = EXCLUDED.available, blocked = false
-                   WHERE room_inventory.blocked""",
+                   WHERE room_inventory.blocked OR room_inventory.available = 0""",
                 {"rt": room_type_id, "total": rt["total_rooms"], "days": days},
             )
         return {"changed": len(days), "blocked": body.blocked}
+
+
+class PriceIn(BaseModel):
+    days: list[date] = Field(min_length=1, max_length=366)
+    price: float | None = Field(default=None, ge=0, le=1000000)  # None puts the usual room price back
+
+
+@router.put("/room-types/{room_type_id}/price")
+def set_price(room_type_id: str, body: PriceIn, user: dict = Depends(owner_only)):
+    """Set the price for chosen nights. Nights that are not open yet get the price but stay closed to guests.
+    Bookings that already exist keep the price they were made at."""
+    days = sorted(set(body.days))
+    if days[0] < date.today():
+        raise HTTPException(400, "Past dates can't be changed")
+    with get_conn() as conn, conn.cursor() as cur:
+        _own_room_type(cur, room_type_id, user)
+        cur.execute(
+            """INSERT INTO room_inventory (room_type_id, day, available, price, blocked)
+               SELECT %s, d, 0, %s, false FROM unnest(%s::date[]) AS d
+               ON CONFLICT (room_type_id, day) DO UPDATE SET price = EXCLUDED.price""",
+            (room_type_id, body.price, days),
+        )
+        return {"changed": len(days), "price": body.price}
 
 
 @router.get("/room-types/{room_type_id}/inventory")

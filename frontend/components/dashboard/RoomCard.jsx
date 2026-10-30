@@ -149,9 +149,9 @@ export default function RoomCard({ room, token, reload, onAuthError }) {
         </div>
       </form>
 
-      <h4>Block dates</h4>
-      <p className="meta">Tap the nights you don't want to sell, for example for family stays or repairs, then press Block.</p>
-      <AvailabilityCalendar roomId={room.id} token={token} onAuthError={onAuthError} onChanged={loadNights} />
+      <h4>Calendar: open, block and prices</h4>
+      <p className="meta">Tap the nights you want to change. Then block them, open them, or set a different price for them, for example higher rates on weekends and holidays.</p>
+      <AvailabilityCalendar roomId={room.id} basePrice={room.base_price} token={token} onAuthError={onAuthError} onChanged={loadNights} />
 
       {nights && nights.length > 0 && (
         <details className="nights">

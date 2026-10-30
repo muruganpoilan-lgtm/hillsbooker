@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { api, plural, todayISO } from "../../lib/api";
+import { api, money, plural, todayISO } from "../../lib/api";
 
 const WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -9,7 +9,7 @@ const pad = (n) => String(n).padStart(2, "0");
 const iso = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`;
 
 // A month calendar for one room type. Hosts tick nights and block them (guests can't book them online) or open them again.
-export default function AvailabilityCalendar({ roomId, token, onAuthError, onChanged }) {
+export default function AvailabilityCalendar({ roomId, basePrice, token, onAuthError, onChanged }) {
   const today = todayISO();
   const [view, setView] = useState(() => {
     const t = new Date();
@@ -18,6 +18,7 @@ export default function AvailabilityCalendar({ roomId, token, onAuthError, onCha
   const [rows, setRows] = useState([]);
   const [picked, setPicked] = useState(() => new Set());
   const [busy, setBusy] = useState(false);
+  const [rate, setRate] = useState("");
   const [msg, setMsg] = useState({ text: "", bad: false });
 
   const load = useCallback(async () => {
@@ -65,6 +66,34 @@ export default function AvailabilityCalendar({ roomId, token, onAuthError, onCha
       for (const day of cells) if (day && day >= today) next.add(day);
       return next;
     });
+  }
+
+  function pickWeekends() {
+    setPicked((prev) => {
+      const next = new Set(prev);
+      for (const day of cells) {
+        if (!day || day < today) continue;
+        const wd = new Date(`${day}T00:00:00`).getDay();
+        if (wd === 5 || wd === 6) next.add(day);
+      }
+      return next;
+    });
+  }
+
+  async function applyPrice(reset) {
+    const days = [...picked].sort();
+    if (!days.length) return setMsg({ text: "Tap the nights you want to change first.", bad: true });
+    const value = Number(rate);
+    if (!reset && (rate === "" || !(value >= 0) || value > 1000000)) return setMsg({ text: "Enter the price for one night in rupees.", bad: true });
+    setBusy(true);
+    const res = await api(`/owner/room-types/${roomId}/price`, { method: "PUT", token, body: { days, price: reset ? null : value } });
+    setBusy(false);
+    if (res.status === 401) return onAuthError();
+    if (!res.ok) return setMsg({ text: res.error, bad: true });
+    setMsg({ text: reset ? `Usual price put back for ${plural(days.length, "night")}.` : `Price set to ${money(value)} for ${plural(days.length, "night")}.`, bad: false });
+    setPicked(new Set());
+    await load();
+    if (onChanged) onChanged();
   }
 
   async function apply(blocked) {
@@ -119,6 +148,7 @@ export default function AvailabilityCalendar({ roomId, token, onAuthError, onCha
             >
               <b>{Number(day.slice(8))}</b>
               <small>{label}</small>
+              {!past && (state === "open" || (r && r.price != null)) && <small className="cal-rate">{money(r && r.price != null ? r.price : basePrice)}</small>}
             </button>
           );
         })}
@@ -136,11 +166,26 @@ export default function AvailabilityCalendar({ roomId, token, onAuthError, onCha
         <button type="button" className="btn btn-small" onClick={pickWholeMonth}>
           Select whole month
         </button>
+        <button type="button" className="btn btn-small" onClick={pickWeekends}>
+          Select Fri and Sat nights
+        </button>
         <button type="button" className="btn btn-small" disabled={!picked.size} onClick={() => setPicked(new Set())}>
           Clear
         </button>
       </div>
-      <p className="meta">Blocked nights are hidden from guests and can't be booked online. Bookings you already have stay. Opening a night puts all rooms of this type on sale at the usual price.</p>
+      <div className="cal-rate-row">
+        <label className="field">
+          <span>Price for selected nights (₹ per room per night)</span>
+          <input type="number" min="0" inputMode="numeric" value={rate} onChange={(e) => setRate(e.target.value)} placeholder={String(Number(basePrice))} />
+        </label>
+        <button type="button" className="btn btn-small btn-primary" disabled={busy || !picked.size} onClick={() => applyPrice(false)}>
+          Set price
+        </button>
+        <button type="button" className="btn btn-small" disabled={busy || !picked.size} onClick={() => applyPrice(true)}>
+          Use usual price
+        </button>
+      </div>
+      <p className="meta">Blocked nights are hidden from guests and can't be booked online. Bookings you already have stay. Opening a night puts all rooms of this type on sale. A price you set stays on the night, and bookings already made keep their price.</p>
       {msg.text && (
         <p className={msg.bad ? "form-error" : "ok"} role={msg.bad ? "alert" : "status"}>
           {msg.text}
