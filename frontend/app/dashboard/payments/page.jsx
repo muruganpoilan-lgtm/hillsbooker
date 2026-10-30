@@ -76,13 +76,16 @@ function Payments() {
       </p>
       <div className="dash-head">
         <h1 className="section-title">Payments</h1>
-        {role === "admin" && (
-          <div className="actions">
+        <div className="actions">
+          <Link href="/dashboard/reports" className="btn btn-small">
+            Reports
+          </Link>
+          {role === "admin" && (
             <Link href="/dashboard/payouts" className="btn btn-primary btn-small">
               Pay hosts
             </Link>
-          </div>
-        )}
+          )}
+        </div>
       </div>
       {error && (
         <p className="form-error" role="alert">

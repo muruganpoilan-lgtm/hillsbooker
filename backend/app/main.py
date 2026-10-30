@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .db import pool
-from .routes import admin, auth_routes, bookings, channels, google_auth, invoices, owner, payments, public, upi, vehicles
+from .routes import admin, auth_routes, bookings, channels, google_auth, invoices, owner, payments, public, reports, upi, vehicles
 from .storage import upload_root
 
 
@@ -89,6 +89,7 @@ app.include_router(bookings.router)
 app.include_router(payments.router)
 app.include_router(upi.router)
 app.include_router(admin.router)
+app.include_router(reports.router)
 app.include_router(invoices.router)
 app.include_router(vehicles.public)
 app.include_router(vehicles.operator)
