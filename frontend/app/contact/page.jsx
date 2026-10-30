@@ -12,7 +12,7 @@ export default function ContactPage() {
         <p>Questions about a booking, a payment, a refund or listing your property? We are happy to help.</p>
         <h2>Customer care</h2>
         <p>
-          Phone: <a href="tel:+918300841442">+91 83008 41442</a>
+          Phone: <a href="tel:+918300841442">+91 83008 41442</a> · <a href="tel:+919345777130">+91 93457 77130</a>
           <br />
           WhatsApp: <a href="https://wa.me/918300841442" target="_blank" rel="noopener noreferrer">+91 83008 41442</a>
           <br />

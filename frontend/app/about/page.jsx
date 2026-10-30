@@ -31,7 +31,7 @@ export default function AboutPage() {
         <p>
           Hill Booker, No: 105A, Villagio, Green Groove, Jeyam Nagar, Kanchivakkam, Sriperumbudur, Chennai - 601301, Tamil Nadu, India.
           <br />
-          Customer care: <a href="tel:+918300841442">+91 83008 41442</a> · Email: <a href="mailto:hillbookerbookings@gmail.com">hillbookerbookings@gmail.com</a>
+          Customer care: <a href="tel:+918300841442">+91 83008 41442</a> · <a href="tel:+919345777130">+91 93457 77130</a> · Email: <a href="mailto:hillbookerbookings@gmail.com">hillbookerbookings@gmail.com</a>
           <br />
           More details on our <Link href="/contact">Contact page</Link>.
         </p>

@@ -97,6 +97,11 @@ class AccountScreen extends StatelessWidget {
             label: const Text('+91 83008 41442'),
           ),
           OutlinedButton.icon(
+            onPressed: () => launchUrl(Uri.parse('tel:+919345777130')),
+            icon: const Icon(Icons.call, size: 18),
+            label: const Text('+91 93457 77130'),
+          ),
+          OutlinedButton.icon(
             onPressed: () => launchUrl(Uri.parse('https://wa.me/918300841442'), mode: LaunchMode.externalApplication),
             icon: const Icon(Icons.chat_outlined, size: 18),
             label: const Text('WhatsApp'),

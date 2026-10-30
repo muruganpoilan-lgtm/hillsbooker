@@ -49,7 +49,7 @@ export default function Footer() {
             <b>Email:</b> <a href="mailto:hillbookerbookings@gmail.com">hillbookerbookings@gmail.com</a>
           </p>
           <p>
-            <b>Customer care:</b> <a href="tel:+918300841442">+91 83008 41442</a> ·{" "}
+            <b>Customer care:</b> <a href="tel:+918300841442">+91 83008 41442</a> · <a href="tel:+919345777130">+91 93457 77130</a> ·{" "}
             <a href="https://wa.me/918300841442" target="_blank" rel="noopener noreferrer">
               WhatsApp us
             </a>
