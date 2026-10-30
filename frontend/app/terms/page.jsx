@@ -55,6 +55,7 @@ export default function TermsPage() {
         <ul>
           <li>Listings, photos, prices and availability must be true and up to date. You must hold the licences and permissions your business needs.</li>
           <li>You must honour confirmed bookings. If you cannot, tell the guest and us straight away. The guest's advance will be refunded.</li>
+          <li>You may upload only photos you took yourself or have permission to use. Do not upload photos from other websites, apps or social media. You are responsible for any claim about a photo you upload, and we may remove a photo or listing on a copyright complaint.</li>
           <li>Keep your calendar current. If you use a calendar sync, you are responsible for checking it.</li>
           <li>Hill Booker's commission is 8% of the booking price. It is taken out of the advance the guest pays when booking. For example, on a booking of ₹10,000 with a 30% advance (₹3,000), ₹800 is Hill Booker's commission and ₹2,200 is yours. For an advance paid online, we collect it and, once the guest has checked in, pay you your share to the UPI ID you have saved with us. The amount due to you is shown on your Payments page.</li>
           <li>If a guest pays the advance straight to your UPI ID, you keep that payment and owe Hill Booker the 8% commission on the booking price, which is also shown on your Payments page.</li>

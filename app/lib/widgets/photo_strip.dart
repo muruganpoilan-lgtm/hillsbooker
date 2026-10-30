@@ -20,6 +20,7 @@ class PhotoStrip extends StatefulWidget {
 
 class _PhotoStripState extends State<PhotoStrip> {
   bool _busy = false;
+  bool _own = false;
 
   Future<void> _add() async {
     List<XFile> picked;
@@ -113,8 +114,16 @@ class _PhotoStripState extends State<PhotoStrip> {
             ),
           ),
         const SizedBox(height: 8),
+        CheckboxListTile(
+          value: _own,
+          onChanged: (v) => setState(() => _own = v ?? false),
+          controlAffinity: ListTileControlAffinity.leading,
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          title: const Text('I took these photos myself or have permission to use them on Hill Booker.', style: TextStyle(color: C.soft, fontSize: 13)),
+        ),
         OutlinedButton.icon(
-          onPressed: _busy ? null : _add,
+          onPressed: (_busy || !_own) ? null : _add,
           icon: const Icon(Icons.add_a_photo_outlined),
           label: Text(_busy ? 'Uploading…' : (photos.isEmpty ? 'Add photos' : 'Add more photos')),
         ),

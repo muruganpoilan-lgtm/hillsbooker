@@ -343,3 +343,92 @@ label.btn[aria-busy="true"] { opacity: 0.7; cursor: progress; }
 .social-links span { font-weight: 700; margin-right: 0.3rem; }
 .social-links a { text-decoration: none; font-weight: 700; font-size: 0.95rem; padding: 0.35rem 0.9rem; border: 1.5px solid var(--green); border-radius: 999px; color: var(--green); }
 .social-links a:hover { background: var(--green); color: #fff; }
+
+/* home page */
+.hm-hero { position: relative; background: linear-gradient(180deg, #0a5042 0%, #0e6b58 100%); color: #fff; padding: clamp(2.5rem, 7vw, 5rem) clamp(1rem, 4vw, 2.5rem) 0; overflow: hidden; }
+.hm-hero-copy { position: relative; z-index: 1; max-width: 70rem; margin: 0 auto; padding-bottom: clamp(5rem, 14vw, 9rem); }
+.hm-kicker { font-size: 0.95rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--marigold); margin-bottom: 0.6rem; }
+.hm-hero h1 { font-size: clamp(2.2rem, 6.5vw, 4rem); font-weight: 800; max-width: 16ch; line-height: 1.05; }
+.hm-sub { max-width: 46ch; font-size: 1.1rem; margin-top: 1rem; color: #dcece6; }
+.hm-perks { display: grid; gap: 0.8rem; grid-template-columns: 1fr 1fr; padding-top: 1.6rem; }
+@media (min-width: 800px) { .hm-perks { grid-template-columns: repeat(4, 1fr); } }
+.hm-perk { display: grid; gap: 0.15rem; padding: 0.2rem 0 0.2rem 0.8rem; border-left: 4px solid var(--marigold); }
+.hm-perk b { font-family: var(--font-display), system-ui, sans-serif; font-size: 1rem; }
+.hm-perk span { color: var(--ink-soft); font-size: 0.9rem; }
+.hm-section { padding-top: clamp(2rem, 5vw, 3.2rem); }
+.hm-title { font-size: clamp(1.4rem, 3.6vw, 1.9rem); font-weight: 800; }
+.hm-lead { color: var(--ink-soft); margin-top: 0.3rem; }
+.hm-cities { list-style: none; margin: 1.1rem 0 0; padding: 0; display: grid; gap: 0.9rem; grid-template-columns: 1fr 1fr; }
+@media (min-width: 800px) { .hm-cities { grid-template-columns: repeat(4, 1fr); } }
+.hm-city { position: relative; display: flex; flex-direction: column; justify-content: flex-end; min-height: 11rem; padding: 0.9rem; border-radius: 12px; overflow: hidden; color: #fff; text-decoration: none; background-size: cover; background-position: center; transition: transform 0.15s; }
+@media (min-width: 800px) { .hm-city { min-height: 14rem; } }
+.hm-city:hover { transform: translateY(-3px); }
+.hm-city-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.55) 100%); }
+.hm-city-name, .hm-city-tag { position: relative; }
+.hm-city-name { font-family: var(--font-display), system-ui, sans-serif; font-weight: 800; font-size: 1.3rem; }
+.hm-city-tag { font-size: 0.9rem; opacity: 0.9; }
+.hm-more { margin-top: 0.9rem; color: var(--ink-soft); font-size: 0.95rem; }
+.hm-two { display: grid; gap: 0.9rem; }
+@media (min-width: 800px) { .hm-two { grid-template-columns: 1fr 1fr; } }
+.hm-tile { display: grid; gap: 0.4rem; align-content: start; padding: 1.4rem; border-radius: 12px; color: #fff; text-decoration: none; min-height: 9rem; }
+.hm-tile-stay { background: var(--green); }
+.hm-tile-ride { background: var(--indigo); }
+.hm-tile h3 { font-size: 1.3rem; }
+.hm-tile p { color: #e3eee9; max-width: 36ch; }
+.hm-go { margin-top: 0.4rem; font-weight: 800; color: var(--marigold); }
+.hm-steps { list-style: none; margin: 1.1rem 0 0; padding: 0; display: grid; gap: 1.2rem; }
+@media (min-width: 800px) { .hm-steps { grid-template-columns: repeat(3, 1fr); gap: 2rem; } }
+.hm-steps li { display: grid; gap: 0.3rem; justify-items: start; }
+.hm-steps li > span { display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 50%; background: var(--marigold); color: var(--ink); font-family: var(--font-display), system-ui, sans-serif; font-weight: 800; }
+.hm-steps h3 { font-size: 1.1rem; }
+.hm-steps p { color: var(--ink-soft); max-width: 36ch; }
+.hm-logo { display: inline-flex; align-items: center; gap: 0.6rem; background: #faf9f4; color: var(--green-dark); border-radius: 12px; padding: 0.35rem 0.9rem 0.35rem 0.5rem; margin-bottom: 1.1rem; }
+.hm-logo img { height: 40px; width: auto; display: block; }
+.hm-logo b { font-family: var(--font-display), system-ui, sans-serif; font-weight: 800; font-size: 1.2rem; letter-spacing: -0.02em; }
+
+/* Booking-style green header and home page */
+.site-header { background: var(--green-dark); color: #fff; border-bottom: 0; }
+.site-header a, .site-header .link-btn { color: #fff; }
+.site-header .btn { background: #fff; color: var(--green-dark); border-color: #fff; }
+.site-header .btn:hover { background: var(--chalk); }
+.site-header :focus-visible { outline-color: var(--marigold); }
+.hb-hero { background: var(--green-dark); color: #fff; padding: clamp(1.6rem, 5vw, 3.2rem) clamp(1rem, 4vw, 2.5rem) clamp(3.6rem, 8vw, 5rem); }
+.hb-hero-in { max-width: 70rem; margin: 0 auto; }
+.hb-hero h1 { font-size: clamp(2rem, 5.5vw, 3.2rem); font-weight: 800; line-height: 1.08; }
+.hb-hero p { margin-top: 0.7rem; max-width: 46ch; font-size: 1.12rem; color: #d3e6df; }
+.hb-search { max-width: 70rem; margin: calc(-1 * clamp(2rem, 4.5vw, 2.8rem)) auto 0; padding: 0 clamp(1rem, 4vw, 2.5rem); position: relative; z-index: 2; }
+.hb-search .slip { border: 4px solid var(--marigold); box-shadow: none; border-radius: 10px; max-width: none; }
+.hb-section { padding-top: clamp(1.8rem, 4.5vw, 3rem); }
+.hb-title { font-size: clamp(1.35rem, 3.4vw, 1.75rem); font-weight: 800; }
+.hb-lead { color: var(--ink-soft); margin-top: 0.15rem; }
+.hb-offers { display: grid; gap: 0.9rem; margin-top: 1rem; }
+@media (min-width: 800px) { .hb-offers { grid-template-columns: 1fr 1fr; } }
+.hb-offer { display: flex; align-items: center; min-height: 9.5rem; padding: 1.4rem; border-radius: 12px; text-decoration: none; border: 1px solid var(--line); background: var(--paper); border-left: 8px solid var(--green); }
+.hb-offer-b { border-left-color: var(--marigold); }
+.hb-offer span { display: grid; gap: 0.4rem; justify-items: start; }
+.hb-offer b { font-family: var(--font-display), system-ui, sans-serif; font-size: 1.3rem; font-weight: 800; }
+.hb-offer i { font-style: normal; color: var(--ink-soft); max-width: 40ch; }
+.hb-offer u { text-decoration: none; background: var(--green); color: #fff; font-weight: 700; padding: 0.45rem 0.9rem; border-radius: 6px; margin-top: 0.3rem; }
+.hb-offer-b u { background: var(--marigold); color: var(--ink); }
+.hb-card { position: relative; display: flex; flex-direction: column; justify-content: flex-start; padding: 0.9rem 1rem; border-radius: 12px; overflow: hidden; color: #fff; text-decoration: none; background-size: cover; background-position: center; transition: transform 0.15s; }
+.hb-card:hover { transform: translateY(-3px); }
+.hb-card-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 55%); }
+.hb-card-name, .hb-card-tag { position: relative; }
+.hb-card-name { font-family: var(--font-display), system-ui, sans-serif; font-weight: 800; font-size: 1.35rem; }
+.hb-card-tag { font-size: 0.92rem; opacity: 0.95; }
+.hb-grid-big, .hb-grid-small { display: grid; gap: 0.9rem; margin-top: 1rem; }
+.hb-grid-big { grid-template-columns: 1fr; }
+.hb-grid-small { grid-template-columns: 1fr; }
+@media (min-width: 700px) { .hb-grid-big { grid-template-columns: 1fr 1fr; } .hb-grid-small { grid-template-columns: repeat(3, 1fr); } }
+.hb-card-big { min-height: 13rem; }
+.hb-card-mid { min-height: 11rem; }
+.hb-row { display: grid; gap: 0.9rem; margin-top: 1rem; grid-template-columns: 1fr 1fr; }
+@media (min-width: 800px) { .hb-row { grid-template-columns: repeat(5, 1fr); } }
+.hb-card-sm { min-height: 10rem; }
+.hb-card-sm .hb-card-name { font-size: 1.1rem; }
+.hb-why { display: grid; gap: 1.2rem; margin-top: 1rem; grid-template-columns: 1fr 1fr; }
+@media (min-width: 800px) { .hb-why { grid-template-columns: repeat(4, 1fr); } }
+.hb-why div { display: grid; gap: 0.3rem; justify-items: start; align-content: start; }
+.hb-why span { display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: 50%; background: var(--green); color: #fff; font-weight: 800; }
+.hb-why b { font-family: var(--font-display), system-ui, sans-serif; }
+.hb-why p { color: var(--ink-soft); font-size: 0.95rem; }

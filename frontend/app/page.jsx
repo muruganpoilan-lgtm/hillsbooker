@@ -1,84 +1,115 @@
 import Link from "next/link";
-import Ridge from "../components/Ridge";
 import SearchForm from "../components/SearchForm";
 import { slugify } from "../lib/seo";
 
-// Approximate height above sea level, in metres. Sorted high to low so the list reads as a climb.
-const PLACES = [
-  { city: "Ooty", m: 2240 },
-  { city: "Kodaikanal", m: 2130 },
-  { city: "Munnar", m: 1530 },
-  { city: "Yercaud", m: 1500 },
-  { city: "Coorg", m: 1150 },
-  { city: "Valparai", m: 1050 },
-  { city: "Thekkady", m: 900 },
-  { city: "Wayanad", m: 800 },
-  { city: "Alleppey", m: 0 },
-  { city: "Kovalam", m: 0 },
-  { city: "Varkala", m: 0 },
-  { city: "Pondicherry", m: 0 },
-  { city: "Goa", m: 0 },
+// To use a real photo for a place, add public/cities/<city-slug>.jpg (for example public/cities/munnar.jpg).
+// Until the file exists the card shows its coloured background instead.
+const TREND_BIG = [
+  { city: "Munnar", tag: "Tea hills and cool mornings", from: "#0e6b58", to: "#3f9a7f" },
+  { city: "Ooty", tag: "Nilgiri hills and lakes", from: "#2a3a7a", to: "#5a6fb8" },
 ];
-const TOP = 2240;
+const TREND_SMALL = [
+  { city: "Goa", tag: "Beaches", from: "#b3512b", to: "#e89a5a" },
+  { city: "Coorg", tag: "Coffee estates", from: "#7a4b1f", to: "#c08a4d" },
+  { city: "Alleppey", tag: "Backwaters", from: "#0b5f7a", to: "#4aa7c4" },
+];
+const MORE = [
+  { city: "Kodaikanal", tag: "Lake and mist", from: "#4b3a7a", to: "#8d77c4" },
+  { city: "Wayanad", tag: "Forest stays", from: "#1d5c3a", to: "#5aa072" },
+  { city: "Valparai", tag: "Quiet hills", from: "#0a5042", to: "#2f8f78" },
+  { city: "Thekkady", tag: "Spice and wildlife", from: "#6b4a12", to: "#b98a2e" },
+  { city: "Yercaud", tag: "Shevaroy hills", from: "#2f5c2a", to: "#79a35a" },
+];
+const WHY = [
+  ["Pay only 30% to book", "Pay a small advance online and the rest at the property."],
+  ["Rooms that are really free", "Every result is open on all of your nights."],
+  ["Room held for you", "We hold it for 10 minutes while you pay."],
+  ["Safe online payment", "UPI, cards and net banking, secured by Razorpay."],
+];
+
+function Card({ d, className }) {
+  return (
+    <Link
+      href={`/stays/${slugify(d.city)}`}
+      className={`hb-card ${className}`}
+      style={{ backgroundImage: `url(/cities/${slugify(d.city)}.jpg), linear-gradient(160deg, ${d.from}, ${d.to})` }}
+    >
+      <span className="hb-card-shade" aria-hidden="true" />
+      <span className="hb-card-name">{d.city}</span>
+      <span className="hb-card-tag">{d.tag}</span>
+    </Link>
+  );
+}
 
 export default function Home() {
   return (
     <main>
-      <section className="hero">
-        <div className="hero-copy">
-          <h1>A room for every night of your stay</h1>
-          <p className="hero-text">
-            Search by city and dates. Hill Booker only shows rooms that are free on all of them, so there is no surprise when you reserve.
-          </p>
+      <section className="hb-hero">
+        <div className="hb-hero-in">
+          <h1>Find your next stay</h1>
+          <p>Hill stations, backwaters and beaches across South India. Rooms and homestays from hosts you can book in minutes.</p>
         </div>
-        <Ridge seed="western-ghats" w={1440} h={260} sky={false} colors={["#1d7f69", "#14604f", "#f4f6f2"]} className="hero-ridge" />
       </section>
-
-      <div className="slip-wrap">
+      <div className="hb-search">
         <SearchForm />
       </div>
 
-      <section className="page home-section">
-        <h2 className="section-title">Browse by city, from the hills down to the sea</h2>
-        <p className="meta ladder-note">Height above sea level, roughly.</p>
-        <ul className="ladder">
-          {PLACES.map((p) => (
-            <li key={p.city}>
-              <Link href={`/stays/${slugify(p.city)}`} className="ladder-row">
-                <span className="ladder-city">{p.city}</span>
-                <span className="ladder-bar" aria-hidden="true">
-                  <i style={{ width: `${Math.max((p.m / TOP) * 100, 1.5)}%` }} />
-                </span>
-                <span className="ladder-m">{p.m ? `${p.m.toLocaleString("en-IN")} m` : "Sea level"}</span>
-              </Link>
-            </li>
+      <section className="page hb-section">
+        <h2 className="hb-title">Offers</h2>
+        <p className="hb-lead">Simple ways to book with Hill Booker</p>
+        <div className="hb-offers">
+          <Link href="/search" className="hb-offer hb-offer-a">
+            <span>
+              <b>Book with just 30%</b>
+              <i>Pay a small advance to confirm. Pay the rest when you reach the stay.</i>
+              <u>Find a stay</u>
+            </span>
+          </Link>
+          <Link href="/vehicles" className="hb-offer hb-offer-b">
+            <span>
+              <b>Need a ride too?</b>
+              <i>Hire a car, van or bus with a driver by the day, or pick a fixed-price trip.</i>
+              <u>See vehicles</u>
+            </span>
+          </Link>
+        </div>
+      </section>
+
+      <section className="page hb-section">
+        <h2 className="hb-title">Trending destinations</h2>
+        <p className="hb-lead">Most searched places this season</p>
+        <div className="hb-grid-big">
+          {TREND_BIG.map((d) => (
+            <Card key={d.city} d={d} className="hb-card-big" />
           ))}
-        </ul>
+        </div>
+        <div className="hb-grid-small">
+          {TREND_SMALL.map((d) => (
+            <Card key={d.city} d={d} className="hb-card-mid" />
+          ))}
+        </div>
       </section>
 
-      <section className="page home-section home-vehicles">
-        <h2 className="section-title">Need a ride?</h2>
-        <p className="prose">
-          Hire a car, van or bus with a driver by the day, or pick a fixed-price trip. <Link href="/vehicles">See cars, vans and buses</Link>.
-        </p>
+      <section className="page hb-section">
+        <h2 className="hb-title">More places to explore</h2>
+        <div className="hb-row">
+          {MORE.map((d) => (
+            <Card key={d.city} d={d} className="hb-card-sm" />
+          ))}
+        </div>
       </section>
 
-      <section className="page home-section how">
-        <h2 className="section-title">How a booking works</h2>
-        <ol className="steps">
-          <li>
-            <h3>Pick your dates</h3>
-            <p>Every place you see has rooms free on each night of the stay.</p>
-          </li>
-          <li>
-            <h3>We hold your room for 10 minutes</h3>
-            <p>Nobody else can take it while you check the details.</p>
-          </li>
-          <li>
-            <h3>Pay to confirm</h3>
-            <p>Unpaid holds are released automatically, so rooms go back on sale.</p>
-          </li>
-        </ol>
+      <section className="page hb-section">
+        <h2 className="hb-title">Why book with Hill Booker</h2>
+        <div className="hb-why">
+          {WHY.map(([t, text]) => (
+            <div key={t}>
+              <span aria-hidden="true">✓</span>
+              <b>{t}</b>
+              <p>{text}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="host-band">

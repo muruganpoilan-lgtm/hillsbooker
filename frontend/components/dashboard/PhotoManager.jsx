@@ -8,6 +8,7 @@ export default function PhotoManager({ base, photos, token, onChange, onAuthErro
   const input = useRef(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [own, setOwn] = useState(false);
 
   async function upload(e) {
     const files = Array.from(e.target.files || []);
@@ -45,9 +46,13 @@ export default function PhotoManager({ base, photos, token, onChange, onAuthErro
           ))}
         </ul>
       )}
-      <label className="btn btn-small" aria-busy={busy}>
+      <label className="check" style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start", margin: "0.4rem 0" }}>
+        <input type="checkbox" checked={own} onChange={(e) => setOwn(e.target.checked)} style={{ marginTop: "0.25rem" }} />
+        <span className="meta">I took these photos myself or have permission to use them on Hill Booker.</span>
+      </label>
+      <label className="btn btn-small" aria-busy={busy} style={own ? undefined : { opacity: 0.5, cursor: "not-allowed" }}>
         {busy ? "Uploading…" : photos.length ? "Add more photos" : "Add photos"}
-        <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={upload} disabled={busy} className="sr-only" />
+        <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={upload} disabled={busy || !own} className="sr-only" />
       </label>
       <p className="meta">JPG, PNG or WebP, up to 5 MB each. The first photo is the cover.</p>
       {error && (
