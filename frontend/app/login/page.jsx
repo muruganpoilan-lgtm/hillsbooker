@@ -46,6 +46,9 @@ export default function LoginPage() {
           <span>Password</span>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
         </label>
+        <p style={{ margin: 0, textAlign: "right" }}>
+          <Link href="/forgot-password">Forgot password?</Link>
+        </p>
         {error && (
           <p className="form-error" role="alert">
             {error}

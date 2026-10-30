@@ -99,7 +99,7 @@ function Payments() {
           </div>
 
           <section className="prop-section">
-            <h2>Hill Booker fee ({data.commission_percent}% of each advance)</h2>
+            <h2>Hill Booker fee ({data.commission_percent}% of each booking)</h2>
             <p className="meta">The guest pays no extra. The fee is taken from the advance.</p>
             <div className="pay-summary">
               <div className="pay-stat">

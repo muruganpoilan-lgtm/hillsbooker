@@ -140,7 +140,7 @@ class _HostPaymentsScreenState extends State<HostPaymentsScreen> {
                   const SizedBox(height: 8),
                   Row(children: [_stat('Refunded', d['refunded']), const Spacer()]),
                   const SizedBox(height: 18),
-                  Text('Hill Booker fee (${d['commission_percent']}% of each advance)', style: display(18)),
+                  Text('Hill Booker fee (${d['commission_percent']}% of each booking)', style: display(18)),
                   const SizedBox(height: 4),
                   const Text('The guest pays no extra. The fee is taken from the advance.', style: TextStyle(color: C.soft, fontSize: 13.5)),
                   const SizedBox(height: 8),

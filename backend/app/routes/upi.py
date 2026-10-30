@@ -16,7 +16,7 @@ from ..auth import current_user, require_role
 from ..config import settings
 from ..db import get_conn
 from .bookings import _give_rooms_back, release_expired_holds
-from .payments import commission_for
+from .payments import set_commission
 
 router = APIRouter(tags=["upi"])
 host_only = require_role("owner", "operator", "admin")
@@ -234,7 +234,8 @@ def confirm_upi(payment_id: str, user: dict = Depends(host_only)):
         if cur.fetchone()["status"] != "held":
             raise HTTPException(409, "This booking already expired or was cancelled, so it can't be confirmed. If the guest paid you, return their money directly")
         cur.execute(f"UPDATE {table} SET status = 'confirmed', hold_expires_at = NULL WHERE id = %s", (bid,))
-        cur.execute("UPDATE payments SET status = 'paid', commission = %s, note = 'Confirmed by host', updated_at = now() WHERE id = %s", (commission_for(pay["amount"]), payment_id))
+        cur.execute("UPDATE payments SET status = 'paid', note = 'Confirmed by host', updated_at = now() WHERE id = %s", (payment_id,))
+        set_commission(cur, payment_id)
         if pay["booking_id"]:
             stay_id = str(pay["booking_id"])
     if stay_id:

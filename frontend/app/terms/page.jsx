@@ -37,7 +37,7 @@ export default function TermsPage() {
           <li>You pay an advance online by UPI, card or net banking through our payment partners. We do not store your card details.</li>
           <li>The balance is paid at the property or to the vehicle operator, as shown on your booking.</li>
           <li>Some hosts accept UPI directly. In that case the host confirms your payment, and your booking is confirmed after that.</li>
-          <li>Guests pay no extra fee to Hill Booker. We charge hosts a commission on bookings.</li>
+          <li>Guests pay no extra fee to Hill Booker. We charge hosts a commission of 8% of the booking price, which is taken out of the advance.</li>
           <li>Your invoice is sent to your WhatsApp number and can also be opened from My bookings.</li>
         </ul>
 
@@ -56,7 +56,10 @@ export default function TermsPage() {
           <li>Listings, photos, prices and availability must be true and up to date. You must hold the licences and permissions your business needs.</li>
           <li>You must honour confirmed bookings. If you cannot, tell the guest and us straight away. The guest's advance will be refunded.</li>
           <li>Keep your calendar current. If you use a calendar sync, you are responsible for checking it.</li>
-          <li>Hill Booker's commission is deducted from your share of each online advance. Online payments are paid out to you after the commission is deducted, as shown on your Payments page.</li>
+          <li>Hill Booker's commission is 8% of the booking price. It is taken out of the advance the guest pays when booking. For example, on a booking of ₹10,000 with a 30% advance (₹3,000), ₹800 is Hill Booker's commission and ₹2,200 is yours. For an advance paid online, we collect it and pay you your share, to the UPI ID you have saved with us. The amount due to you is shown on your Payments page.</li>
+          <li>If a guest pays the advance straight to your UPI ID, you keep that payment and owe Hill Booker the 8% commission on the booking price, which is also shown on your Payments page.</li>
+          <li>The balance of the booking is paid by the guest to you at the property or on the trip. No further commission is charged on the balance.</li>
+          <li>If a booking is cancelled and the advance is refunded to the guest, no commission is due on it.</li>
           <li>We may remove a listing or close an account that breaks these terms or harms guests.</li>
         </ul>
 

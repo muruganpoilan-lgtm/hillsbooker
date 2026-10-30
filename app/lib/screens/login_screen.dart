@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../api.dart';
 import '../config.dart';
@@ -186,6 +187,14 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
+          if (!_signUp)
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => launchUrl(Uri.parse('https://hillbooker.com/forgot-password'), mode: LaunchMode.externalApplication),
+                child: const Text('Forgot password?'),
+              ),
+            ),
           if (_error.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 12),
