@@ -120,6 +120,7 @@ class _BookingsScreenState extends State<BookingsScreen> with WidgetsBindingObse
         'currency': d['currency'],
         'name': 'Hill Booker',
         'description': '${b['property']}, ${b['room_type']}',
+        'prefill': d['prefill'] is Map ? d['prefill'] : {},
         'theme': {'color': '#0E6B58'},
       });
     } catch (_) {

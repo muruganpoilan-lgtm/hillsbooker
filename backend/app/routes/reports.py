@@ -18,14 +18,14 @@ ONLINE = ("razorpay", "cashfree")
 _SQL = """
 SELECT pm.id, (pm.created_at AT TIME ZONE 'Asia/Kolkata')::date AS paid_on, pm.provider, pm.status AS pay_status, pm.amount,
        pm.refunded_amount, pm.commission, pm.payout_id, po.paid_at AS payout_paid_at, po.reference AS payout_reference,
-       s.kind, s.item, s.host_id, h.name AS host_name, s.guest, s.start_date, s.end_date, s.total_amount, s.status AS booking_status
+       s.kind, s.item, s.host_id, h.name AS host_name, h.phone AS host_phone, h.upi_id AS host_upi, s.guest, s.guest_phone, s.start_date, s.end_date, s.total_amount, s.status AS booking_status
 FROM payments pm
 JOIN (
-  SELECT 'Stay' AS kind, b.id, b.status, p.name AS item, g.name AS guest, b.check_in AS start_date, b.check_out AS end_date,
+  SELECT 'Stay' AS kind, b.id, b.status, p.name AS item, g.name AS guest, g.phone AS guest_phone, b.check_in AS start_date, b.check_out AS end_date,
          b.total_amount, p.owner_id AS host_id
   FROM bookings b JOIN properties p ON p.id = b.property_id JOIN users g ON g.id = b.user_id
   UNION ALL
-  SELECT 'Vehicle', b.id, b.status, v.name, g.name, b.start_date, b.end_date, b.total_amount, v.operator_id
+  SELECT 'Vehicle', b.id, b.status, v.name, g.name, g.phone, b.start_date, b.end_date, b.total_amount, v.operator_id
   FROM vehicle_bookings b JOIN vehicles v ON v.id = b.vehicle_id JOIN users g ON g.id = b.user_id
 ) s ON (s.kind = 'Stay' AND pm.booking_id = s.id) OR (s.kind = 'Vehicle' AND pm.vehicle_booking_id = s.id)
 JOIN users h ON h.id = s.host_id
@@ -169,18 +169,18 @@ def export_xlsx(date_from: str | None = Query(None, alias="from"), date_to: str 
     ws.cell(13, 1, "Amounts in rupees. Dates are payment dates. Host share = advance minus commission minus refunds.").font = Font(name="Arial", size=9, italic=True)
 
     # Payments sheet
-    heads = ["Date", "Type", "Property or vehicle", "Host", "Guest", "Check-in", "Check-out", "Booking total", "Advance paid", "How paid",
+    heads = ["Date", "Type", "Property or vehicle", "Host", "Host phone", "Host UPI ID", "Guest", "Guest phone", "Check-in", "Check-out", "Booking total", "Advance paid", "How paid",
              "Payment status", "Refunded", "Commission", "Host share", "Payout", "Payout reference"]
     data = []
     for r in rows:
         online = r["provider"] in ONLINE
         data.append([
-            r["paid_on"], r["kind"], r["item"], r["host_name"], r["guest"], r["start_date"], r["end_date"],
+            r["paid_on"], r["kind"], r["item"], r["host_name"], r["host_phone"] or "", r["host_upi"] or "", r["guest"], r["guest_phone"] or "", r["start_date"], r["end_date"],
             float(r["total_amount"]), float(r["amount"]), "Paid online" if online else "UPI to host", r["pay_status"].capitalize(),
             float(r["refunded_amount"] or 0), float(r["commission"]), float(_share(r)) if online and r["pay_status"] == "paid" else 0.0,
             _payout_text(r), r["payout_reference"] or "",
         ])
-    table(wb.create_sheet("Payments"), heads, data, money_cols=(8, 9, 12, 13, 14), date_cols=(1, 6, 7), widths={3: 30, 4: 22, 5: 22, 15: 44, 16: 18})
+    table(wb.create_sheet("Payments"), heads, data, money_cols=(11, 12, 15, 16, 17), date_cols=(1, 9, 10), widths={3: 30, 4: 22, 5: 16, 6: 22, 7: 22, 8: 16, 18: 44, 19: 18})
 
     if admin:
         bh = _by_host(rows)

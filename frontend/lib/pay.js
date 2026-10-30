@@ -43,6 +43,7 @@ export async function payForBooking({ bookingId, token, description, kind = "sta
       currency: order.data.currency,
       name: "Hill Booker",
       description,
+      prefill: order.data.prefill || {},
       theme: { color: "#0e6b58" },
       // Razorpay hands back razorpay_order_id, razorpay_payment_id and razorpay_signature. The server checks them.
       handler: async (response) => resolve(await api("/payments/verify", { method: "POST", token, body: response })),

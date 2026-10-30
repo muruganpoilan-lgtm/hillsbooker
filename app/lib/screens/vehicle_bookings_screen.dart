@@ -140,6 +140,7 @@ class _VehicleBookingsScreenState extends State<VehicleBookingsScreen> with Widg
         'currency': d['currency'],
         'name': 'Hill Booker',
         'description': '${b['vehicle']}',
+        'prefill': d['prefill'] is Map ? d['prefill'] : {},
         'theme': {'color': '#0E6B58'},
       });
     } catch (_) {

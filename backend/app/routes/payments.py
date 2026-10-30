@@ -189,7 +189,14 @@ def _customer(cur, user_id: str) -> dict:
     return cur.fetchone() or {}
 
 
-def _order_reply(provider: str, order_id: str, amount, session_id: str | None = None) -> dict:
+def _prefill(c: dict) -> dict:
+    """The guest's details, so the payment window does not ask for a mobile number again."""
+    digits = "".join(ch for ch in str(c.get("phone") or "") if ch.isdigit())
+    contact = "+91" + digits[-10:] if len(digits) >= 10 else ""
+    return {"name": c.get("name") or "", "email": c.get("email") or "", "contact": contact}
+
+
+def _order_reply(provider: str, order_id: str, amount, session_id: str | None = None, prefill: dict | None = None) -> dict:
     """What the website or app needs to open the payment window for this order."""
     if provider == "cashfree":
         if not session_id:
@@ -200,7 +207,7 @@ def _order_reply(provider: str, order_id: str, amount, session_id: str | None = 
         mode = "production" if settings.cashfree_env.strip().lower() == "production" else "sandbox"
         q = urlencode({"session": session_id, "order_id": order_id, "mode": mode})
         return {"gateway": "cashfree", "order_id": order_id, "amount": paise(amount), "currency": "INR", "checkout_url": f"{settings.site_url.rstrip('/')}/pay/cashfree?{q}"}
-    return {"gateway": "razorpay", "order_id": order_id, "amount": paise(amount), "currency": "INR", "key_id": settings.razorpay_key_id}
+    return {"gateway": "razorpay", "order_id": order_id, "amount": paise(amount), "currency": "INR", "key_id": settings.razorpay_key_id, "prefill": prefill or {}}
 
 
 def _start_order(cur, *, vehicle: bool, booking_id: str, user_id: str, amount, description: str) -> dict:
@@ -209,7 +216,7 @@ def _start_order(cur, *, vehicle: bool, booking_id: str, user_id: str, amount, d
     cur.execute(f"SELECT provider, provider_order_id, amount FROM payments WHERE {col} = %s AND status = 'created'", (booking_id,))
     existing = cur.fetchone()
     if existing:
-        return _order_reply(existing["provider"], existing["provider_order_id"], existing["amount"])
+        return _order_reply(existing["provider"], existing["provider_order_id"], existing["amount"], prefill=_prefill(_customer(cur, user_id)))
     gw = active_gateway()
     if gw == "cashfree":
         order_id = ("hbv_" if vehicle else "hb_") + booking_id.replace("-", "") + "_" + secrets.token_hex(2)
@@ -226,7 +233,7 @@ def _start_order(cur, *, vehicle: bool, booking_id: str, user_id: str, amount, d
     except RazorpayError as e:
         raise HTTPException(502, f"Payment could not be started: {e}")
     cur.execute(f"INSERT INTO payments ({col}, provider_order_id, amount) VALUES (%s, %s, %s)", (booking_id, order["id"], amount))
-    return _order_reply("razorpay", order["id"], amount)
+    return _order_reply("razorpay", order["id"], amount, prefill=_prefill(_customer(cur, user_id)))
 
 
 @router.post("/bookings/{booking_id}/order")
