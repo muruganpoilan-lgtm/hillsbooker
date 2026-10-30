@@ -152,7 +152,8 @@ class _HostPaymentsScreenState extends State<HostPaymentsScreen> {
                   const SizedBox(height: 8),
                   Row(children: [
                     _stat(_isAdmin ? 'You owe hosts (online, after fee)' : 'Hill Booker pays you (online, after fee)', d['payout_due_to_hosts']),
-                    const Spacer(),
+                    const SizedBox(width: 8),
+                    _stat(_isAdmin ? 'Already paid out to hosts' : 'Already paid to you', d['paid_out_to_hosts']),
                   ]),
                   const SizedBox(height: 22),
                   Text('Your UPI ID', style: display(18)),
@@ -243,6 +244,13 @@ class _HostPaymentsScreenState extends State<HostPaymentsScreen> {
           Text('Advance ${money(advance)}', style: const TextStyle(color: C.soft, fontSize: 12.5)),
           if (status == 'confirmed' && total > advance) Text('Collect ${money(total - advance)}', style: const TextStyle(color: C.soft, fontSize: 12.5)),
           if (payStatus == 'paid' && toNum(r['commission']) > 0) Text('Fee ${money(toNum(r['commission']))}', style: const TextStyle(color: C.soft, fontSize: 12.5)),
+          if (payStatus == 'paid' && (provider == 'razorpay' || provider == 'cashfree'))
+            Text(
+              r['payout_paid_at'] != null
+                  ? 'Paid to you, ref ${r['payout_reference']}'
+                  : 'Your share ${money(toNum(r['paid_amount']) - toNum(r['commission']) - toNum(r['refunded_amount']))}, paid after check-in',
+              style: const TextStyle(color: C.soft, fontSize: 12.5),
+            ),
           Text(status == 'held' ? 'Waiting' : (status == 'confirmed' ? 'Confirmed' : 'Cancelled'),
               style: TextStyle(color: status == 'confirmed' ? C.green : C.soft, fontWeight: FontWeight.w700, fontSize: 12.5)),
         ]),

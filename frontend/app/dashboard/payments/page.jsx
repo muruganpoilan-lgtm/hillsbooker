@@ -74,7 +74,16 @@ function Payments() {
       <p className="meta">
         <Link href="/dashboard">← Your properties</Link>
       </p>
-      <h1 className="section-title">Payments</h1>
+      <div className="dash-head">
+        <h1 className="section-title">Payments</h1>
+        {role === "admin" && (
+          <div className="actions">
+            <Link href="/dashboard/payouts" className="btn btn-primary btn-small">
+              Pay hosts
+            </Link>
+          </div>
+        )}
+      </div>
       {error && (
         <p className="form-error" role="alert">
           {error}
@@ -113,6 +122,10 @@ function Payments() {
               <div className="pay-stat">
                 <span className="meta">{role === "admin" ? "You owe hosts (paid online, after fee)" : "Hill Booker pays you (paid online, after fee)"}</span>
                 <b className="price">{money(data.payout_due_to_hosts)}</b>
+              </div>
+              <div className="pay-stat">
+                <span className="meta">{role === "admin" ? "Already paid out to hosts" : "Already paid to you"}</span>
+                <b className="price">{money(data.paid_out_to_hosts)}</b>
               </div>
             </div>
           </section>
@@ -215,6 +228,13 @@ function Payments() {
                     <p className="price">{money(r.total_amount)}</p>
                     <p className="meta">Advance {money(r.advance_amount)}</p>
                     {r.pay_status === "paid" && Number(r.commission) > 0 && <p className="meta">Fee {money(r.commission)}</p>}
+                    {r.pay_status === "paid" && (r.provider === "razorpay" || r.provider === "cashfree") && (
+                      <p className="meta">
+                        {r.payout_paid_at
+                          ? `Paid to you ${prettyDate(r.payout_paid_at)}, ref ${r.payout_reference}`
+                          : `Your share ${money(Number(r.paid_amount) - Number(r.commission) - Number(r.refunded_amount || 0))}, paid after check-in`}
+                      </p>
+                    )}
                     {r.status === "confirmed" && Number(r.total_amount) > Number(r.advance_amount) && (
                       <p className="meta">Collect {money(Number(r.total_amount) - Number(r.advance_amount))}</p>
                     )}

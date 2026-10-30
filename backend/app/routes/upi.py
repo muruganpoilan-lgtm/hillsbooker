@@ -159,7 +159,8 @@ def upi_submit(kind: str, booking_id: str, body: UtrIn, user: dict = Depends(cur
 
 _ROWS = """
 SELECT s.*, pay.id AS payment_id, pay.provider, pay.status AS pay_status, pay.provider_payment_id AS reference,
-       pay.amount AS paid_amount, pay.refunded_amount, pay.commission
+       pay.amount AS paid_amount, pay.refunded_amount, pay.commission,
+       pay.payout_id, po.paid_at AS payout_paid_at, po.reference AS payout_reference
 FROM (
   SELECT 'stay' AS kind, b.id, b.status, p.name AS item, g.name AS guest, g.phone AS guest_phone,
          b.check_in AS start_date, b.check_out AS end_date, b.total_amount,
@@ -177,6 +178,7 @@ LEFT JOIN LATERAL (
   WHERE (s.kind = 'stay' AND pm.booking_id = s.id) OR (s.kind = 'vehicle' AND pm.vehicle_booking_id = s.id)
   ORDER BY (pm.status = 'paid') DESC, pm.created_at DESC LIMIT 1
 ) pay ON true
+LEFT JOIN payouts po ON po.id = pay.payout_id
 WHERE (%s OR s.host_id = %s)
   AND (pay.id IS NOT NULL OR s.status = 'confirmed')
   AND NOT (s.status = 'held' AND pay.provider IS DISTINCT FROM 'upi_direct')
@@ -201,10 +203,14 @@ def host_payments(user: dict = Depends(host_only)):
     # UPI paid straight to the host: the host holds the money and owes Hill Booker the fee.
     fee_owed_by_hosts = sum((Decimal(r["commission"]) for r in paid if r["provider"] == "upi_direct"), Decimal(0))
     # Paid online: Hill Booker holds the money and owes the host the advance minus the fee.
-    payout_due_to_hosts = sum((Decimal(r["paid_amount"]) - Decimal(r["commission"]) for r in paid if r["provider"] in ("razorpay", "cashfree")), Decimal(0))
+    online = [r for r in paid if r["provider"] in ("razorpay", "cashfree")]
+    share = lambda r: Decimal(r["paid_amount"]) - Decimal(r["commission"]) - Decimal(r["refunded_amount"] or 0)
+    payout_due_to_hosts = sum((share(r) for r in online if not r["payout_id"]), Decimal(0))
+    paid_out_to_hosts = sum((share(r) for r in online if r["payout_id"]), Decimal(0))
     return {"upi_id": upi_id, "advance_received": received, "balance_to_collect": to_collect, "refunded": refunded,
             "waiting_for_you": waiting, "commission_percent": settings.commission_percent, "fee_total": fee_total,
-            "fee_owed_by_hosts": fee_owed_by_hosts, "payout_due_to_hosts": payout_due_to_hosts, "rows": rows}
+            "fee_owed_by_hosts": fee_owed_by_hosts, "payout_due_to_hosts": payout_due_to_hosts,
+            "paid_out_to_hosts": paid_out_to_hosts, "rows": rows}
 
 
 def _host_payment(cur, payment_id: str, user: dict) -> dict:
