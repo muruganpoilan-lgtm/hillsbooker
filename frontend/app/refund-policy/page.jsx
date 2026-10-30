@@ -16,7 +16,18 @@ export default function RefundPolicyPage() {
           When you book on Hill Booker you pay an advance online, and you pay the balance at the property or to the vehicle operator. This page explains what happens if you cancel.
         </p>
 
-        <h2>Cancelling a stay or a vehicle booking</h2>
+        <h2>Cancelling a stay</h2>
+        <ul>
+          <li>
+            <b>Cancel within 10 minutes of booking:</b> your advance is refunded in full. This is the only time you can cancel a stay on your own from the website or app.
+          </li>
+          <li>
+            <b>After 10 minutes:</b> please call Hill Booker customer care. Refunds after that depend on the host and are decided case by case.
+          </li>
+          <li>You cannot cancel online after the stay has started.</li>
+        </ul>
+
+        <h2>Cancelling a vehicle booking</h2>
         <ul>
           <li>
             <b>Cancel at least 2 days (48 hours) before check-in:</b> your advance is refunded in full. The time is counted up to 12:00 am (midnight) at the start of your

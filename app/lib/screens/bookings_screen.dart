@@ -387,13 +387,19 @@ class _BookingsScreenState extends State<BookingsScreen> with WidgetsBindingObse
               Expanded(child: OutlinedButton.icon(onPressed: _busy == id ? null : () => _whatsappInvoice(id), icon: const Icon(Icons.chat_outlined, size: 18), label: const Text('WhatsApp'))),
             ]),
             const SizedBox(height: 10),
-            OutlinedButton(
-              onPressed: _busy == id ? null : () => _confirmCancel(id),
-              style: OutlinedButton.styleFrom(foregroundColor: C.brick, side: const BorderSide(color: C.brick, width: 1.8)),
-              child: const Text('Cancel booking'),
-            ),
+            if (b['can_cancel'] != false)
+              OutlinedButton(
+                onPressed: _busy == id ? null : () => _confirmCancel(id),
+                style: OutlinedButton.styleFrom(foregroundColor: C.brick, side: const BorderSide(color: C.brick, width: 1.8)),
+                child: const Text('Cancel booking'),
+              ),
             const SizedBox(height: 6),
-            const Text('Cancel at least 2 days before check-in and your advance is refunded in full. After that there is no refund.', style: TextStyle(color: C.soft, fontSize: 13)),
+            Text(
+              b['can_cancel'] != false
+                  ? 'You can cancel for the first 10 minutes after booking and your advance is refunded in full. After that, please call customer care.'
+                  : 'The 10 minute cancel time is over. To change or cancel this booking, please call Hill Booker customer care.',
+              style: const TextStyle(color: C.soft, fontSize: 13),
+            ),
           ],
         ],
       ),

@@ -117,12 +117,14 @@ def my_bookings(user: dict = Depends(current_user)):
                       b.total_amount - COALESCE(b.advance_amount, b.total_amount) AS balance_due,
                       b.status, b.hold_expires_at,
                       EXISTS (SELECT 1 FROM payments pm WHERE pm.booking_id = b.id AND pm.provider = 'upi_direct' AND pm.status = 'created') AS upi_pending,
-                      (SELECT h.upi_id IS NOT NULL FROM users h WHERE h.id = p.owner_id) AS host_upi
+                      (SELECT h.upi_id IS NOT NULL FROM users h WHERE h.id = p.owner_id) AS host_upi,
+                      COALESCE((SELECT now() < pm.updated_at + make_interval(mins => %s) FROM payments pm
+                                WHERE pm.booking_id = b.id AND pm.status = 'paid' ORDER BY pm.updated_at DESC LIMIT 1), true) AS can_cancel
                FROM bookings b
                JOIN properties p ON p.id = b.property_id
                JOIN room_types rt ON rt.id = b.room_type_id
                WHERE b.user_id = %s ORDER BY b.created_at DESC""",
-            (user["id"],),
+            (settings.cancel_window_minutes, user["id"]),
         )
         return cur.fetchall()
 
@@ -225,6 +227,14 @@ def cancel_booking(booking_id: str, user: dict = Depends(current_user)):
             raise HTTPException(409, f"This booking is already {b['status']}")
         if b["check_in"] < date.today():
             raise HTTPException(409, "You can't cancel a stay that has already started")
+        if b["status"] == "confirmed":
+            cur.execute(
+                "SELECT now() <= max(updated_at) + make_interval(mins => %s) AS ok, count(*) AS n FROM payments WHERE booking_id = %s AND status = 'paid'",
+                (settings.cancel_window_minutes, booking_id),
+            )
+            w = cur.fetchone()
+            if w["n"] and not w["ok"]:
+                raise HTTPException(409, f"You can cancel on your own only in the first {settings.cancel_window_minutes} minutes after booking. Please call Hill Booker customer care")
         _give_rooms_back(cur, b)
         cur.execute("UPDATE bookings SET status = 'cancelled', hold_expires_at = NULL WHERE id = %s", (booking_id,))
 
@@ -233,12 +243,8 @@ def cancel_booking(booking_id: str, user: dict = Depends(current_user)):
             pay = cur.fetchone()
             if pay:
                 refund["reason"] = "too_late"
-                # Full refund if there are at least REFUND_FULL_HOURS left before check-in (midnight, India time); none after.
-                cur.execute(
-                    "SELECT (%s::date::timestamp AT TIME ZONE 'Asia/Kolkata') - now() >= make_interval(hours => %s) AS full",
-                    (b["check_in"], settings.refund_full_hours),
-                )
-                if cur.fetchone()["full"]:
+                # A guest can cancel on their own only in the first few minutes after paying; that cancellation is refunded in full.
+                if True:
                     if pay["provider"] == "upi_direct":
                         # The guest paid the host directly, so the host returns the money. We only record it.
                         cur.execute(

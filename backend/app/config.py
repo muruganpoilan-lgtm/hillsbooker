@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     api_public_url: str = "https://api.hillbooker.com"
     # Cancelling at least this many hours before check-in refunds everything; later cancellations get no refund.
     refund_full_hours: int = 48
+    # A guest can cancel a confirmed stay on their own only this many minutes after paying (full refund inside the window).
+    cancel_window_minutes: int = 10
 
     # Invoices. The business details print at the top of every invoice.
     business_name: str = "Hill Booker"

@@ -247,20 +247,26 @@ export default function BookingsPage() {
                   <button type="button" className="btn" aria-busy={busy === b.id} onClick={() => whatsappInvoice(b.id)}>
                     Send invoice on WhatsApp
                   </button>
-                  <button
-                    type="button"
-                    className="btn btn-danger"
-                    aria-busy={busy === b.id}
-                    onClick={() => {
-                      if (window.confirm("Cancel this booking?")) act(b.id, "cancel");
-                    }}
-                  >
-                    Cancel booking
-                  </button>
+                  {b.can_cancel && (
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      aria-busy={busy === b.id}
+                      onClick={() => {
+                        if (window.confirm("Cancel this booking?")) act(b.id, "cancel");
+                      }}
+                    >
+                      Cancel booking
+                    </button>
+                  )}
                 </div>
               )}
               {b.status === "confirmed" && (
-                <p className="meta">Cancel at least 2 days before check-in and your advance is refunded in full. After that there is no refund.</p>
+                <p className="meta">
+                  {b.can_cancel
+                    ? "You can cancel for the first 10 minutes after booking and your advance is refunded in full. After that, please call customer care."
+                    : "The 10 minute cancel time is over. To change or cancel this booking, please call Hill Booker customer care."}
+                </p>
               )}
             </article>
           );
