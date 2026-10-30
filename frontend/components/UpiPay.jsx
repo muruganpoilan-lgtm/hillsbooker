@@ -5,7 +5,10 @@ import { api, money } from "../lib/api";
 
 // Lets a guest pay the advance straight to the host's UPI ID, then send the 12-digit UPI reference.
 // kind is "stay" or "vehicle". onDone reloads the booking list.
-export default function UpiPay({ kind, bookingId, token, amount, onDone }) {
+// Direct-to-host UPI is switched off: guests pay through Razorpay (which already offers UPI). Set to true to bring the button back.
+const DIRECT_UPI = false;
+
+function UpiPayInner({ kind, bookingId, token, amount, onDone }) {
   const [open, setOpen] = useState(false);
   const [info, setInfo] = useState(null);
   const [utr, setUtr] = useState("");
@@ -81,4 +84,8 @@ export default function UpiPay({ kind, bookingId, token, amount, onDone }) {
       )}
     </div>
   );
+}
+
+export default function UpiPay(props) {
+  return DIRECT_UPI ? <UpiPayInner {...props} /> : null;
 }

@@ -43,7 +43,7 @@ function Payments() {
     setUpiMsg("");
     const res = await api("/me/upi", { method: "PUT", token, body: { upi_id: upi } });
     if (res.status === 401) return logout();
-    setUpiMsg(res.ok ? (res.data.upi_id ? "Saved. Guests can now pay you by UPI." : "Removed. Guests will pay online only.") : res.error);
+    setUpiMsg(res.ok ? (res.data.upi_id ? "Saved. We will pay your share to this UPI ID." : "Removed. Add a UPI ID so we can pay you.") : res.error);
     if (res.ok) load();
   }
 
@@ -135,7 +135,7 @@ function Payments() {
 
           <section className="prop-section">
             <h2>Your UPI ID</h2>
-            <p className="meta">Guests can pay their advance straight to this UPI ID. You confirm each payment after checking your bank. Leave it empty to take online payments only.</p>
+            <p className="meta">Hill Booker sends your share of each advance to this UPI ID after the guest checks in.</p>
             <form className="narrow" onSubmit={saveUpi}>
               <label className="field">
                 <span>UPI ID</span>

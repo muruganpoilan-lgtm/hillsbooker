@@ -82,7 +82,7 @@ class _HostPaymentsScreenState extends State<HostPaymentsScreen> {
       return;
     }
     final saved = res.data is Map && res.data['upi_id'] != null;
-    snack(context, saved ? 'Saved. Guests can now pay you by UPI.' : 'Removed. Guests will pay online only.');
+    snack(context, saved ? 'Saved. We will pay your share to this UPI ID.' : 'Removed. Add a UPI ID so we can pay you.');
     _load();
   }
 
@@ -158,7 +158,7 @@ class _HostPaymentsScreenState extends State<HostPaymentsScreen> {
                   const SizedBox(height: 22),
                   Text('Your UPI ID', style: display(18)),
                   const SizedBox(height: 4),
-                  const Text('Guests can pay their advance straight to this UPI ID. You confirm each payment after checking your bank. Leave it empty to take online payments only.',
+                  const Text('Hill Booker sends your share of each advance to this UPI ID after the guest checks in.',
                       style: TextStyle(color: C.soft, fontSize: 13.5)),
                   const SizedBox(height: 10),
                   TextField(controller: _upi, autocorrect: false, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'UPI ID', hintText: 'name@bank')),

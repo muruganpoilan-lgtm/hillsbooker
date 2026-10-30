@@ -9,6 +9,9 @@ import 'common.dart';
 
 /// Lets a guest pay the advance straight to the host's UPI ID, then send the 12-digit UPI reference.
 /// [kind] is 'stay' or 'vehicle'. [onDone] reloads the booking list.
+/// Direct-to-host UPI is switched off: guests pay through Razorpay (which already offers UPI). Set true to bring it back.
+const bool kDirectUpi = false;
+
 class UpiPay extends StatefulWidget {
   const UpiPay({super.key, required this.kind, required this.bookingId, required this.amount, required this.onDone});
 
@@ -79,6 +82,7 @@ class _UpiPayState extends State<UpiPay> {
 
   @override
   Widget build(BuildContext context) {
+    if (!kDirectUpi) return const SizedBox.shrink();
     final info = _info;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       const SizedBox(height: 10),
