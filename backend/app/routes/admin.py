@@ -136,13 +136,23 @@ def payouts_overview(user: dict = Depends(admin_only)):
         history = cur.fetchall()
         cur.execute("SELECT COALESCE(sum(amount), 0) AS total FROM payouts")
         paid_total = cur.fetchone()["total"]
+        cur.execute(
+            """SELECT u.id, u.name, u.phone, u.upi_id, COALESCE((SELECT sum(amount) FROM payouts WHERE host_id = u.id), 0) AS paid_out
+               FROM users u WHERE u.role IN ('owner', 'operator') ORDER BY u.name"""
+        )
+        everyone = cur.fetchall()
     hosts: dict[str, dict] = {}
     for r in rows:
         h = hosts.setdefault(str(r["host_id"]), {"host_id": str(r["host_id"]), "host_name": r["host_name"], "upi_id": r["upi_id"], "phone": r["phone"], "amount": Decimal(0), "items": []})
         h["amount"] += Decimal(r["share"])
         h["items"].append({"item": r["item"], "guest": r["guest"], "start_date": r["start_date"], "end_date": r["end_date"], "share": r["share"]})
     host_list = list(hosts.values())
-    return {"hosts": host_list, "due_total": sum((h["amount"] for h in host_list), Decimal(0)), "paid_total": paid_total, "history": history}
+    all_hosts = [
+        {"host_id": str(e["id"]), "host_name": e["name"], "phone": e["phone"], "upi_id": e["upi_id"],
+         "due": hosts[str(e["id"])]["amount"] if str(e["id"]) in hosts else Decimal(0), "paid_out": e["paid_out"]}
+        for e in everyone
+    ]
+    return {"all_hosts": all_hosts, "hosts": host_list, "due_total": sum((h["amount"] for h in host_list), Decimal(0)), "paid_total": paid_total, "history": history}
 
 
 class PayoutIn(BaseModel):

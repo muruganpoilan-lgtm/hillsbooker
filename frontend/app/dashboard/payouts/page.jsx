@@ -101,6 +101,37 @@ function Payouts() {
           </div>
 
           <section className="prop-section">
+            <h2>All hosts</h2>
+            {data.all_hosts.length === 0 && <p className="meta">No hosts yet.</p>}
+            {data.all_hosts.length > 0 && (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ textAlign: "left" }}>
+                      <th>Host</th>
+                      <th>UPI ID</th>
+                      <th>Phone</th>
+                      <th>Due now</th>
+                      <th>Paid out</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.all_hosts.map((h) => (
+                      <tr key={h.host_id}>
+                        <td>{h.host_name}</td>
+                        <td>{h.upi_id || <span className="meta">Not added yet</span>}</td>
+                        <td>{h.phone || "-"}</td>
+                        <td>{money(h.due)}</td>
+                        <td>{money(h.paid_out)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <section className="prop-section">
             <h2>Due now</h2>
             {data.hosts.length === 0 && <p className="meta">Nothing is due. Bookings appear here after the guest's check-in date.</p>}
             <ul className="rows">
