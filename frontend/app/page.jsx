@@ -1,5 +1,6 @@
 import Link from "next/link";
 import SearchForm from "../components/SearchForm";
+import HelpVideos from "../components/HelpVideos";
 import { slugify } from "../lib/seo";
 
 // To use a real photo for a place, add public/cities/<city-slug>.jpg (for example public/cities/munnar.jpg).
@@ -120,6 +121,8 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      <HelpVideos />
 
       <section className="host-band">
         <div className="host-inner">
