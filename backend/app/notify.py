@@ -221,3 +221,23 @@ def _cancelled(kind: str, booking_id: str, refund: dict) -> None:
 def cancel_in_background(kind: str, booking_id, refund: dict | None = None) -> None:
     if enabled() and settings.whatsapp_cancel_template:
         threading.Thread(target=_cancelled, args=(kind, str(booking_id), refund or {}), daemon=True).start()
+
+
+def _enquiry(row: dict) -> None:
+    try:
+        to = wa_number(settings.enquiry_whatsapp_to)
+        if not to:
+            return
+        label = "Group tour" if row["kind"] == "group" else "Corporate tour"
+        who = f"{row['name']} {row['company'] or ''}".strip()
+        when = _day(row["start_date"]) if row["start_date"] else "not given"
+        # Template body (create it in Meta Business Manager, in this order):
+        # New {{1}} enquiry on Hill Booker from {{2}}, phone {{3}}. Destination: {{4}}. Start date: {{5}}. People: {{6}}. Open your Hill Booker dashboard for the details.
+        _send(to, [label, who, row["phone"], row["destination"] or "not given", when, str(row["people"] or "not given")], template=settings.whatsapp_enquiry_template)
+    except Exception as e:
+        log.warning("Enquiry alert failed: %s", e)
+
+
+def enquiry_in_background(row: dict) -> None:
+    if enabled() and settings.whatsapp_enquiry_template:
+        threading.Thread(target=_enquiry, args=(dict(row),), daemon=True).start()

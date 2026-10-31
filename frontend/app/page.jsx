@@ -76,6 +76,15 @@ export default function Home() {
       </section>
 
       <section className="page hb-section">
+        <h2 className="hb-title">Group and corporate tours</h2>
+        <p className="hb-lead">Travelling with a big group or your team? Tell us what you need and we will call you with a quote.</p>
+        <div className="hb-tours">
+          <Link href="/enquiry?kind=group" className="btn btn-primary">Group tour</Link>
+          <Link href="/enquiry?kind=corporate" className="btn btn-primary">Corporate tour</Link>
+        </div>
+      </section>
+
+      <section className="page hb-section">
         <h2 className="hb-title">Trending destinations</h2>
         <p className="hb-lead">Popular places to stay</p>
         <div className="hb-grid-big">
