@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../format.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
-import '../widgets/ridge.dart';
 import 'results_screen.dart';
 import 'vehicles_screen.dart';
 
@@ -35,6 +35,34 @@ const _places = <MapEntry<String, int>>[
   MapEntry('Varkala', 0),
   MapEntry('Pondicherry', 0),
   MapEntry('Goa', 0),
+];
+
+// Popular places shown as coloured tiles, like the website. Tap one to search it.
+const _trending = <List<Object>>[
+  ['Munnar', 'Tea hills', Color(0xFF0E6B58), Color(0xFF3F9A7F)],
+  ['Ooty', 'Nilgiri hills', Color(0xFF2A3A7A), Color(0xFF5A6FB8)],
+  ['Goa', 'Beaches', Color(0xFFB3512B), Color(0xFFE89A5A)],
+  ['Coorg', 'Coffee estates', Color(0xFF7A4B1F), Color(0xFFC08A4D)],
+  ['Alleppey', 'Backwaters', Color(0xFF0B5F7A), Color(0xFF4AA7C4)],
+  ['Kodaikanal', 'Lake and mist', Color(0xFF4B3A7A), Color(0xFF8D77C4)],
+  ['Valparai', 'Quiet hills', Color(0xFF0A5042), Color(0xFF2F8F78)],
+];
+
+// How-to videos on YouTube (same as the website's "How it works" section).
+const _helpVideos = <List<String>>[
+  ['pyGR3ENlvFA', 'How to book a stay', 'For guests'],
+  ['G2ZzIaL7wDc', 'Create an account and log in', 'For guests and hosts'],
+  ['2Fgjwkp3DDE', 'How to list your property', 'For hosts'],
+  ['rHcYPeFLXzU', 'How Hill Booker works and how hosts earn', 'For hosts'],
+];
+
+const _deep = Color(0xFF0A5042);
+
+const _why = <List<String>>[
+  ['Pay only 30% to book', 'Pay a small advance online and the rest at the property.'],
+  ['Rooms that are really free', 'Every result is open on all of your nights.'],
+  ['Room held for you', 'We hold it for 10 minutes while you pay.'],
+  ['Safe online payment', 'UPI, cards and net banking, secured by Razorpay.'],
 ];
 
 class HomeScreen extends StatefulWidget {
@@ -108,80 +136,130 @@ class _HomeScreenState extends State<HomeScreen> {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        // Header: green sky, a marigold sun and three ridgelines.
-        SizedBox(
-          height: 250,
-          child: Stack(
-            children: [
-              Positioned.fill(child: Container(color: C.green)),
-              Positioned(
-                right: 34,
-                top: 126,
-                child: Container(width: 62, height: 62, decoration: const BoxDecoration(color: C.gold, shape: BoxShape.circle)),
-              ),
-              const Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: 104,
-                child: Ridge(seed: 'western-ghats', sky: false, layers: [Color(0xFF1D7F69), Color(0xFF14604F), C.chalk]),
-              ),
-              Positioned(
-                left: 20,
-                right: 20,
-                top: 0,
-                child: SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(color: const Color(0xFFFAF9F4), borderRadius: BorderRadius.circular(8)),
-                            child: Image.asset('assets/logo_mark.png', height: 26),
-                          ),
-                          const SizedBox(width: 10),
-                          Text('Hill Booker', style: display(18, color: Colors.white)),
-                        ]),
-                        const SizedBox(height: 14),
-                        SizedBox(width: 270, child: Text('A room for every night of your stay', style: display(30, color: Colors.white))),
-                        const SizedBox(height: 8),
-                        const SizedBox(
-                          width: 260,
-                          child: Text('Only rooms that are free on all your nights.', style: TextStyle(color: Color(0xFFDCECE6), fontSize: 14)),
-                        ),
-                      ],
+        // Hero: deep green, like the website.
+        Container(
+          color: _deep,
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 64),
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(color: const Color(0xFFFAF9F4), borderRadius: BorderRadius.circular(8)),
+                      child: Image.asset('assets/logo_mark.png', height: 26),
                     ),
+                    const SizedBox(width: 10),
+                    Text('Hill Booker', style: display(18, color: Colors.white)),
+                  ]),
+                  const SizedBox(height: 22),
+                  Text('Find your next stay', style: display(34, color: Colors.white)),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Hill stations, backwaters and beaches across South India. Rooms and homestays from hosts you can book in minutes.',
+                    style: TextStyle(color: Color(0xFFDCECE6), fontSize: 14.5, height: 1.4),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
-        // The booking slip and the list of places sit slightly over the header.
         Transform.translate(
-          offset: const Offset(0, -30),
+          offset: const Offset(0, -44),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: _slip(nights)),
+              _sectionTitle('Offers', 'Simple ways to book with Hill Booker'),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _slip(nights),
+                child: _offerCard(
+                  color: C.green,
+                  title: 'Book with just 30%',
+                  text: 'Pay a small advance to confirm. Pay the rest when you reach the stay.',
+                  button: 'Find a stay',
+                  textOnButton: Colors.white,
+                  onTap: () => _search(_city.text),
+                ),
               ),
-              Padding(padding: const EdgeInsets.fromLTRB(16, 18, 16, 0), child: _vehicleCard()),
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 26, 20, 2),
-                child: Text('Browse by city, from the hills down to the sea', style: display(20)),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: _offerCard(
+                  color: C.gold,
+                  title: 'Need a ride too?',
+                  text: 'Need a car, van or bus with a driver? Tell us your trip and we will arrange it.',
+                  button: 'Cars and vans',
+                  textOnButton: C.ink,
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VehiclesScreen(city: _city.text.trim()))),
+                ),
               ),
-              const Padding(
-                padding: EdgeInsets.fromLTRB(20, 4, 20, 8),
-                child: Text('Height above sea level, roughly. Tap a place to search it.', style: TextStyle(color: C.soft)),
+              _sectionTitle('Group and corporate tours', 'Travelling with a big group or your team? Tell us what you need and we will call you with a quote.'),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(children: [
+                  Expanded(child: FilledButton(onPressed: () => _open('https://hillbooker.com/enquiry?kind=group'), child: const Text('Group tour'))),
+                  const SizedBox(width: 10),
+                  Expanded(child: FilledButton(onPressed: () => _open('https://hillbooker.com/enquiry?kind=corporate'), child: const Text('Corporate tour'))),
+                ]),
               ),
-              for (final p in _places) _ladderRow(p.key, p.value),
-              const SizedBox(height: 24),
+              _sectionTitle('Trending destinations', 'Popular places to stay'),
+              _trendingRow(),
+              _sectionTitle('More places to explore', null),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final p in _places)
+                      ActionChip(
+                        label: Text(p.key),
+                        backgroundColor: Colors.white,
+                        side: const BorderSide(color: C.line),
+                        onPressed: () => _search(p.key),
+                      ),
+                  ],
+                ),
+              ),
+              _sectionTitle('How it works', 'Short videos to help you get started'),
+              for (final v in _helpVideos) _videoCard(v[0], v[1], v[2]),
+              _sectionTitle('Why book with Hill Booker', null),
+              for (final w in _why)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Padding(padding: EdgeInsets.only(top: 2), child: Icon(Icons.check_circle, color: C.green, size: 20)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(w[0], style: display(16)),
+                        Text(w[1], style: const TextStyle(color: C.soft, fontSize: 13.5)),
+                      ]),
+                    ),
+                  ]),
+                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(color: _deep, borderRadius: BorderRadius.circular(12)),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Own a hotel or homestay?', style: display(20, color: Colors.white)),
+                    const SizedBox(height: 6),
+                    const Text('Add your rooms and photos, open the nights you want to sell, and set your own prices.', style: TextStyle(color: Color(0xFFDCECE6), fontSize: 14)),
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      style: FilledButton.styleFrom(backgroundColor: C.gold, foregroundColor: C.ink),
+                      onPressed: () => _open('https://hillbooker.com/register'),
+                      child: const Text('List your property'),
+                    ),
+                  ]),
+                ),
+              ),
             ],
           ),
         ),
@@ -189,28 +267,126 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _vehicleCard() {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VehiclesScreen(city: _city.text.trim()))),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(border: Border.all(color: C.line), borderRadius: BorderRadius.circular(8)),
-          child: Row(children: [
-            const Icon(Icons.directions_car_filled_outlined, color: C.green, size: 32),
-            const SizedBox(width: 12),
-            Expanded(
+  Widget _sectionTitle(String title, String? lead) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title, style: display(22)),
+        if (lead != null) Padding(padding: const EdgeInsets.only(top: 2), child: Text(lead, style: const TextStyle(color: C.soft, fontSize: 14))),
+      ]),
+    );
+  }
+
+  Widget _offerCard({required Color color, required String title, required String text, required String button, required Color textOnButton, required VoidCallback onTap}) {
+    return Container(
+      decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(10)),
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Container(width: 8, color: color),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Need a ride?', style: display(17)),
-                const SizedBox(height: 2),
-                const Text('Cars, vans and buses with a driver. Hire by the day or pick a fixed trip.', style: TextStyle(color: C.soft, fontSize: 13.5)),
+                Text(title, style: display(19)),
+                const SizedBox(height: 4),
+                Text(text, style: const TextStyle(color: C.soft, fontSize: 14, height: 1.35)),
+                const SizedBox(height: 12),
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: color, foregroundColor: textOnButton),
+                  onPressed: onTap,
+                  child: Text(button),
+                ),
               ]),
             ),
-            const Icon(Icons.chevron_right, color: C.soft),
-          ]),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _open(String url) async {
+    final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open the link. Please try again.')));
+    }
+  }
+
+  Widget _trendingRow() {
+    return SizedBox(
+      height: 120,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: _trending.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (_, i) {
+          final t = _trending[i];
+          return InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => _search(t[0] as String),
+            child: Container(
+              width: 150,
+              padding: const EdgeInsets.all(12),
+              alignment: Alignment.bottomLeft,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [t[2] as Color, t[3] as Color]),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(t[0] as String, style: display(19, color: Colors.white)),
+                  Text(t[1] as String, style: const TextStyle(color: Color(0xFFEAF3EF), fontSize: 13)),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _videoCard(String id, String title, String forWho) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () => _open('https://www.youtube.com/watch?v=$id'),
+        child: Container(
+          decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(10)),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.network(
+                      'https://img.youtube.com/vi/$id/hqdefault.jpg',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(color: C.green),
+                    ),
+                    const Center(child: Icon(Icons.play_circle_fill, color: Colors.white, size: 56)),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: display(16)),
+                    const SizedBox(height: 2),
+                    Text(forWho, style: const TextStyle(color: C.soft, fontSize: 13)),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -221,9 +397,8 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: C.ink, width: 2),
-        boxShadow: const [BoxShadow(color: C.gold, offset: Offset(5, 5))],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: C.gold, width: 3),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -305,46 +480,6 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: C.soft)),
             const SizedBox(height: 2),
             Text(prettyDayYear(value), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _ladderRow(String city, int metres) {
-    final factor = metres == 0 ? 0.015 : metres / 2240;
-    return InkWell(
-      onTap: () => _search(city),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 20),
-        padding: const EdgeInsets.symmetric(vertical: 11),
-        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.line))),
-        child: Row(
-          children: [
-            SizedBox(width: 98, child: Text(city, style: display(16))),
-            Expanded(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: FractionallySizedBox(
-                  widthFactor: factor,
-                  child: Container(
-                    height: 10,
-                    decoration: const BoxDecoration(
-                      color: C.green,
-                      border: Border(right: BorderSide(color: C.gold, width: 6)),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(
-              width: 76,
-              child: Text(
-                metres == 0 ? 'Sea level' : '${money(metres).substring(1)} m',
-                textAlign: TextAlign.right,
-                style: const TextStyle(color: C.soft, fontSize: 13),
-              ),
-            ),
           ],
         ),
       ),
