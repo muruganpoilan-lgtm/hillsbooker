@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .db import pool
+from . import notify
 from .routes import admin, auth_routes, bookings, channels, enquiries, google_auth, invoices, owner, payments, public, reports, upi, vehicles
 from .storage import upload_root
 
@@ -54,16 +55,31 @@ async def _channel_loop():
         await asyncio.sleep(15 * 60)
 
 
+async def _reminder_loop():
+    """Every 30 minutes, send tomorrow's check-in reminders (they only go out after 9 AM India time)."""
+    await asyncio.sleep(120)
+    while True:
+        try:
+            n = await asyncio.to_thread(notify.send_checkin_reminders)
+            if n:
+                log.info("Sent %s check-in reminders", n)
+        except Exception:
+            log.exception("Could not send check-in reminders")
+        await asyncio.sleep(30 * 60)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     pool.open()
     task = asyncio.create_task(_expire_loop())
     purge_task = asyncio.create_task(_purge_loop())
     channel_task = asyncio.create_task(_channel_loop())
+    reminder_task = asyncio.create_task(_reminder_loop())
     yield
     task.cancel()
     purge_task.cancel()
     channel_task.cancel()
+    reminder_task.cancel()
     pool.close()
 
 

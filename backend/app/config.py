@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     whatsapp_enquiry_template: str = ""  # approved template that tells the owner about a tour enquiry; empty = off
     enquiry_whatsapp_to: str = "918300841442"  # who is told about tour enquiries
     whatsapp_cancel_template: str = ""  # approved text template that tells the host a guest cancelled; empty = off
+    whatsapp_reminder_template: str = ""  # approved text template that reminds the guest the day before check-in; empty = off
     whatsapp_invoice_template: str = ""  # approved template that sends the guest their invoice link; empty = off
 
     # Photo uploads. Local disk for development; swap storage.py for S3 or Cloudinary in production.

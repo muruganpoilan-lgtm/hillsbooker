@@ -241,3 +241,35 @@ def _enquiry(row: dict) -> None:
 def enquiry_in_background(row: dict) -> None:
     if enabled() and settings.whatsapp_enquiry_template:
         threading.Thread(target=_enquiry, args=(dict(row),), daemon=True).start()
+
+
+def send_checkin_reminders() -> int:
+    """Reminds guests whose stay starts tomorrow (India time). Runs from 9 AM and sends each booking's reminder only once."""
+    if not (enabled() and settings.whatsapp_reminder_template):
+        return 0
+    with get_conn() as conn, conn.cursor() as cur:
+        # Claim the bookings first, so two runs can never send the same reminder twice.
+        cur.execute(
+            """UPDATE bookings b SET reminder_sent_at = now()
+               FROM properties p, users g
+               WHERE p.id = b.property_id AND g.id = b.user_id
+                 AND b.status = 'confirmed' AND b.reminder_sent_at IS NULL
+                 AND b.check_in = (now() AT TIME ZONE 'Asia/Kolkata')::date + 1
+                 AND (now() AT TIME ZONE 'Asia/Kolkata')::time >= '09:00'
+                 AND b.created_at < now() - interval '6 hours'
+               RETURNING g.name AS guest, g.phone AS phone, p.name AS property, b.check_in AS check_in"""
+        )
+        rows = cur.fetchall()
+    sent = 0
+    for d in rows:
+        try:
+            to = wa_number(d["phone"])
+            if not to:
+                continue
+            # Template body (create it in Meta Business Manager, in this order):
+            # Hi {{1}}, a reminder that your stay at {{2}} starts tomorrow, {{3}}. ...
+            _send(to, [d["guest"] or "there", d["property"], _day(d["check_in"])], template=settings.whatsapp_reminder_template)
+            sent += 1
+        except Exception as e:
+            log.warning("Check-in reminder failed: %s", e)
+    return sent
