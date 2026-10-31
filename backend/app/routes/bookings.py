@@ -261,4 +261,6 @@ def cancel_booking(booking_id: str, user: dict = Depends(current_user)):
         from .payments import refund_payment  # imported here because payments.py imports this module
 
         refund["status"] = refund_payment(*refund_args)
+    if b["status"] == "confirmed":
+        notify.cancel_in_background("stay", booking_id, refund)
     return {"booking_id": booking_id, "status": "cancelled", "refund": refund}

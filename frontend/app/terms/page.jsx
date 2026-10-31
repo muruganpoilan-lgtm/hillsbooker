@@ -42,7 +42,10 @@ export default function TermsPage() {
         </ul>
 
         <h2>4. Cancellations and refunds</h2>
-        <p>Cancellations and refunds follow our <Link href="/refund-policy">Refund and Cancellation Policy</Link>.</p>
+        <p>
+          Cancellations and refunds follow our <Link href="/refund-policy">Refund and Cancellation Policy</Link>. In short: a guest can cancel a stay on their own, with a full refund of the advance, only in the first 10 minutes after
+          booking. After that, the guest should call our customer care. Vehicle bookings can be cancelled with a full refund at least 2 days before the trip starts. The host is told on WhatsApp whenever a guest cancels a confirmed booking.
+        </p>
 
         <h2>5. Guests</h2>
         <ul>
@@ -79,7 +82,15 @@ export default function TermsPage() {
         <h2>10. Law and disputes</h2>
         <p>These terms are governed by the laws of India. Courts at Chennai, Tamil Nadu have jurisdiction over any dispute.</p>
 
-        <h2>11. Contact</h2>
+        <h2 id="copyright">11. Copyright and trademarks</h2>
+        <p>
+          © {new Date().getFullYear()} Hill Booker. All rights reserved. The Hill Booker name, logo, website, mobile app, software, design, layout, text and videos belong to Hill Booker and are protected by copyright and trademark law.
+          You may not copy, sell, scrape or reuse them, or use the Hill Booker name or logo, without our written permission. Photos and descriptions of a property or vehicle belong to the host or operator who uploaded them, and the host
+          allows Hill Booker to show them on the website and app to promote the listing. If you believe something on Hill Booker infringes your copyright, write to
+          {" "}<a href="mailto:hillbookerbookings@gmail.com">hillbookerbookings@gmail.com</a> with the page address and proof that it is yours, and we will review it and remove it where it is right to do so.
+        </p>
+
+        <h2>12. Contact</h2>
         <p>
           <a href="mailto:hillbookerbookings@gmail.com">hillbookerbookings@gmail.com</a> · <a href="tel:+918300841442">+91 83008 41442</a> · see also our <Link href="/contact">Contact page</Link>.
         </p>

@@ -55,6 +55,10 @@ export default function Footer() {
             </a>
           </p>
         </address>
+        <p className="meta footer-copy">
+          © {new Date().getFullYear()} Hill Booker. All rights reserved. The Hill Booker name, logo, website, app and the text, design and photos we publish are protected by copyright.
+          Photos of a property belong to the host who uploaded them. See our <Link href="/terms#copyright">Copyright notice</Link>.
+        </p>
       </div>
     </footer>
   );

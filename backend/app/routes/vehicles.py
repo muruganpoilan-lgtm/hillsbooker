@@ -427,4 +427,6 @@ def cancel_vehicle_booking(booking_id: str, user: dict = Depends(current_user)):
         from .payments import refund_payment
 
         refund["status"] = refund_payment(*refund_args)
+    if b["status"] == "confirmed":
+        notify.cancel_in_background("vehicle", booking_id, refund)
     return {"booking_id": booking_id, "status": "cancelled", "refund": refund}

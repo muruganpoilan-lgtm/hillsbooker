@@ -42,7 +42,7 @@ def _details(kind: str, booking_id: str):
     with get_conn() as conn, conn.cursor() as cur:
         if kind == "stay":
             cur.execute(
-                """SELECT h.phone AS host_phone, p.name AS item, g.name AS guest, g.phone AS guest_phone,
+                """SELECT h.phone AS host_phone, h.name AS host_name, p.name AS item, g.name AS guest, g.phone AS guest_phone,
                           b.check_in AS d1, b.check_out AS d2, rt.name AS what, b.rooms AS qty, b.guests AS people, b.children AS kids,
                           b.total_amount, COALESCE(b.advance_amount, b.total_amount) AS advance
                    FROM bookings b JOIN properties p ON p.id = b.property_id JOIN users h ON h.id = p.owner_id
@@ -52,7 +52,7 @@ def _details(kind: str, booking_id: str):
             )
         else:
             cur.execute(
-                """SELECT h.phone AS host_phone, v.name AS item, g.name AS guest, g.phone AS guest_phone,
+                """SELECT h.phone AS host_phone, h.name AS host_name, v.name AS item, g.name AS guest, g.phone AS guest_phone,
                           b.start_date AS d1, b.end_date AS d2, COALESCE(t.title, 'Hire by the day') AS what,
                           b.count AS qty, b.passengers AS people, 0 AS kids, b.total_amount, b.advance_amount AS advance
                    FROM vehicle_bookings b JOIN vehicles v ON v.id = b.vehicle_id JOIN users h ON h.id = v.operator_id
@@ -191,3 +191,33 @@ def host_copy_in_background(booking_id) -> None:
     """Sends the property owner a copy of the guest's invoice on WhatsApp. Off until a template name is set."""
     if enabled() and settings.whatsapp_host_copy_template:
         threading.Thread(target=_host_copy, args=(str(booking_id),), daemon=True).start()
+
+
+def _cancelled(kind: str, booking_id: str, refund: dict) -> None:
+    """Tell the host a confirmed booking was cancelled, so they can take the room or vehicle off their plan."""
+    try:
+        d = _details(kind, booking_id)
+        if not d:
+            return
+        to = wa_number(d["host_phone"])
+        if not to:
+            return
+        when = _day(d["d1"]) if d["d1"] == d["d2"] else f"{_day(d['d1'])} to {_day(d['d2'])}"
+        guest = f"{d['guest']} {d['guest_phone'] or ''}".strip()
+        st = (refund or {}).get("status")
+        if st == "manual":
+            note = "The guest paid you directly, so please return their advance to them"
+        elif st in ("refunded", "pending"):
+            note = "The guest's advance is being refunded by Hill Booker, nothing for you to do"
+        else:
+            note = "No refund is due to the guest"
+        # Template body (create it in Meta Business Manager, in this order):
+        # Hi {{1}}, a booking at {{2}} for {{3}} was cancelled by the guest ({{4}}). {{5}}. The dates are open for booking again.
+        _send(to, [d["host_name"] or "there", d["item"], when, guest, note], template=settings.whatsapp_cancel_template)
+    except Exception as e:
+        log.warning("Host cancel alert failed: %s", e)
+
+
+def cancel_in_background(kind: str, booking_id, refund: dict | None = None) -> None:
+    if enabled() and settings.whatsapp_cancel_template:
+        threading.Thread(target=_cancelled, args=(kind, str(booking_id), refund or {}), daemon=True).start()
