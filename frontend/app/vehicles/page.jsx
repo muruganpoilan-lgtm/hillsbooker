@@ -55,7 +55,29 @@ export default async function VehiclesPage({ searchParams }) {
           {res.error}
         </p>
       )}
-      {res.ok && rows.length === 0 && (
+      {res.ok && rows.length === 0 && !city && !kind && (
+        <div className="empty">
+          <h2>We will arrange your car or van</h2>
+          <p>
+            Online vehicle listings are coming soon. Meanwhile, tell us where and when you are travelling, and our team will arrange a car, van, tempo traveller or bus with a driver
+            and call you with the price.
+          </p>
+          <p>
+            <a
+              className="btn btn-primary"
+              href={`https://wa.me/918300841442?text=${encodeURIComponent("Hi Hill Booker, I need a vehicle with a driver. Pickup place: , Destination: , Date: , Number of people: ")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              WhatsApp us
+            </a>{" "}
+            <Link className="btn" href="/enquiry?kind=group">
+              Send an enquiry
+            </Link>
+          </p>
+        </div>
+      )}
+      {res.ok && rows.length === 0 && (city || kind) && (
         <div className="empty">
           <h2>No vehicles found</h2>
           <p>Try another city, or remove the type filter.</p>

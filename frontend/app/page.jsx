@@ -68,8 +68,8 @@ export default function Home() {
           <Link href="/vehicles" className="hb-offer hb-offer-b">
             <span>
               <b>Need a ride too?</b>
-              <i>Hire a car, van or bus with a driver by the day, or pick a fixed-price trip.</i>
-              <u>See vehicles</u>
+              <i>Need a car, van or bus with a driver? Tell us your trip and we will arrange it.</i>
+              <u>Cars and vans</u>
             </span>
           </Link>
         </div>
