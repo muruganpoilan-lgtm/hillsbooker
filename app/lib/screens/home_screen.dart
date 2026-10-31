@@ -327,18 +327,39 @@ class _HomeScreenState extends State<HomeScreen> {
             onTap: () => _search(t[0] as String),
             child: Container(
               width: 150,
-              padding: const EdgeInsets.all(12),
-              alignment: Alignment.bottomLeft,
+              clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [t[2] as Color, t[3] as Color]),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  Text(t[0] as String, style: display(19, color: Colors.white)),
-                  Text(t[1] as String, style: const TextStyle(color: Color(0xFFEAF3EF), fontSize: 13)),
+                  // Real photo from the website. If it cannot load, the colour shows instead.
+                  Image.network(
+                    'https://hillbooker.com/cities/${(t[0] as String).toLowerCase()}.jpg',
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x00000000), Color(0xB3000000)]),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Align(
+                      alignment: Alignment.bottomLeft,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(t[0] as String, style: display(19, color: Colors.white)),
+                          Text(t[1] as String, style: const TextStyle(color: Color(0xFFEAF3EF), fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
