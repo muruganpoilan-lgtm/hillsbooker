@@ -18,7 +18,7 @@ log = logging.getLogger("hillbooker.enquiries")
 public = APIRouter(prefix="/enquiries", tags=["enquiries"])
 admin = APIRouter(prefix="/admin/enquiries", tags=["admin"])
 admin_only = require_role("admin")
-LABEL = {"group": "Group tour", "corporate": "Corporate tour"}
+LABEL = {"group": "Group tour", "corporate": "Corporate tour", "package": "Trip package"}
 
 
 class EnquiryIn(BaseModel):

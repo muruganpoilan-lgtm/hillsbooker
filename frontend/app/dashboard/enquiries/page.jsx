@@ -46,7 +46,7 @@ function Enquiries() {
           {rows.map((r) => (
             <li key={r.id} className="card" style={{ padding: "0.9rem" }}>
               <p className="row-name">
-                {r.kind === "corporate" ? "Corporate tour" : "Group tour"} · {r.name}
+                {{ corporate: "Corporate tour", package: "Trip package" }[r.kind] || "Group tour"} · {r.name}
                 {r.company ? ` · ${r.company}` : ""}
               </p>
               <p className="meta">
