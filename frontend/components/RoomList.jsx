@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "./AuthProvider";
 import Ridge from "./Ridge";
-import { addDays, advanceFor, api, money, plural, prettyDate, todayISO } from "../lib/api";
+import { useLang } from "./LangProvider";
+import { addDays, advanceFor, api, money, prettyDate, todayISO } from "../lib/api";
 
 export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, children: kids = 0, nights, advancePercent = 100, tooSoon = false, earliest = "" }) {
+  const { t } = useLang();
   const router = useRouter();
   const pathname = usePathname();
   const { token, logout } = useAuth();
@@ -64,7 +66,7 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
       }
       if (!live) return;
       setPreview(out);
-      setCouponMsg(Object.keys(out).length ? "" : firstError || "This coupon doesn't apply to these rooms.");
+      setCouponMsg(Object.keys(out).length ? "" : firstError || t("room.cpNone"));
     })();
     return () => {
       live = false;
@@ -75,7 +77,7 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
   function applyCoupon(e) {
     e.preventDefault();
     const code = couponText.replace(/\s+/g, "").toUpperCase();
-    if (!code) return setCouponMsg("Type your coupon code first.");
+    if (!code) return setCouponMsg(t("room.cpType"));
     if (!token) return goToLogin();
     setCouponMsg("");
     setApplied(code);
@@ -91,11 +93,11 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
   function updateDates(e) {
     e.preventDefault();
     if (!checkIn || !checkOut || checkOut <= checkIn) {
-      setError("Choose a check-out date after check-in.");
+      setError(t("room.errOut"));
       return;
     }
     if (earliest && checkIn < earliest) {
-      setError(`${prettyDate(checkIn)} can't be booked online. Stays here need advance notice, so the earliest check-in is ${prettyDate(earliest)}. Please choose that date or later.`);
+      setError(t("room.errEarly", { d: prettyDate(checkIn), e: prettyDate(earliest) }));
       return;
     }
     setError("");
@@ -135,15 +137,15 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
     <div>
       <form className="dates-bar" onSubmit={updateDates} noValidate>
         <label className="field">
-          <span>Check-in</span>
+          <span>{t("room.checkin")}</span>
           <input type="date" value={checkIn} min={earliest || today || undefined} onChange={(e) => setCheckIn(e.target.value)} />
         </label>
         <label className="field">
-          <span>Check-out</span>
+          <span>{t("room.checkout")}</span>
           <input type="date" value={checkOut} min={checkIn || today || undefined} onChange={(e) => setCheckOut(e.target.value)} />
         </label>
         <label className="field">
-          <span>Adults</span>
+          <span>{t("room.adults")}</span>
           <select value={adults} onChange={(e) => setAdults(e.target.value)}>
             {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
               <option key={n} value={n}>
@@ -153,7 +155,7 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
           </select>
         </label>
         <label className="field">
-          <span>Children</span>
+          <span>{t("room.children")}</span>
           <select value={children} onChange={(e) => setChildren(e.target.value)}>
             {[0, 1, 2, 3, 4, 5, 6].map((n) => (
               <option key={n} value={n}>
@@ -163,7 +165,7 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
           </select>
         </label>
         <button type="submit" className="btn btn-small">
-          {hasDates ? "Update dates" : "Check availability"}
+          {hasDates ? t("room.update") : t("room.check")}
         </button>
       </form>
 
@@ -175,9 +177,9 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
 
       {tooSoon && hasDates && (
         <p className="form-error" role="alert">
-          {prettyDate(ci)} can't be booked online. Stays here need advance notice, so the earliest check-in is {prettyDate(earliest)}.{" "}
+          {t("room.tooSoon", { d: prettyDate(ci), e: prettyDate(earliest) })}{" "}
           <button type="button" className="link-btn" onClick={() => router.replace(`${pathname}?${new URLSearchParams({ check_in: earliest, check_out: co > earliest ? co : addDays(earliest, 1), guests: String(g), children: String(kids) }).toString()}`)}>
-            Use {prettyDate(earliest)}
+            {t("room.useDate", { e: prettyDate(earliest) })}
           </button>
         </p>
       )}
@@ -186,22 +188,22 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
         <form className="coupon-box" onSubmit={applyCoupon} noValidate>
           {applied && Object.keys(preview).length > 0 ? (
             <p className="ok">
-              Coupon <b>{applied}</b> applied.{" "}
-              <button type="button" className="link-btn" onClick={removeCoupon}>Remove</button>
+              {t("room.cpApplied", { c: applied })}{" "}
+              <button type="button" className="link-btn" onClick={removeCoupon}>{t("room.remove")}</button>
             </p>
           ) : (
             <>
               <label className="field">
-                <span>Coupon code</span>
-                <input value={couponText} onChange={(e) => setCouponText(e.target.value)} placeholder="Have a code? Type it here" maxLength={40} autoCapitalize="characters" />
+                <span>{t("room.cpLabel")}</span>
+                <input value={couponText} onChange={(e) => setCouponText(e.target.value)} placeholder={t("room.cpHolder")} maxLength={40} autoCapitalize="characters" />
               </label>
-              <button type="submit" className="btn btn-small">Apply</button>
+              <button type="submit" className="btn btn-small">{t("room.apply")}</button>
               {mine.length > 0 && (
                 <p className="meta">
-                  Your coupons:{" "}
+                  {t("room.yourCoupons")}{" "}
                   {mine.map((c) => (
                     <button key={c.code} type="button" className="chip-btn" onClick={() => { setCouponText(c.code); setCouponMsg(""); setApplied(c.code); }}>
-                      {c.code} ({money(c.value)} off)
+                      {t("room.off", { c: c.code, v: money(c.value) })}
                     </button>
                   ))}
                 </p>
@@ -212,7 +214,7 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
         </form>
       )}
 
-      {rooms.length === 0 && <p className="empty">The owner hasn't added rooms yet.</p>}
+      {rooms.length === 0 && <p className="empty">{t("room.empty")}</p>}
 
       {rooms.map((room) => {
         const bookable = hasDates && room.bookable;
@@ -226,14 +228,14 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
             )}
             <div>
               <h3 className="room-name">{room.name}</h3>
-              <p className="meta">Sleeps {room.max_guests}</p>
+              <p className="meta">{t("room.sleeps", { n: room.max_guests })}</p>
               <p>
-                <span className="price">{money(room.base_price)}</span> <span className="meta">a night</span>
+                <span className="price">{money(room.base_price)}</span> <span className="meta">{t("room.aNight")}</span>
               </p>
               {bookable && (
                 <p className="meta">
-                  {money(room.stay_total)} for {plural(nights, "night")}
-                  {Number(qty[room.id] || 1) > 1 ? ` per room` : ""}
+                  {t("room.forNights", { total: money(room.stay_total), nights: t.n("unit.night", nights) })}
+                  {Number(qty[room.id] || 1) > 1 ? ` ${t("room.perRoom")}` : ""}
                 </p>
               )}
               {bookable && advancePercent < 100 && (() => {
@@ -241,28 +243,28 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
                 const adv = advanceFor(total, advancePercent);
                 return (
                   <p className="meta">
-                    Pay <b>{money(adv)}</b> now ({advancePercent}%), {money(total - adv)} at the property
+                    {t("room.payNow", { adv: money(adv), pct: advancePercent, rest: money(total - adv) })}
                   </p>
                 );
               })()}
               {bookable && preview[room.id] && (
                 <p className="ok">
-                  Coupon {preview[room.id].code}: you save {money(preview[room.id].discount)}. Pay <b>{money(preview[room.id].pay_now)}</b> now instead of {money(preview[room.id].pay_now_before)}. The balance at the property stays the same.
+                  {t("room.cpSave", { c: preview[room.id].code, d: money(preview[room.id].discount), now: money(preview[room.id].pay_now), before: money(preview[room.id].pay_now_before) })}
                 </p>
               )}
-              {bookable && left <= 2 && <p className="scarce">Only {left} left for these dates</p>}
+              {bookable && left <= 2 && <p className="scarce">{t("room.left", { n: left })}</p>}
               {hasDates && !bookable && (
                 <p className="unavailable">
-                  {tooSoon ? `Too soon to book online. Earliest check-in is ${prettyDate(earliest)}` : "Not free on all of these dates"}
+                  {tooSoon ? t("room.soon", { e: prettyDate(earliest) }) : t("room.notFree")}
                 </p>
               )}
-              {!hasDates && <p className="unavailable">Choose dates to see if it's free</p>}
+              {!hasDates && <p className="unavailable">{t("room.pickDates")}</p>}
             </div>
             {bookable && (
               <div className="room-actions">
                 {left > 1 && (
                   <label className="field">
-                    <span>Rooms</span>
+                    <span>{t("room.rooms")}</span>
                     <select value={qty[room.id] || "1"} onChange={(e) => setQty({ ...qty, [room.id]: e.target.value })}>
                       {Array.from({ length: Math.min(left, 5) }, (_, i) => i + 1).map((n) => (
                         <option key={n} value={n}>
@@ -273,7 +275,7 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
                   </label>
                 )}
                 <button type="button" className="btn btn-primary" onClick={() => book(room)} aria-busy={busy === room.id}>
-                  {busy === room.id ? "Holding your room…" : token ? "Reserve" : "Log in to reserve"}
+                  {busy === room.id ? t("room.holding") : token ? t("room.reserve") : t("room.login")}
                 </button>
               </div>
             )}

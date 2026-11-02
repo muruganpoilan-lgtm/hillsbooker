@@ -4,18 +4,20 @@ import HeartButton from "../../../components/HeartButton";
 import PhotoGallery from "../../../components/PhotoGallery";
 import RoomList from "../../../components/RoomList";
 import PropertyMap, { mapPoint } from "../../../components/PropertyMap";
-import { api, isISODate, nightsBetween, plural } from "../../../lib/api";
+import { api, isISODate, nightsBetween } from "../../../lib/api";
+import { getT } from "../../../lib/lang";
 import { SITE_URL, jsonLd } from "../../../lib/seo";
 
 const TYPE_LABEL = { hotel: "Hotel", homestay: "Homestay", apartment: "Apartment", resort: "Resort" };
 
 export async function generateMetadata({ params }) {
   const { id } = await params;
+  const t = await getT();
   const res = await api(`/properties/${id}`);
   if (!res.ok) return { title: "Property" };
   const p = res.data;
   const kind = TYPE_LABEL[p.type] || "Stay";
-  const title = `${p.name}, ${p.city}: ${kind} rooms and prices`;
+  const title = t("prop.metaTitle", { name: p.name, city: p.city, kind: t.lang === "en" ? kind : (t(`type.${p.type}`) || kind) });
   const base = p.description ? p.description.replace(/\s+/g, " ").trim() : `${kind} in ${p.city}.`;
   const description = `${base.slice(0, 150)}${base.length > 150 ? "…" : ""} Book rooms at ${p.name} on Hill Booker.`.slice(0, 300);
   const url = `${SITE_URL}/properties/${id}`;
@@ -29,6 +31,7 @@ export async function generateMetadata({ params }) {
 
 export default async function PropertyPage({ params, searchParams }) {
   const { id } = await params;
+  const t = await getT();
   const sp = await searchParams;
   const get = (k) => (Array.isArray(sp[k]) ? sp[k][0] : sp[k]) || "";
 
@@ -46,7 +49,7 @@ export default async function PropertyPage({ params, searchParams }) {
     return (
       <main className="page">
         <div className="empty" role="alert">
-          <h2>We couldn't load this place</h2>
+          <h2>{t("prop.loadFail")}</h2>
           <p>{res.error}</p>
         </div>
       </main>
@@ -78,15 +81,15 @@ export default async function PropertyPage({ params, searchParams }) {
     <main className="page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(ld) }} />
       <div className="prop-head">
-        <p className="meta">{TYPE_LABEL[p.type] || p.type} in {p.city}</p>
+        <p className="meta">{t("prop.in", { type: TYPE_LABEL[p.type] ? t(`type.${p.type}`) : p.type, city: p.city })}</p>
         <h1>{p.name} <HeartButton id={p.id} name={p.name} className="in-title" /></h1>
         <p className="rating">
           {p.rating_count > 0 ? (
             <>
-              <b className="score">{Number(p.rating_avg).toFixed(1)}</b> from {plural(p.rating_count, "review")}
+              <b className="score">{Number(p.rating_avg).toFixed(1)}</b> {t("prop.reviewsFrom", { reviews: t.n("unit.review", p.rating_count) })}
             </>
           ) : (
-            "New on Hill Booker"
+            t("prop.new")
           )}
           {p.address ? <span className="meta"> &nbsp;{p.address}</span> : null}
         </p>
@@ -98,13 +101,13 @@ export default async function PropertyPage({ params, searchParams }) {
         <div>
           {p.description && (
             <section className="prop-section">
-              <h2>About this place</h2>
+              <h2>{t("prop.about")}</h2>
               <p className="prose">{p.description}</p>
             </section>
           )}
           {p.amenities.length > 0 && (
             <section className="prop-section">
-              <h2>What's included</h2>
+              <h2>{t("prop.included")}</h2>
               <ul className="amenity-list">
                 {p.amenities.map((a) => (
                   <li key={a}>{a}</li>
@@ -116,7 +119,7 @@ export default async function PropertyPage({ params, searchParams }) {
       </div>
 
       <section className="prop-section">
-        <h2>Rooms</h2>
+        <h2>{t("prop.rooms")}</h2>
         <AvailabilityCalendar propertyId={p.id} checkIn={hasDates ? ci : ""} checkOut={hasDates ? co : ""} guests={guests} children={children} />
         <RoomList
           key={`${hasDates ? ci : ""}|${hasDates ? co : ""}|${guests}|${children}`}
@@ -132,7 +135,7 @@ export default async function PropertyPage({ params, searchParams }) {
         />
       </section>
 
-      <PropertyMap p={p} />
+      <PropertyMap p={p} t={t} />
     </main>
   );
 }
