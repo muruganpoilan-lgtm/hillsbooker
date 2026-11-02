@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../../components/AuthProvider";
 import Guard from "../../components/dashboard/Guard";
+import UpiPrompt from "../../components/dashboard/UpiPrompt";
 import { api, prettyDate } from "../../lib/api";
 
 const STATUS = { pending: "Waiting for approval", approved: "Live", rejected: "Not approved" };
@@ -53,6 +54,8 @@ function Dashboard() {
           </Link>
         </div>
       </div>
+
+      <UpiPrompt />
 
       {error && (
         <p className="form-error" role="alert">

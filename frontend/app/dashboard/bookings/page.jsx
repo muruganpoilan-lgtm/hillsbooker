@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../../../components/AuthProvider";
 import Guard from "../../../components/dashboard/Guard";
+import UpiPrompt from "../../../components/dashboard/UpiPrompt";
 import { api, money, plural, prettyDate } from "../../../lib/api";
 
 function Bookings() {
@@ -36,6 +37,7 @@ function Bookings() {
         <Link href="/dashboard">← Your properties</Link>
       </p>
       <h1 className="section-title">Bookings</h1>
+      <UpiPrompt />
       {error && (
         <p className="form-error" role="alert">
           {error}
