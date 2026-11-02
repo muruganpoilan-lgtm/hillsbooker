@@ -1,4 +1,5 @@
 import Link from "next/link";
+import HeartButton from "../../components/HeartButton";
 import Ridge from "../../components/Ridge";
 import SearchForm from "../../components/SearchForm";
 import { addDays, api, isISODate, money, nightsBetween, plural, todayISO } from "../../lib/api";
@@ -92,7 +93,7 @@ export default async function SearchPage({ searchParams }) {
                 {res.data.results.map((p) => {
                   const perNight = Number(p.price_per_night);
                   return (
-                    <li key={p.id}>
+                    <li key={p.id} className="has-heart">
                       <Link className="result" href={`/properties/${p.id}?${detailQuery}`}>
                         <div className="result-photo">
                           {p.photo ? <img src={p.photo} alt="" loading="lazy" /> : <Ridge seed={p.id} />}
@@ -116,6 +117,7 @@ export default async function SearchPage({ searchParams }) {
                           <span className="price-sub">{money(perNight * nights)} for {plural(nights, "night")}</span>
                         </div>
                       </Link>
+                      <HeartButton id={p.id} name={p.name} className="on-card" />
                     </li>
                   );
                 })}

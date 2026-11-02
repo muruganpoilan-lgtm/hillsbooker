@@ -24,6 +24,7 @@ export default function Header() {
             {(role === "owner" || role === "operator" || role === "admin") && <Link href="/dashboard/reports">Reports</Link>}
             {role === "admin" && <Link href="/dashboard/enquiries">Enquiries</Link>}
             {role === "guest" && <Link href="/dashboard">Become a host</Link>}
+            <Link href="/saved">Saved</Link>
             <Link href="/bookings">My bookings</Link>
             <button
               type="button"

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import HeartButton from "../../../components/HeartButton";
 import PhotoGallery from "../../../components/PhotoGallery";
 import RoomList from "../../../components/RoomList";
 import PropertyMap, { mapPoint } from "../../../components/PropertyMap";
@@ -77,7 +78,7 @@ export default async function PropertyPage({ params, searchParams }) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(ld) }} />
       <div className="prop-head">
         <p className="meta">{TYPE_LABEL[p.type] || p.type} in {p.city}</p>
-        <h1>{p.name}</h1>
+        <h1>{p.name} <HeartButton id={p.id} name={p.name} className="in-title" /></h1>
         <p className="rating">
           {p.rating_count > 0 ? (
             <>

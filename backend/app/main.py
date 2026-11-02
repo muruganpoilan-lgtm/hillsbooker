@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .db import pool
 from . import notify
-from .routes import admin, auth_routes, bookings, channels, enquiries, google_auth, invoices, owner, payments, public, reports, upi, vehicles
+from .routes import admin, auth_routes, bookings, channels, enquiries, google_auth, invoices, owner, payments, public, reports, upi, vehicles, wishlist
 from .storage import upload_root
 
 
@@ -112,6 +112,7 @@ app.include_router(invoices.router)
 app.include_router(vehicles.public)
 app.include_router(vehicles.operator)
 app.include_router(vehicles.guest)
+app.include_router(wishlist.router)
 
 
 @app.get("/health")

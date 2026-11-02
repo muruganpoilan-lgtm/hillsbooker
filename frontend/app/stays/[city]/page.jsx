@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import HeartButton from "../../../components/HeartButton";
 import Ridge from "../../../components/Ridge";
 import SearchForm from "../../../components/SearchForm";
 import { api, money } from "../../../lib/api";
@@ -67,7 +68,7 @@ export default async function CityPage({ params }) {
           <p className="result-summary">{props.length} {props.length === 1 ? "place" : "places"} to stay in {name}. Add your dates to see which rooms are free.</p>
           <ul className="results">
             {props.map((p) => (
-              <li key={p.id}>
+              <li key={p.id} className="has-heart">
                 <Link className="result" href={`/properties/${p.id}`}>
                   <div className="result-photo">{p.photo ? <img src={p.photo} alt={`${p.name}, ${name}`} loading="lazy" /> : <Ridge seed={p.id} />}</div>
                   <div className="result-body">
@@ -91,6 +92,7 @@ export default async function CityPage({ params }) {
                     </div>
                   )}
                 </Link>
+                      <HeartButton id={p.id} name={p.name} className="on-card" />
               </li>
             ))}
           </ul>
