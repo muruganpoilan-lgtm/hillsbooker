@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth, safeNext } from "../../components/AuthProvider";
@@ -9,9 +9,16 @@ import { api } from "../../lib/api";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { ready, token, role: myRole, login } = useAuth();
+  const justRegistered = useRef(false);
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" });
   const [role, setRole] = useState("guest");
+
+  // Someone who is already logged in has no need to create an account: send them to the host dashboard
+  // (a guest account is offered "Become a host" there).
+  useEffect(() => {
+    if (ready && token && !justRegistered.current) router.replace(myRole === "operator" ? "/operator" : "/dashboard");
+  }, [ready, token, myRole, router]);
 
   useEffect(() => {
     const r = new URLSearchParams(window.location.search).get("role");
@@ -53,10 +60,13 @@ export default function RegisterPage() {
       setError(res.error);
       return;
     }
+    justRegistered.current = true;
     login(res.data.token, res.data.role);
     const next = new URLSearchParams(window.location.search).get("next");
     router.push(safeNext(next, role === "owner" ? "/dashboard" : role === "operator" ? "/operator" : "/"));
   }
+
+  if (ready && token && !justRegistered.current) return <main className="page" />; // already logged in: being sent to the dashboard
 
   return (
     <main className="page auth">
