@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, addDays, money, plural, prettyDate, todayISO } from "../../lib/api";
 import AvailabilityCalendar from "./AvailabilityCalendar";
+import SeasonPricing from "./SeasonPricing";
 import ChannelSync from "./ChannelSync";
 import PhotoManager from "./PhotoManager";
 
@@ -17,6 +18,7 @@ export default function RoomCard({ room, token, reload, onAuthError }) {
   const [msg, setMsg] = useState({ text: "", bad: false });
   const [busy, setBusy] = useState("");
 
+  const [calKey, setCalKey] = useState(0);
   const [inv, setInv] = useState({ start: "", end: "", rooms_open: String(room.total_rooms), price: "" });
   const [nights, setNights] = useState(null);
 
@@ -151,7 +153,9 @@ export default function RoomCard({ room, token, reload, onAuthError }) {
 
       <h4>Calendar: open, block and prices</h4>
       <p className="meta">Tap the nights you want to change. Then block them, open them, or set a different price for them, for example higher rates on weekends and holidays.</p>
-      <AvailabilityCalendar roomId={room.id} basePrice={room.base_price} token={token} onAuthError={onAuthError} onChanged={loadNights} />
+      <AvailabilityCalendar key={calKey} roomId={room.id} basePrice={room.base_price} token={token} onAuthError={onAuthError} onChanged={loadNights} />
+      <h4>Weekend and season prices</h4>
+      <SeasonPricing key={room.id} roomId={room.id} basePrice={room.base_price} token={token} onAuthError={onAuthError} onChanged={() => { loadNights(); setCalKey((k) => k + 1); }} />
 
       {nights && nights.length > 0 && (
         <details className="nights">

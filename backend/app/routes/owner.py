@@ -310,7 +310,7 @@ def set_inventory(room_type_id: str, body: InventoryIn, user: dict = Depends(own
                  WHERE room_type_id = %(rt)s AND day = d::date
                ) x ON true
                ON CONFLICT (room_type_id, day)
-               DO UPDATE SET available = EXCLUDED.available, price = EXCLUDED.price, blocked = false""",
+               DO UPDATE SET available = EXCLUDED.available, price = COALESCE(EXCLUDED.price, room_inventory.price), blocked = false""",
             {"rt": room_type_id, "open": body.rooms_open, "price": body.price, "start": body.start, "end": body.end},
         )
         # Nights taken on other sites are subtracted above, so they count as fully applied now.

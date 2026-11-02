@@ -527,3 +527,12 @@ label.btn[aria-busy="true"] { opacity: 0.7; cursor: progress; }
 .cal-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin: 0.7rem 0 0; }
 .cal-key { display: inline-block; width: 0.9rem; height: 0.9rem; border-radius: 3px; border: 1px solid var(--line); vertical-align: middle; }
 .cal-key.open { background: #fff; } .cal-key.closed { background: repeating-linear-gradient(45deg, #e4e8e4, #e4e8e4 3px, #fff 3px, #fff 6px); } .cal-key.chosen { background: #dff1e4; border-color: var(--green); }
+
+/* Weekend and season prices (host) */
+.season { display: grid; gap: 0.8rem; }
+.season-quick { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.dow-chips { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+.dow-chips legend { font-size: 0.85rem; font-weight: 700; color: var(--ink-soft); padding: 0; margin-bottom: 0.3rem; }
+.chip { display: inline-flex; align-items: center; min-width: 2.8rem; justify-content: center; padding: 0.35rem 0.6rem; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); cursor: pointer; font-size: 0.9rem; }
+.chip input { position: absolute; opacity: 0; pointer-events: none; }
+.chip.on { background: #dff1e4; border-color: var(--green); font-weight: 700; }
