@@ -2,24 +2,23 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useLang } from "./LangProvider";
 import { FALLBACK, GREETING, TOPICS, UI, WHATSAPP_LINK, findTopic } from "../lib/faq";
 
 // A small help chat in the corner of every page. It answers from the ready-made answers in lib/faq.js,
 // so it is free, instant and never makes things up. Anything it cannot answer is handed to WhatsApp.
 export default function ChatBot() {
   const [open, setOpen] = useState(false);
-  const [lang, setLang] = useState("en");
+  const { lang, setLang } = useLang(); // the chat speaks the language chosen for the whole site
   const [text, setText] = useState("");
   const [msgs, setMsgs] = useState([]); // {from: "bot" | "me", text, links?}
   const endRef = useRef(null);
   const t = UI[lang];
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("hb_chat_lang");
-      if (saved === "en" || saved === "ta") setLang(saved);
-    } catch {}
-  }, []);
+    // Site language changed while only the greeting is on screen: say it again in the new language.
+    setMsgs((m) => (m.length === 1 && m[0].from === "bot" ? [{ from: "bot", text: GREETING[lang] }] : m));
+  }, [lang]);
 
   useEffect(() => {
     if (open && msgs.length === 0) setMsgs([{ from: "bot", text: GREETING[lang] }]);
@@ -31,9 +30,6 @@ export default function ChatBot() {
 
   function switchLang(next) {
     setLang(next);
-    try {
-      localStorage.setItem("hb_chat_lang", next);
-    } catch {}
     setMsgs((m) => (m.length === 1 ? [{ from: "bot", text: GREETING[next] }] : m));
   }
 

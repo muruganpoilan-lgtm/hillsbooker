@@ -5,10 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth, safeNext } from "../../components/AuthProvider";
 import GoogleButton from "../../components/GoogleButton";
+import { useLang } from "../../components/LangProvider";
 import { api } from "../../lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { t } = useLang();
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,7 +21,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     if (!email.trim() || !password) {
-      setError("Enter your email and password.");
+      setError(t("auth.errLogin"));
       return;
     }
     setBusy(true);
@@ -36,18 +38,18 @@ export default function LoginPage() {
 
   return (
     <main className="page auth">
-      <h1>Log in</h1>
+      <h1>{t("auth.login")}</h1>
       <form className="stack" onSubmit={onSubmit} noValidate>
         <label className="field">
-          <span>Email</span>
+          <span>{t("auth.email")}</span>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
         </label>
         <label className="field">
-          <span>Password</span>
+          <span>{t("auth.password")}</span>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
         </label>
         <p style={{ margin: 0, textAlign: "right" }}>
-          <Link href="/forgot-password">Forgot password?</Link>
+          <Link href="/forgot-password">{t("auth.forgot")}</Link>
         </p>
         {error && (
           <p className="form-error" role="alert">
@@ -55,14 +57,14 @@ export default function LoginPage() {
           </p>
         )}
         <button type="submit" className="btn btn-primary" aria-busy={busy}>
-          {busy ? "Logging in…" : "Log in"}
+          {busy ? t("auth.logging") : t("auth.login")}
         </button>
       </form>
       <div className="stack" style={{ marginTop: "0.8rem" }}>
         <GoogleButton />
       </div>
       <p className="auth-alt">
-        New here? <Link href="/register">Create an account</Link>
+        {t("auth.newHere")} <Link href="/register">{t("auth.createLink")}</Link>
       </p>
     </main>
   );

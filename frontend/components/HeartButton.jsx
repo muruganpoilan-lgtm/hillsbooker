@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "./AuthProvider";
+import { useLang } from "./LangProvider";
 import { api } from "../lib/api";
 
 // One shared list of saved place ids for the whole page, so every heart agrees with the others.
@@ -27,6 +28,7 @@ async function load(token) {
 export default function HeartButton({ id, name = "this place", className = "" }) {
   const { ready, token } = useAuth();
   const router = useRouter();
+  const { t } = useLang();
   const [, force] = useState(0);
   const [busy, setBusy] = useState(false);
 
@@ -77,8 +79,8 @@ export default function HeartButton({ id, name = "this place", className = "" })
       className={`heart ${on ? "on" : ""} ${className}`}
       onClick={toggle}
       aria-pressed={on}
-      aria-label={on ? `Remove ${name} from saved places` : `Save ${name}`}
-      title={on ? "Saved. Tap to remove" : "Save for later"}
+      aria-label={on ? t("heart.remove", { name }) : t("heart.save", { name })}
+      title={on ? t("heart.titleOn") : t("heart.titleOff")}
     >
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
         <path d="M12 20.5s-8-5-8-10.7A4.4 4.4 0 0 1 12 7a4.4 4.4 0 0 1 8 2.8c0 5.7-8 10.7-8 10.7z" />

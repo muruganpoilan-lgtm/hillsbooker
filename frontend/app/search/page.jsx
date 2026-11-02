@@ -3,13 +3,15 @@ import HeartButton from "../../components/HeartButton";
 import Ridge from "../../components/Ridge";
 import NearMeButton from "../../components/NearMeButton";
 import SearchForm from "../../components/SearchForm";
-import { addDays, api, isISODate, money, nightsBetween, plural, todayISO } from "../../lib/api";
+import { addDays, api, isISODate, money, nightsBetween, todayISO } from "../../lib/api";
+import { getT } from "../../lib/lang";
 
 export const metadata = { title: "Search stays", robots: { index: false, follow: true } };
 
-const TYPE_LABEL = { hotel: "Hotel", homestay: "Homestay", apartment: "Apartment", resort: "Resort" };
+const TYPES = ["hotel", "homestay", "apartment", "resort"];
 
 export default async function SearchPage({ searchParams }) {
+  const t = await getT();
   const sp = await searchParams;
   const get = (k) => (Array.isArray(sp[k]) ? sp[k][0] : sp[k]) || "";
 
@@ -27,7 +29,7 @@ export default async function SearchPage({ searchParams }) {
   const minPrice = Number(get("min_price")) > 0 ? get("min_price") : "";
   const minRating = ["3", "4", "4.5"].includes(get("min_rating")) ? get("min_rating") : "";
   const pickedList = Array.isArray(sp.amenity) ? sp.amenity : sp.amenity ? [sp.amenity] : [];
-  const type = Object.hasOwn(TYPE_LABEL, get("type")) ? get("type") : "";
+  const type = TYPES.includes(get("type")) ? get("type") : "";
   const maxPrice = Number(get("max_price")) > 0 ? get("max_price") : "";
   const nights = nightsBetween(checkIn, checkOut);
 
@@ -61,15 +63,15 @@ export default async function SearchPage({ searchParams }) {
 
       <div className="results-layout">
         <form className="filters" method="get" action="/search">
-          <h2 className="mini-title">Narrow down</h2>
+          <h2 className="mini-title">{t("filters.title")}</h2>
           <input type="hidden" name="city" value={city} />
           <input type="hidden" name="check_in" value={checkIn} />
           <input type="hidden" name="check_out" value={checkOut} />
           <input type="hidden" name="guests" value={guests} />
           <input type="hidden" name="children" value={children} />
           <fieldset className="radios">
-            <legend>Type of place</legend>
-            {[["", "Any"], ...Object.entries(TYPE_LABEL)].map(([v, label]) => (
+            <legend>{t("filters.type")}</legend>
+            {[["", t("type.any")], ...TYPES.map((k) => [k, t(`type.${k}`)])].map(([v, label]) => (
               <label key={v || "any"} className="check">
                 <input type="radio" name="type" value={v} defaultChecked={type === v} />
                 <span>{label}</span>
@@ -78,26 +80,26 @@ export default async function SearchPage({ searchParams }) {
           </fieldset>
           <div className="field-pair">
             <label className="field">
-              <span>Least per night (₹)</span>
+              <span>{t("filters.minPrice")}</span>
               <input type="number" name="min_price" min="0" step="100" defaultValue={minPrice} placeholder="0" />
             </label>
             <label className="field">
-              <span>Most per night (₹)</span>
-              <input type="number" name="max_price" min="0" step="100" defaultValue={maxPrice} placeholder="No limit" />
+              <span>{t("filters.maxPrice")}</span>
+              <input type="number" name="max_price" min="0" step="100" defaultValue={maxPrice} placeholder={t("filters.noLimit")} />
             </label>
           </div>
           <label className="field">
-            <span>Guest rating</span>
+            <span>{t("filters.rating")}</span>
             <select name="min_rating" defaultValue={minRating}>
-              <option value="">Any</option>
-              <option value="3">3.0 and above</option>
-              <option value="4">4.0 and above</option>
-              <option value="4.5">4.5 and above</option>
+              <option value="">{t("type.any")}</option>
+              <option value="3">{t("filters.r3")}</option>
+              <option value="4">{t("filters.r4")}</option>
+              <option value="4.5">{t("filters.r45")}</option>
             </select>
           </label>
           {allAmenities.length > 0 && (
             <fieldset className="radios">
-              <legend>Must have</legend>
+              <legend>{t("filters.mustHave")}</legend>
               {allAmenities.map((a) => (
                 <label key={a} className="check">
                   <input type="checkbox" name="amenity" value={a} defaultChecked={picked.includes(a)} />
@@ -107,20 +109,20 @@ export default async function SearchPage({ searchParams }) {
             </fieldset>
           )}
           <label className="field">
-            <span>Sort by</span>
+            <span>{t("filters.sort")}</span>
             <select name="sort" defaultValue={sort}>
-              <option value="price">Lowest price</option>
-              <option value="rating">Best rated</option>
-              <option value="near" disabled={!hasNear}>Nearest to me</option>
+              <option value="price">{t("filters.sortPrice")}</option>
+              <option value="rating">{t("filters.sortRating")}</option>
+              <option value="near" disabled={!hasNear}>{t("filters.sortNear")}</option>
             </select>
           </label>
           <NearMeButton lat={hasNear ? String(nearLat) : ""} lng={hasNear ? String(nearLng) : ""} />
           <button type="submit" className="btn btn-primary btn-small">
-            Apply filters
+            {t("filters.apply")}
           </button>
           {activeFilters > 0 && (
             <Link href={`/search?${clearParams.toString()}`} className="meta">
-              Clear {activeFilters === 1 ? "filter" : `${activeFilters} filters`}
+              {t.n("filters.clear", activeFilters)}
             </Link>
           )}
         </form>
@@ -128,21 +130,21 @@ export default async function SearchPage({ searchParams }) {
         <div>
           {!res.ok ? (
             <div className="empty" role="alert">
-              <h2>We couldn't load results</h2>
+              <h2>{t("search.cantLoad")}</h2>
               <p>{res.error}</p>
             </div>
           ) : res.data.results.length === 0 ? (
             <div className="empty">
-              <h2>No rooms free for all {plural(nights, "night")}</h2>
-              <p>Try other dates, a shorter stay, or remove some filters. Rooms only show up when they are free on every night. Stays can't start today or tomorrow, so pick a check-in at least 2 days from now.</p>
+              <h2>{t("search.noneFree", { nights: t.n("unit.night", nights) })}</h2>
+              <p>{t("search.noneHelp")}</p>
             </div>
           ) : (
             <>
               <h1 className="result-title">
-                {city ? `Stays in ${city}` : "Stays across India"}
+                {city ? t("search.staysIn", { city }) : t("search.staysAcross")}
               </h1>
               <p className="result-summary">
-                {plural(res.data.results.length, "place")} with rooms free for {plural(nights, "night")}
+                {t("search.summary", { places: t.n("unit.place", res.data.results.length), nights: t.n("unit.nightFor", nights) })}
               </p>
               <ul className="results">
                 {res.data.results.map((p) => {
@@ -154,25 +156,25 @@ export default async function SearchPage({ searchParams }) {
                           {p.photo ? <img src={p.photo} alt="" loading="lazy" /> : <Ridge seed={p.id} />}
                         </div>
                         <div className="result-body">
-                          <p className="meta">{TYPE_LABEL[p.type] || p.type} in {p.city}</p>
+                          <p className="meta">{t("type.in", { type: TYPES.includes(p.type) ? t(`type.${p.type}`) : p.type, city: p.city })}</p>
                           <h3 className="row-name">{p.name}</h3>
                           <p className="rating">
                             {p.rating_count > 0 ? (
                               <>
-                                <b className="score">{Number(p.rating_avg).toFixed(1)}</b> from {plural(p.rating_count, "review")}
+                                {t("search.ratingFrom", { score: Number(p.rating_avg).toFixed(1), reviews: t.n("unit.review", p.rating_count) })}
                               </>
                             ) : (
-                              "New on Hill Booker"
+                              t("search.new")
                             )}
                           </p>
                           {p.distance_km != null && (
-                            <p className="meta">{Number(p.distance_km) < 1 ? "Less than 1 km" : `${Math.round(Number(p.distance_km))} km`} from you</p>
+                            <p className="meta">{Number(p.distance_km) < 1 ? t("search.kmLess") : t("search.km", { n: Math.round(Number(p.distance_km)) })}</p>
                           )}
                         </div>
                         <div className="price-box">
                           <span className="price">{money(perNight)}</span>
-                          <span className="price-sub">a night</span>
-                          <span className="price-sub">{money(perNight * nights)} for {plural(nights, "night")}</span>
+                          <span className="price-sub">{t("search.aNight")}</span>
+                          <span className="price-sub">{t("search.forNights", { amount: money(perNight * nights), nights: t.n("unit.nightFor", nights) })}</span>
                         </div>
                       </Link>
                       <HeartButton id={p.id} name={p.name} className="on-card" />

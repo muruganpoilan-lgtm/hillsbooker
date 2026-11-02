@@ -2,6 +2,7 @@ import Link from "next/link";
 import SearchForm from "../components/SearchForm";
 import HelpVideos from "../components/HelpVideos";
 import { slugify } from "../lib/seo";
+import { getT } from "../lib/lang";
 
 // To use a real photo for a place, add public/cities/<city-slug>.jpg (for example public/cities/munnar.jpg).
 // Until the file exists the card shows its coloured background instead.
@@ -21,14 +22,9 @@ const MORE = [
   { city: "Thekkady", tag: "Spice and wildlife", from: "#6b4a12", to: "#b98a2e" },
   { city: "Yercaud", tag: "Shevaroy hills", from: "#2f5c2a", to: "#79a35a" },
 ];
-const WHY = [
-  ["Pay only 30% to book", "Pay a small advance online and the rest at the property."],
-  ["Rooms that are really free", "Every result is open on all of your nights."],
-  ["Room held for you", "We hold it for 10 minutes while you pay."],
-  ["Safe online payment", "UPI, cards and net banking, secured by Razorpay."],
-];
+const WHY = [1, 2, 3, 4];
 
-function Card({ d, className }) {
+function Card({ d, className, t }) {
   return (
     <Link
       href={`/stays/${slugify(d.city)}`}
@@ -36,19 +32,20 @@ function Card({ d, className }) {
       style={{ backgroundImage: `url(/cities/${slugify(d.city)}.jpg), linear-gradient(160deg, ${d.from}, ${d.to})` }}
     >
       <span className="hb-card-shade" aria-hidden="true" />
-      <span className="hb-card-name">{d.city}</span>
-      <span className="hb-card-tag">{d.tag}</span>
+      <span className="hb-card-name">{t(`city.${d.city}`)}</span>
+      <span className="hb-card-tag">{t(`tag.${d.city}`)}</span>
     </Link>
   );
 }
 
-export default function Home() {
+export default async function Home() {
+  const t = await getT();
   return (
     <main>
       <section className="hb-hero">
         <div className="hb-hero-in">
-          <h1>Find your next stay</h1>
-          <p>Hill stations, backwaters and beaches across South India. Rooms and homestays from hosts you can book in minutes.</p>
+          <h1>{t("home.title")}</h1>
+          <p>{t("home.sub")}</p>
         </div>
       </section>
       <div className="hb-search">
@@ -56,67 +53,67 @@ export default function Home() {
       </div>
 
       <section className="page hb-section">
-        <h2 className="hb-title">Offers</h2>
-        <p className="hb-lead">Simple ways to book with Hill Booker</p>
+        <h2 className="hb-title">{t("home.offers")}</h2>
+        <p className="hb-lead">{t("home.offersLead")}</p>
         <div className="hb-offers">
           <Link href="/search" className="hb-offer hb-offer-a">
             <span>
-              <b>Book with just 30%</b>
-              <i>Pay a small advance to confirm. Pay the rest when you reach the stay.</i>
-              <u>Find a stay</u>
+              <b>{t("home.offer1.title")}</b>
+              <i>{t("home.offer1.text")}</i>
+              <u>{t("home.offer1.cta")}</u>
             </span>
           </Link>
           <Link href="/vehicles" className="hb-offer hb-offer-b">
             <span>
-              <b>Need a ride too?</b>
-              <i>Need a car, van or bus with a driver? Tell us your trip and we will arrange it.</i>
-              <u>Cars and vans</u>
+              <b>{t("home.offer2.title")}</b>
+              <i>{t("home.offer2.text")}</i>
+              <u>{t("home.offer2.cta")}</u>
             </span>
           </Link>
         </div>
       </section>
 
       <section className="page hb-section">
-        <h2 className="hb-title">Group and corporate tours</h2>
-        <p className="hb-lead">Travelling with a big group or your team? Tell us what you need and we will call you with a quote.</p>
+        <h2 className="hb-title">{t("home.tours")}</h2>
+        <p className="hb-lead">{t("home.toursLead")}</p>
         <div className="hb-tours">
-          <Link href="/enquiry?kind=group" className="btn btn-primary">Group tour</Link>
-          <Link href="/enquiry?kind=corporate" className="btn btn-primary">Corporate tour</Link>
+          <Link href="/enquiry?kind=group" className="btn btn-primary">{t("home.groupTour")}</Link>
+          <Link href="/enquiry?kind=corporate" className="btn btn-primary">{t("home.corpTour")}</Link>
         </div>
       </section>
 
       <section className="page hb-section">
-        <h2 className="hb-title">Trending destinations</h2>
-        <p className="hb-lead">Popular places to stay</p>
+        <h2 className="hb-title">{t("home.trending")}</h2>
+        <p className="hb-lead">{t("home.trendingLead")}</p>
         <div className="hb-grid-big">
           {TREND_BIG.map((d) => (
-            <Card key={d.city} d={d} className="hb-card-big" />
+            <Card key={d.city} d={d} className="hb-card-big" t={t} />
           ))}
         </div>
         <div className="hb-grid-small">
           {TREND_SMALL.map((d) => (
-            <Card key={d.city} d={d} className="hb-card-mid" />
+            <Card key={d.city} d={d} className="hb-card-mid" t={t} />
           ))}
         </div>
       </section>
 
       <section className="page hb-section">
-        <h2 className="hb-title">More places to explore</h2>
+        <h2 className="hb-title">{t("home.more")}</h2>
         <div className="hb-row">
           {MORE.map((d) => (
-            <Card key={d.city} d={d} className="hb-card-sm" />
+            <Card key={d.city} d={d} className="hb-card-sm" t={t} />
           ))}
         </div>
       </section>
 
       <section className="page hb-section">
-        <h2 className="hb-title">Why book with Hill Booker</h2>
+        <h2 className="hb-title">{t("home.why")}</h2>
         <div className="hb-why">
-          {WHY.map(([t, text]) => (
-            <div key={t}>
+          {WHY.map((n) => (
+            <div key={n}>
               <span aria-hidden="true">✓</span>
-              <b>{t}</b>
-              <p>{text}</p>
+              <b>{t(`home.why${n}.t`)}</b>
+              <p>{t(`home.why${n}.d`)}</p>
             </div>
           ))}
         </div>
@@ -126,10 +123,10 @@ export default function Home() {
 
       <section className="host-band">
         <div className="host-inner">
-          <h2>Own a hotel or homestay?</h2>
-          <p>Add your rooms and photos, open the nights you want to sell, and set your own prices.</p>
+          <h2>{t("home.host.title")}</h2>
+          <p>{t("home.host.text")}</p>
           <Link href="/register" className="btn btn-gold">
-            List your property
+            {t("home.host.cta")}
           </Link>
         </div>
       </section>

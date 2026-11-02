@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLang } from "./LangProvider";
 import { API_BASE, api } from "../lib/api";
 
 // "Continue with Google". Hidden until the server has Google sign-in switched on.
-export default function GoogleButton({ role = "guest", label = "Continue with Google" }) {
+export default function GoogleButton({ role = "guest", label }) {
+  const { t } = useLang();
   const [on, setOn] = useState(false);
   const [next, setNext] = useState("/");
 
@@ -20,7 +22,7 @@ export default function GoogleButton({ role = "guest", label = "Continue with Go
   const href = `${API_BASE}/auth/google/start?${new URLSearchParams({ target: "web", role, next }).toString()}`;
   return (
     <a className="btn" href={href}>
-      {label}
+      {label || t("auth.google")}
     </a>
   );
 }

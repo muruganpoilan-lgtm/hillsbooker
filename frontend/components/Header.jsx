@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "./AuthProvider";
+import { useLang } from "./LangProvider";
+import { LANGS } from "../lib/i18n";
 
 export default function Header() {
   const { ready, token, role, logout } = useAuth();
   const router = useRouter();
+  const { t, lang, setLang } = useLang();
 
   return (
     <header className="site-header">
@@ -15,19 +18,19 @@ export default function Header() {
         Hill Booker
       </Link>
       <nav className="nav" aria-label="Main">
-        <Link href="/vehicles">Cars &amp; vans</Link>
+        <Link href="/vehicles">{t("nav.cars")}</Link>
         {ready && token ? (
           <>
-            {(role === "owner" || role === "operator" || role === "admin") && <Link href="/dashboard">My properties</Link>}
-            {(role === "owner" || role === "operator" || role === "admin") && <Link href="/operator">My vehicles</Link>}
-            {(role === "owner" || role === "operator" || role === "admin") && <Link href="/dashboard/payments">Payments</Link>}
-            {(role === "owner" || role === "operator" || role === "admin") && <Link href="/dashboard/reports">Reports</Link>}
-            {role === "admin" && <Link href="/dashboard/enquiries">Enquiries</Link>}
-            {role === "admin" && <Link href="/dashboard/coupons">Coupons</Link>}
-            {role === "guest" && <Link href="/dashboard">Become a host</Link>}
-            <Link href="/saved">Saved</Link>
-            <Link href="/invite">Invite friends</Link>
-            <Link href="/bookings">My bookings</Link>
+            {(role === "owner" || role === "operator" || role === "admin") && <Link href="/dashboard">{t("nav.myProperties")}</Link>}
+            {(role === "owner" || role === "operator" || role === "admin") && <Link href="/operator">{t("nav.myVehicles")}</Link>}
+            {(role === "owner" || role === "operator" || role === "admin") && <Link href="/dashboard/payments">{t("nav.payments")}</Link>}
+            {(role === "owner" || role === "operator" || role === "admin") && <Link href="/dashboard/reports">{t("nav.reports")}</Link>}
+            {role === "admin" && <Link href="/dashboard/enquiries">{t("nav.enquiries")}</Link>}
+            {role === "admin" && <Link href="/dashboard/coupons">{t("nav.coupons")}</Link>}
+            {role === "guest" && <Link href="/dashboard">{t("nav.becomeHost")}</Link>}
+            <Link href="/saved">{t("nav.saved")}</Link>
+            <Link href="/invite">{t("nav.invite")}</Link>
+            <Link href="/bookings">{t("nav.myBookings")}</Link>
             <button
               type="button"
               className="link-btn"
@@ -36,17 +39,24 @@ export default function Header() {
                 router.push("/");
               }}
             >
-              Log out
+              {t("nav.logout")}
             </button>
           </>
         ) : ready ? (
           <>
-            <Link href="/login">Log in</Link>
+            <Link href="/login">{t("nav.login")}</Link>
             <Link href="/register" className="btn btn-small">
-              Sign up
+              {t("nav.signup")}
             </Link>
           </>
         ) : null}
+        <span className="lang-switch" role="group" aria-label={t("lang.label")}>
+          {LANGS.map(([code, label]) => (
+            <button key={code} type="button" className={lang === code ? "on" : ""} aria-pressed={lang === code} lang={code} onClick={() => setLang(code)}>
+              {label}
+            </button>
+          ))}
+        </span>
       </nav>
     </header>
   );

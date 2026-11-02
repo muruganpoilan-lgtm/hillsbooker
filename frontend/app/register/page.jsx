@@ -5,10 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth, safeNext } from "../../components/AuthProvider";
 import GoogleButton from "../../components/GoogleButton";
+import { useLang } from "../../components/LangProvider";
 import { api } from "../../lib/api";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { t } = useLang();
   const { ready, token, role: myRole, login } = useAuth();
   const justRegistered = useRef(false);
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" });
@@ -42,15 +44,15 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
     if (!form.name.trim() || !form.email.trim()) {
-      setError("Enter your name and email.");
+      setError(t("auth.errNameEmail"));
       return;
     }
     if (form.phone.replace(/\D/g, "").length < 10) {
-      setError("Enter your 10-digit mobile number.");
+      setError(t("auth.errPhone"));
       return;
     }
     if (form.password.length < 8) {
-      setError("Your password needs at least 8 characters.");
+      setError(t("auth.errPass"));
       return;
     }
     setBusy(true);
@@ -79,30 +81,30 @@ export default function RegisterPage() {
 
   return (
     <main className="page auth">
-      <h1>Create your account</h1>
-      {invited && <p className="ok">A friend invited you. After you sign up you'll get a welcome coupon for your first stay.</p>}
+      <h1>{t("auth.createTitle")}</h1>
+      {invited && <p className="ok">{t("auth.invited")}</p>}
       <form className="stack" onSubmit={onSubmit} noValidate>
         <label className="field">
-          <span>Full name</span>
+          <span>{t("auth.name")}</span>
           <input type="text" value={form.name} onChange={set("name")} autoComplete="name" />
         </label>
         <label className="field">
-          <span>Email</span>
+          <span>{t("auth.email")}</span>
           <input type="email" value={form.email} onChange={set("email")} autoComplete="email" />
         </label>
         <label className="field">
-          <span>Mobile number</span>
+          <span>{t("auth.phone")}</span>
           <input type="tel" value={form.phone} onChange={set("phone")} autoComplete="tel" />
         </label>
         <label className="field">
-          <span>Password</span>
+          <span>{t("auth.password")}</span>
           <input type="password" value={form.password} onChange={set("password")} autoComplete="new-password" />
         </label>
         <label className="field">
-          <span>I want to</span>
+          <span>{t("auth.iWant")}</span>
           <select value={role} onChange={(e) => setRole(e.target.value)}>
-            <option value="guest">Book rooms and vehicles</option>
-            <option value="owner">List my property or vehicles</option>
+            <option value="guest">{t("auth.roleGuest")}</option>
+            <option value="owner">{t("auth.roleOwner")}</option>
           </select>
         </label>
         {error && (
@@ -111,14 +113,14 @@ export default function RegisterPage() {
           </p>
         )}
         <button type="submit" className="btn btn-primary" aria-busy={busy}>
-          {busy ? "Creating your account…" : "Create account"}
+          {busy ? t("auth.creating") : t("auth.create")}
         </button>
       </form>
       <div className="stack" style={{ marginTop: "0.8rem" }}>
-        <GoogleButton role={role} label="Sign up with Google" />
+        <GoogleButton role={role} label={t("auth.googleSignup")} />
       </div>
       <p className="auth-alt">
-        Already have an account? <Link href="/login">Log in</Link>
+        {t("auth.haveAccount")} <Link href="/login">{t("auth.login")}</Link>
       </p>
     </main>
   );

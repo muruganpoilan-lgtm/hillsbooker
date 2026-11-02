@@ -1,6 +1,8 @@
 import "./globals.css";
 import { Bricolage_Grotesque, Albert_Sans } from "next/font/google";
 import { AuthProvider } from "../components/AuthProvider";
+import { LangProvider } from "../components/LangProvider";
+import { getLang } from "../lib/lang";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import ChatBot from "../components/ChatBot";
@@ -52,11 +54,13 @@ const SITE_LD = {
 
 export const viewport = { width: "device-width", initialScale: 1 };
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const lang = await getLang();
   return (
-    <html lang="en">
+    <html lang={lang}>
       <body className={`${display.variable} ${body.variable}`}>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(SITE_LD) }} />
+        <LangProvider initial={lang}>
         <AuthProvider>
           <Header />
           {children}
@@ -65,6 +69,7 @@ export default function RootLayout({ children }) {
           <ReferralClaim />
           <WelcomeToast />
         </AuthProvider>
+        </LangProvider>
       </body>
     </html>
   );

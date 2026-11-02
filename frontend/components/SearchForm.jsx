@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { addDays, nightsBetween, plural, todayISO } from "../lib/api";
+import { useLang } from "./LangProvider";
+import { addDays, nightsBetween, todayISO } from "../lib/api";
 
 // The booking slip: city, two dates, guests. Used big on the home page and compact above search results.
 export default function SearchForm({ initial = {}, compact = false }) {
   const router = useRouter();
+  const { t } = useLang();
   const [city, setCity] = useState(initial.city || "");
   const [checkIn, setCheckIn] = useState(initial.check_in || "");
   const [checkOut, setCheckOut] = useState(initial.check_out || "");
@@ -31,11 +33,11 @@ export default function SearchForm({ initial = {}, compact = false }) {
   function onSubmit(e) {
     e.preventDefault();
     if (!checkIn || !checkOut) {
-      setError("Choose your check-in and check-out dates.");
+      setError(t("form.errDates"));
       return;
     }
     if (checkOut <= checkIn) {
-      setError("Check-out must be after check-in.");
+      setError(t("form.errOrder"));
       return;
     }
     setError("");
@@ -51,21 +53,21 @@ export default function SearchForm({ initial = {}, compact = false }) {
     <form className={`slip${compact ? " compact" : ""}`} onSubmit={onSubmit} noValidate>
       <div className="slip-grid">
         <label className="field">
-          <span>City</span>
+          <span>{t("form.city")}</span>
           <input
             type="text"
             value={city}
             onChange={(e) => setCity(e.target.value)}
-            placeholder="Goa, Ooty, Jaipur"
+            placeholder={t("form.cityPlaceholder")}
             autoComplete="off"
           />
         </label>
         <label className="field">
-          <span>Check-in</span>
+          <span>{t("form.checkIn")}</span>
           <input type="date" value={checkIn} min={today || undefined} onChange={(e) => onCheckIn(e.target.value)} />
         </label>
         <label className="field">
-          <span>Check-out</span>
+          <span>{t("form.checkOut")}</span>
           <input
             type="date"
             value={checkOut}
@@ -74,7 +76,7 @@ export default function SearchForm({ initial = {}, compact = false }) {
           />
         </label>
         <label className="field">
-          <span>Adults</span>
+          <span>{t("form.adults")}</span>
           <select value={adults} onChange={(e) => setAdults(e.target.value)}>
             {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
               <option key={n} value={n}>
@@ -84,7 +86,7 @@ export default function SearchForm({ initial = {}, compact = false }) {
           </select>
         </label>
         <label className="field">
-          <span>Children</span>
+          <span>{t("form.children")}</span>
           <select value={children} onChange={(e) => setChildren(e.target.value)}>
             {[0, 1, 2, 3, 4, 5, 6].map((n) => (
               <option key={n} value={n}>
@@ -94,7 +96,7 @@ export default function SearchForm({ initial = {}, compact = false }) {
           </select>
         </label>
         <button type="submit" className="btn btn-primary">
-          Search rooms
+          {t("form.search")}
         </button>
       </div>
       {error ? (
@@ -102,7 +104,7 @@ export default function SearchForm({ initial = {}, compact = false }) {
           {error}
         </p>
       ) : (
-        <p className="slip-note">{nights ? `${plural(nights, "night")}. We only show rooms that are free on every night.` : "Pick your dates to see free rooms."}</p>
+        <p className="slip-note">{nights ? t("form.note", { nights: t.n("unit.night", nights) }) : t("form.noteEmpty")}</p>
       )}
     </form>
   );
