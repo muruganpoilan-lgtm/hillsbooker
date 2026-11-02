@@ -2,20 +2,23 @@ import Link from "next/link";
 import Ridge from "../../components/Ridge";
 import { api, money } from "../../lib/api";
 import { SITE_URL } from "../../lib/seo";
-import { KINDS, vehicleLine } from "../../lib/vehicles";
+import { KINDS, kindName, vehicleLine } from "../../lib/vehicles";
+import { getT } from "../../lib/lang";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ searchParams }) {
   const sp = await searchParams;
+  const t = await getT();
   const city = (Array.isArray(sp.city) ? sp.city[0] : sp.city) || "";
-  const title = city ? `Cars, vans and buses for hire in ${city}` : "Cars, vans and buses for hire";
-  const description = `Hire a car, van, tempo traveller or bus with a driver${city ? ` in ${city}` : ""}. Pay by the day or choose a fixed-price trip, and book online on Hill Booker.`;
+  const title = city ? t("veh.titleIn", { city }) : t("veh.title");
+  const description = t("veh.metaDesc", { inCity: city ? t("veh.metaIn", { city }) : "" });
   return { title, description, alternates: { canonical: `${SITE_URL}/vehicles` }, robots: city ? { index: false, follow: true } : undefined };
 }
 
 export default async function VehiclesPage({ searchParams }) {
   const sp = await searchParams;
+  const t = await getT();
   const get = (k) => (Array.isArray(sp[k]) ? sp[k][0] : sp[k]) || "";
   const city = get("city").trim();
   const kind = KINDS.some(([k]) => k === get("kind")) ? get("kind") : "";
@@ -27,26 +30,26 @@ export default async function VehiclesPage({ searchParams }) {
 
   return (
     <main className="page">
-      <h1 className="result-title">Cars, vans and buses for hire{city ? ` in ${city}` : ""}</h1>
-      <p className="prose">Every vehicle comes with a driver. Hire by the day, or pick a fixed-price trip set by the operator.</p>
+      <h1 className="result-title">{city ? t("veh.titleIn", { city }) : t("veh.title")}</h1>
+      <p className="prose">{t("veh.intro")}</p>
       <form className="dates-bar" method="get" action="/vehicles">
         <label className="field">
-          <span>City</span>
-          <input type="text" name="city" defaultValue={city} placeholder="Munnar, Ooty, Valparai" />
+          <span>{t("veh.city")}</span>
+          <input type="text" name="city" defaultValue={city} placeholder={t("veh.cityHolder")} />
         </label>
         <label className="field">
-          <span>Type</span>
+          <span>{t("veh.type")}</span>
           <select name="kind" defaultValue={kind}>
-            <option value="">Any</option>
-            {KINDS.map(([k, label]) => (
+            <option value="">{t("type.any")}</option>
+            {KINDS.map(([k]) => (
               <option key={k} value={k}>
-                {label}
+                {kindName(k, t)}
               </option>
             ))}
           </select>
         </label>
         <button type="submit" className="btn btn-small">
-          Search vehicles
+          {t("veh.search")}
         </button>
       </form>
 
@@ -57,30 +60,29 @@ export default async function VehiclesPage({ searchParams }) {
       )}
       {res.ok && rows.length === 0 && !city && !kind && (
         <div className="empty">
-          <h2>We will arrange your car or van</h2>
+          <h2>{t("veh.arrange")}</h2>
           <p>
-            Online vehicle listings are coming soon. Meanwhile, tell us where and when you are travelling, and our team will arrange a car, van, tempo traveller or bus with a driver
-            and call you with the price.
+            {t("veh.arrangeText")}
           </p>
           <p>
             <a
               className="btn btn-primary"
-              href={`https://wa.me/918300841442?text=${encodeURIComponent("Hi Hill Booker, I need a vehicle with a driver. Pickup place: , Destination: , Date: , Number of people: ")}`}
+              href={`https://wa.me/918300841442?text=${encodeURIComponent(t("veh.waText"))}`}
               target="_blank"
               rel="noopener noreferrer"
             >
-              WhatsApp us
+              {t("veh.wa")}
             </a>{" "}
             <Link className="btn" href="/enquiry?kind=group">
-              Send an enquiry
+              {t("veh.enquiry")}
             </Link>
           </p>
         </div>
       )}
       {res.ok && rows.length === 0 && (city || kind) && (
         <div className="empty">
-          <h2>No vehicles found</h2>
-          <p>Try another city, or remove the type filter.</p>
+          <h2>{t("veh.none")}</h2>
+          <p>{t("veh.noneHint")}</p>
         </div>
       )}
       <ul className="results">
@@ -89,13 +91,13 @@ export default async function VehiclesPage({ searchParams }) {
             <Link className="result" href={`/vehicles/${v.id}`}>
               <div className="result-photo">{v.photo ? <img src={v.photo} alt={`${v.name}, ${v.city}`} loading="lazy" /> : <Ridge seed={v.id} />}</div>
               <div className="result-body">
-                <p className="meta">{vehicleLine(v)}</p>
+                <p className="meta">{vehicleLine(v, t)}</p>
                 <h2 className="row-name">{v.name}</h2>
-                {v.trip_from != null && <p className="rating">Fixed trips from {money(v.trip_from)}</p>}
+                {v.trip_from != null && <p className="rating">{t("veh.tripsFrom", { amt: money(v.trip_from) })}</p>}
               </div>
               <div className="price-box">
                 <span className="price">{money(v.price_per_day)}</span>
-                <span className="price-sub">per day</span>
+                <span className="price-sub">{t("veh.perDay")}</span>
               </div>
             </Link>
           </li>

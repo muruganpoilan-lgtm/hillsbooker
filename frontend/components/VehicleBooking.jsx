@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "./AuthProvider";
-import { addDays, advanceFor, api, money, nightsBetween, plural, todayISO } from "../lib/api";
+import { addDays, advanceFor, api, money, nightsBetween, todayISO } from "../lib/api";
+import { useLang } from "./LangProvider";
 
 export default function VehicleBooking({ vehicle: v }) {
+  const { t } = useLang();
   const router = useRouter();
   const pathname = usePathname();
   const { token, logout } = useAuth();
@@ -23,13 +25,13 @@ export default function VehicleBooking({ vehicle: v }) {
 
   // Dates are set after load so the server and the browser agree on first paint.
   useEffect(() => {
-    const t = todayISO();
-    setToday(t);
-    setStart(addDays(t, 1));
-    setEnd(addDays(t, 1));
+    const d = todayISO();
+    setToday(d);
+    setStart(addDays(d, 1));
+    setEnd(addDays(d, 1));
   }, []);
 
-  const trip = v.trips.find((t) => t.id === tripId);
+  const trip = v.trips.find((x) => x.id === tripId);
   const days = start && end && end >= start ? nightsBetween(start, end) + 1 : 1;
   const n = Number(count) || 1;
   const total = trip ? Number(trip.price) * n : Number(v.price_per_day) * days * n;
@@ -43,7 +45,7 @@ export default function VehicleBooking({ vehicle: v }) {
       return;
     }
     if (!start || (!trip && (!end || end < start))) {
-      setError("Choose the dates. The last day can't be before the first day.");
+      setError(t("vb.errDates"));
       return;
     }
     setBusy(true);
@@ -77,20 +79,20 @@ export default function VehicleBooking({ vehicle: v }) {
   return (
     <form className="room-card stack" onSubmit={reserve} noValidate>
       <fieldset className="choice">
-        <legend className="field-label">How do you want to book?</legend>
+        <legend className="field-label">{t("vb.how")}</legend>
         <label className="check">
           <input type="radio" name="mode" checked={!tripId} onChange={() => setTripId("")} />
           <span>
-            Hire by the day <b>{money(v.price_per_day)}</b> a day
+            {t("veh.hireDay", { amt: money(v.price_per_day) })}
           </span>
         </label>
-        {v.trips.map((t) => (
-          <label className="check" key={t.id}>
-            <input type="radio" name="mode" checked={tripId === t.id} onChange={() => setTripId(t.id)} />
+        {v.trips.map((tr) => (
+          <label className="check" key={tr.id}>
+            <input type="radio" name="mode" checked={tripId === tr.id} onChange={() => setTripId(tr.id)} />
             <span>
-              {t.title} <b>{money(t.price)}</b> fixed
-              {t.from_place || t.to_place ? <span className="meta"> · {[t.from_place, t.to_place].filter(Boolean).join(" to ")}</span> : null}
-              {t.details ? <span className="meta"> · {t.details}</span> : null}
+              {t("vb.fixed", { title: tr.title, amt: money(tr.price) })}
+              {tr.from_place || tr.to_place ? <span className="meta"> · {[tr.from_place, tr.to_place].filter(Boolean).join(t("vb.to"))}</span> : null}
+              {tr.details ? <span className="meta"> · {tr.details}</span> : null}
             </span>
           </label>
         ))}
@@ -98,7 +100,7 @@ export default function VehicleBooking({ vehicle: v }) {
 
       <div className="dates-bar">
         <label className="field">
-          <span>{trip ? "Trip date" : "First day"}</span>
+          <span>{trip ? t("vb.tripDate") : t("vb.first")}</span>
           <input
             type="date"
             value={start}
@@ -111,12 +113,12 @@ export default function VehicleBooking({ vehicle: v }) {
         </label>
         {!trip && (
           <label className="field">
-            <span>Last day</span>
+            <span>{t("vb.last")}</span>
             <input type="date" value={end} min={start || today || undefined} onChange={(e) => setEnd(e.target.value)} />
           </label>
         )}
         <label className="field">
-          <span>Vehicles</span>
+          <span>{t("vb.vehicles")}</span>
           <select value={count} onChange={(e) => setCount(e.target.value)}>
             {Array.from({ length: Math.min(v.quantity, 10) }, (_, i) => i + 1).map((k) => (
               <option key={k} value={k}>
@@ -126,27 +128,27 @@ export default function VehicleBooking({ vehicle: v }) {
           </select>
         </label>
         <label className="field">
-          <span>Passengers (seats {v.seats} each)</span>
+          <span>{t("vb.pax", { n: v.seats })}</span>
           <input type="number" min="1" max="200" value={passengers} onChange={(e) => setPassengers(e.target.value)} />
         </label>
       </div>
 
       <label className="field">
-        <span>Pickup place</span>
-        <input type="text" value={pickup} onChange={(e) => setPickup(e.target.value)} placeholder="Hotel, bus stand, address" maxLength={200} />
+        <span>{t("vb.pickup")}</span>
+        <input type="text" value={pickup} onChange={(e) => setPickup(e.target.value)} placeholder={t("vb.pickupHolder")} maxLength={200} />
       </label>
       <label className="field">
-        <span>Note for the operator (optional)</span>
+        <span>{t("vb.note")}</span>
         <input type="text" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} />
       </label>
 
       <p>
         <span className="price">{money(total)}</span>{" "}
-        <span className="meta">{trip ? plural(n, "vehicle") : `${plural(days, "day")} × ${plural(n, "vehicle")}`}</span>
+        <span className="meta">{trip ? t.n("unit.vehicle", n) : t("vb.times", { days: t.n("unit.day", days), veh: t.n("unit.vehicle", n) })}</span>
       </p>
       {advance < total && (
         <p className="meta">
-          Pay <b>{money(advance)}</b> now ({v.advance_percent}%), {money(total - advance)} to the operator on the trip
+          {t("vb.payNow", { adv: money(advance), pct: v.advance_percent, rest: money(total - advance) })}
         </p>
       )}
       {error && (
@@ -155,9 +157,9 @@ export default function VehicleBooking({ vehicle: v }) {
         </p>
       )}
       <button type="submit" className="btn btn-primary" aria-busy={busy}>
-        {busy ? "Holding the vehicle…" : token ? "Reserve for 10 minutes" : "Log in to book"}
+        {busy ? t("vb.holding") : token ? t("vb.reserve") : t("vb.login")}
       </button>
-      <p className="meta">Cancel at least 2 days before the trip and your advance is refunded in full. After that there is no refund.</p>
+      <p className="meta">{t("vb.cancelRule")}</p>
     </form>
   );
 }
