@@ -6,11 +6,13 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "../../components/AuthProvider";
 import UpiPay from "../../components/UpiPay";
 import PhoneBox from "../../components/PhoneBox";
-import { api, money, nightsBetween, plural, prettyDate } from "../../lib/api";
+import { api, money, nightsBetween, prettyDate } from "../../lib/api";
+import { useLang } from "../../components/LangProvider";
 import { payForBooking } from "../../lib/pay";
 
 // Counts down to the end of the hold, then reloads so the page shows the booking as expired.
 function HoldTimer({ until, onExpire }) {
+  const { t } = useLang();
   const [left, setLeft] = useState(() => Math.max(0, new Date(until).getTime() - Date.now()));
   const fired = useRef(false);
   useEffect(() => {
@@ -29,13 +31,14 @@ function HoldTimer({ until, onExpire }) {
   const mins = Math.floor(left / 60000);
   const secs = String(Math.floor((left % 60000) / 1000)).padStart(2, "0");
   const hours = Math.floor(mins / 60);
-  return <p className="scarce">{left > 0 ? (hours >= 1 ? `Held for you for ${hours}h ${mins % 60}m` : `Held for you for ${mins}:${secs}`) : "Hold ended"}</p>;
+  return <p className="scarce">{left > 0 ? (hours >= 1 ? t("pay.held", { h: hours, m: mins % 60 }) : t("pay.heldM", { m: mins, s: secs })) : t("bk.holdEnd")}</p>;
 }
 
 // The payment page a guest lands on right after reserving a room or vehicle: /pay?kind=stay|vehicle&id=...
 export default function PayPage() {
   const router = useRouter();
   const { ready, token, logout } = useAuth();
+  const { t } = useLang();
   const [kind, setKind] = useState("");
   const [id, setId] = useState("");
   const [b, setB] = useState(null);
@@ -71,7 +74,7 @@ export default function PayPage() {
 
   const base = kind === "vehicle" ? "vehicle-bookings" : "bookings";
   const listHref = kind === "vehicle" ? "/bookings/vehicles" : "/bookings";
-  const what = kind === "vehicle" ? "vehicle" : "room";
+  const what = t(kind === "vehicle" ? "pay.whatVehicle" : "pay.whatRoom");
 
   async function pay() {
     setError("");
@@ -82,7 +85,7 @@ export default function PayPage() {
     if (res.dismissed) return;
     if (res.status === 401) return logout();
     if (!res.ok) return setError(res.error);
-    if (res.data.status === "refunded") setNotice(`Your payment arrived after the ${what} was released, and it was gone. Your money is being refunded in full.`);
+    if (res.data.status === "refunded") setNotice(t("pay.lateRefund", { what }));
     load();
   }
 
@@ -112,9 +115,9 @@ export default function PayPage() {
     return (
       <main className="page">
         <div className="empty">
-          <h2>Log in to pay for your booking</h2>
+          <h2>{t("pay.loginTitle")}</h2>
           <p>
-            <Link href={`/login?next=${encodeURIComponent(`/pay?kind=${kind}&id=${id}`)}`}>Log in</Link>
+            <Link href={`/login?next=${encodeURIComponent(`/pay?kind=${kind}&id=${id}`)}`}>{t("bk.login")}</Link>
           </p>
         </div>
       </main>
@@ -124,9 +127,9 @@ export default function PayPage() {
     return (
       <main className="page">
         <div className="empty">
-          <h2>We couldn't find that booking</h2>
+          <h2>{t("pay.notFound")}</h2>
           <p>
-            <Link href={listHref}>Go to My bookings</Link>
+            <Link href={listHref}>{t("pay.goList")}</Link>
           </p>
         </div>
       </main>
@@ -135,7 +138,7 @@ export default function PayPage() {
   if (!b) {
     return (
       <main className="page">
-        {error ? <p className="form-error" role="alert">{error}</p> : <p className="empty">Loading…</p>}
+        {error ? <p className="form-error" role="alert">{error}</p> : <p className="empty">{t("saved.loading")}</p>}
       </main>
     );
   }
@@ -143,25 +146,25 @@ export default function PayPage() {
   const name = kind === "vehicle" ? `${b.vehicle}${b.count > 1 ? ` × ${b.count}` : ""}` : b.property;
   const detail =
     kind === "vehicle"
-      ? `${b.trip || "Hire by the day"} · ${plural(b.passengers, "passenger")} · ${b.city}`
-      : `${b.room_type}, ${plural(b.rooms, "room")}, ${plural(b.guests - (b.children || 0), "adult")}${b.children > 0 ? `, ${plural(b.children, "child", "children")}` : ""} · ${b.city}`;
+      ? t("pay.vehDetail", { trip: b.trip || t("pay.byDay"), pax: t.n("unit.passenger", b.passengers), city: b.city })
+      : t("pay.stayDetail", { room: b.room_type, rooms: t.n("unit.room", b.rooms), adults: t.n("unit.adult", b.guests - (b.children || 0)), kids: b.children > 0 ? `, ${t.n("unit.child", b.children)}` : "", city: b.city });
   const when =
     kind === "vehicle"
       ? b.start_date === b.end_date
         ? prettyDate(b.start_date)
-        : `${prettyDate(b.start_date)} to ${prettyDate(b.end_date)}`
-      : `${prettyDate(b.check_in)} to ${prettyDate(b.check_out)} (${plural(nightsBetween(b.check_in, b.check_out), "night")})`;
+        : t("bk.dates", { a: prettyDate(b.start_date), b: prettyDate(b.end_date), n: "" }).replace(" ()", "")
+      : t("bk.dates", { a: prettyDate(b.check_in), b: prettyDate(b.check_out), n: t.n("unit.night", nightsBetween(b.check_in, b.check_out)) });
   const hasBalance = Number(b.balance_due) > 0;
 
   return (
     <main className="page">
       <div className="narrow">
         <h1 className="section-title">
-          {b.status === "confirmed" ? "Booking confirmed" : b.status === "held" ? "Pay your advance" : "Booking"}
+          {b.status === "confirmed" ? t("pay.titleConfirmed") : b.status === "held" ? t("pay.titleHeld") : t("pay.titleOther")}
         </h1>
-        <ol className="pay-steps" aria-label="Progress">
-          <li className={b.status === "confirmed" ? "done" : "now"}>1. Pay advance</li>
-          <li className={b.status === "confirmed" ? "now" : ""}>2. Booking confirmed</li>
+        <ol className="pay-steps" aria-label={t("pay.progress")}>
+          <li className={b.status === "confirmed" ? "done" : "now"}>{t("pay.step1")}</li>
+          <li className={b.status === "confirmed" ? "now" : ""}>{t("pay.step2")}</li>
         </ol>
 
         <article className="booking">
@@ -169,11 +172,11 @@ export default function PayPage() {
           <p className="meta">{detail}</p>
           <p>{when}</p>
           <p>
-            Total <span className="price">{money(b.total_amount)}</span>
+            {t("pay.total")} <span className="price">{money(b.total_amount)}</span>
           </p>
           {hasBalance && (
             <p className="meta">
-              Pay <b>{money(b.advance_amount)}</b> now to confirm. The balance of {money(b.balance_due)} is paid {kind === "vehicle" ? "to the operator" : "at the property"}.
+              {t(kind === "vehicle" ? "pay.balanceVeh" : "pay.balanceStay", { adv: money(b.advance_amount), bal: money(b.balance_due) })}
             </p>
           )}
         </article>
@@ -196,20 +199,20 @@ export default function PayPage() {
             {b.hold_expires_at && <HoldTimer until={b.hold_expires_at} onExpire={load} />}
             {b.upi_pending ? (
               <p className="notice" role="status">
-                You sent a UPI payment. The host will check it and confirm your booking, usually within a few hours. You can leave this page. You'll see the booking as confirmed in <Link href={listHref}>My bookings</Link>.
+                {t("pay.upiSent")} <Link href={listHref}>{t("bk.title")}</Link>.
               </p>
             ) : (
               <>
-                {!payOn && <p className="meta">Test mode: online payments aren't switched on yet, so no money is taken. The button below pays the advance in test mode.</p>}
+                {!payOn && <p className="meta">{t("pay.testMode")}</p>}
                 <div className="booking-actions">
                   <button type="button" className="btn btn-primary" aria-busy={busy} onClick={payOn ? pay : () => act("confirm")}>
-                    {`Pay ${money(b.advance_amount)} advance${payOn ? "" : " (test)"}`}
+                    {t(payOn ? "pay.btn" : "pay.btnTest", { amt: money(b.advance_amount) })}
                   </button>
                 </div>
                 {b.host_upi && <UpiPay kind={kind} bookingId={b.id} token={token} amount={b.advance_amount} onDone={load} />}
                 <p>
                   <button type="button" className="link-btn" onClick={() => act("cancel")}>
-                    Cancel and release the {what}
+                    {t("pay.release", { what })}
                   </button>
                 </p>
               </>
@@ -219,15 +222,15 @@ export default function PayPage() {
 
         {b.status === "confirmed" && (
           <>
-            <p className="ok">Payment received. Your {kind === "vehicle" ? "vehicle" : "room"} is booked.</p>
+            <p className="ok">{t("pay.received", { what })}</p>
             <div className="booking-actions">
               {kind !== "vehicle" && (
                 <button type="button" className="btn" onClick={openInvoice}>
-                  Invoice
+                  {t("pay.invoice")}
                 </button>
               )}
               <Link href={listHref} className="btn btn-primary">
-                Go to My bookings
+                {t("pay.goList")}
               </Link>
             </div>
           </>
@@ -235,7 +238,7 @@ export default function PayPage() {
 
         {(b.status === "expired" || b.status === "cancelled") && (
           <p className="empty">
-            This booking is {b.status === "expired" ? "no longer held" : "cancelled"}. <Link href="/">Search again</Link>.
+            {t(b.status === "expired" ? "pay.ended" : "pay.cancelled")} <Link href="/">{t("pay.searchAgain")}</Link>.
           </p>
         )}
       </div>
