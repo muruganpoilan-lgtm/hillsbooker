@@ -7,3 +7,5 @@ build/
 .dart_tool/
 secrets/
 google-services.json.bak
+
+*.apk
