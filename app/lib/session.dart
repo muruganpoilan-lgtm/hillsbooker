@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api.dart';
+import 'push.dart';
 
 // Who is logged in. The token is kept on the phone so people stay logged in.
 class Session extends ChangeNotifier {
@@ -26,10 +27,12 @@ class Session extends ChangeNotifier {
       await p.setString('token', newToken);
       await p.setString('role', newRole);
     } catch (_) {}
+    Push.register();
     notifyListeners();
   }
 
   Future<void> logout() async {
+    await Push.unregister();
     token = null;
     role = null;
     Api.token = null;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api.dart';
+import '../push.dart';
 import '../session.dart';
 import '../theme.dart';
 import 'login_screen.dart';
@@ -73,6 +74,19 @@ class AccountScreen extends StatelessWidget {
                   ),
                 ),
               const SizedBox(height: 16),
+              if (Push.ready)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final res = await Api.post('/push/test');
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res.ok ? 'Test notification sent. It should arrive in a few seconds.' : res.error)));
+                    },
+                    icon: const Icon(Icons.notifications_active_outlined, size: 18),
+                    label: const Text('Send a test notification'),
+                  ),
+                ),
               OutlinedButton(onPressed: () => session.logout(), child: const Text('Log out')),
             ],
           ],

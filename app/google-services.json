@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "765708132504",
+    "project_id": "talkory-1",
+    "storage_bucket": "talkory-1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:765708132504:android:0e1e4bf75eb31327d430ed",
+        "android_client_info": {
+          "package_name": "com.talkory.talkory_partner"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCxTufRdZ-4EXOMkfv6YUumqK0VcReDfNQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

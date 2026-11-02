@@ -55,8 +55,10 @@ services:
       CASHFREE_SECRET_KEY: ${CASHFREE_SECRET_KEY:-}
       CASHFREE_ENV: ${CASHFREE_ENV:-sandbox}
       PAYMENT_GATEWAY: ${PAYMENT_GATEWAY:-}
+      FIREBASE_CREDENTIALS_FILE: /secrets/firebase-service-account.json
     volumes:
       - roomly_uploads:/data/uploads
+      - ./secrets:/secrets:ro
   web:
     build:
       context: ./frontend

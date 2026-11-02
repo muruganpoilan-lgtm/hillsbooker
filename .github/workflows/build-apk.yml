@@ -39,6 +39,18 @@ jobs:
           grep -q 'android.permission.INTERNET' $M || sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <application#' $M
           grep -q usesCleartextTraffic $M || sed -i 's#<application#<application android:usesCleartextTraffic="true"#' $M
 
+      - name: Allow notifications on Android 13 and newer
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          grep -q POST_NOTIFICATIONS $M || sed -i 's#<application#<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <application#' $M
+
+      - name: Firebase needs Android 6 or newer
+        run: sed -i -E 's/minSdk(Version)?[ =]+flutter\.minSdkVersion/minSdk = 23/' android/app/build.gradle*
+
+      - name: Set up notifications from google-services.json
+        run: |
+          if [ -f google-services.json ]; then python3 tool/make_firebase_options.py; else echo "No google-services.json, building without notifications"; fi
+
       - name: Let the app receive the return from Google sign-in
         run: |
           M=android/app/src/main/AndroidManifest.xml

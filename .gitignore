@@ -5,5 +5,5 @@ __pycache__/
 uploads/
 build/
 .dart_tool/
-*.apk
-client_secret_*.json
+secrets/
+google-services.json.bak

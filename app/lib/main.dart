@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'push.dart';
 import 'screens/account_screen.dart';
 import 'screens/bookings_hub.dart';
 import 'screens/home_screen.dart';
@@ -15,6 +16,8 @@ Future<void> main() async {
   Api.onUnauthorized = () {
     if (session.token != null) session.logout();
   };
+  await Push.init();
+  if (session.token != null) Push.register();
   runApp(const HillBookerApp());
 }
 
@@ -25,6 +28,7 @@ class HillBookerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Hill Booker',
+      scaffoldMessengerKey: messengerKey,
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
       home: const Shell(),

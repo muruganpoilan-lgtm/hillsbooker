@@ -9,6 +9,7 @@ import threading
 import urllib.error
 import urllib.request
 
+from . import push
 from .config import settings
 from .db import get_conn
 
@@ -42,7 +43,7 @@ def _details(kind: str, booking_id: str):
     with get_conn() as conn, conn.cursor() as cur:
         if kind == "stay":
             cur.execute(
-                """SELECT h.phone AS host_phone, h.name AS host_name, p.name AS item, g.name AS guest, g.phone AS guest_phone,
+                """SELECT h.id AS host_id, g.id AS guest_id, h.phone AS host_phone, h.name AS host_name, p.name AS item, g.name AS guest, g.phone AS guest_phone,
                           b.check_in AS d1, b.check_out AS d2, rt.name AS what, b.rooms AS qty, b.guests AS people, b.children AS kids,
                           b.total_amount, COALESCE(b.advance_amount, b.total_amount) AS advance
                    FROM bookings b JOIN properties p ON p.id = b.property_id JOIN users h ON h.id = p.owner_id
@@ -52,7 +53,7 @@ def _details(kind: str, booking_id: str):
             )
         else:
             cur.execute(
-                """SELECT h.phone AS host_phone, h.name AS host_name, v.name AS item, g.name AS guest, g.phone AS guest_phone,
+                """SELECT h.id AS host_id, g.id AS guest_id, h.phone AS host_phone, h.name AS host_name, v.name AS item, g.name AS guest, g.phone AS guest_phone,
                           b.start_date AS d1, b.end_date AS d2, COALESCE(t.title, 'Hire by the day') AS what,
                           b.count AS qty, b.passengers AS people, 0 AS kids, b.total_amount, b.advance_amount AS advance
                    FROM vehicle_bookings b JOIN vehicles v ON v.id = b.vehicle_id JOIN users h ON h.id = v.operator_id
@@ -125,6 +126,7 @@ def _run(kind: str, booking_id: str, event: str) -> None:
 
 def host_in_background(kind: str, booking_id, event: str = "confirmed") -> None:
     """Call right after a booking is confirmed (event "confirmed") or a UPI payment is reported (event "upi")."""
+    push.booking_in_background(kind, booking_id, event)
     if enabled():
         threading.Thread(target=_run, args=(kind, str(booking_id), event), daemon=True).start()
 
@@ -219,6 +221,7 @@ def _cancelled(kind: str, booking_id: str, refund: dict) -> None:
 
 
 def cancel_in_background(kind: str, booking_id, refund: dict | None = None) -> None:
+    push.cancelled_in_background(kind, booking_id)
     if enabled() and settings.whatsapp_cancel_template:
         threading.Thread(target=_cancelled, args=(kind, str(booking_id), refund or {}), daemon=True).start()
 

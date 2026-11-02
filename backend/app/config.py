@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     # A guest can cancel a confirmed stay on their own only this many minutes after paying (full refund inside the window).
     cancel_window_minutes: int = 10
 
+    # Push notifications to the app. Path to the Firebase service account key file (kept on the server, never in the repo).
+    firebase_credentials_file: str = ""
+
     # Invoices. The business details print at the top of every invoice.
     business_name: str = "Hill Booker"
     business_address: str = ""
