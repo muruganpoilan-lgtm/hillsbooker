@@ -89,9 +89,9 @@ def create_property(body: PropertyIn, user: dict = Depends(owner_only)):
         # Listings made by an admin are trusted and go live at once; owners' listings wait for approval.
         status = "approved" if user["role"] == "admin" else "pending"
         cur.execute(
-            """INSERT INTO properties (owner_id, name, type, description, city, address, lat, lng, status, advance_percent, min_notice_days)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
-            (owner_id, body.name, body.type, body.description, body.city, body.address, body.lat, body.lng, status, body.advance_percent, body.min_notice_days),
+            """INSERT INTO properties (owner_id, name, type, description, city, address, lat, lng, map_url, nearby, status, advance_percent, min_notice_days)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+            (owner_id, body.name, body.type, body.description, body.city, body.address, body.lat, body.lng, body.map_url, body.nearby, status, body.advance_percent, body.min_notice_days),
         )
         pid = cur.fetchone()["id"]
         for amenity_id in body.amenity_ids:
@@ -122,7 +122,7 @@ def my_property_detail(property_id: str, user: dict = Depends(owner_only)):
     with get_conn() as conn, conn.cursor() as cur:
         _own_property(cur, property_id, user)
         cur.execute(
-            "SELECT id, name, type, description, city, address, lat, lng, status, advance_percent, min_notice_days FROM properties WHERE id = %s",
+            "SELECT id, name, type, description, city, address, lat, lng, map_url, nearby, status, advance_percent, min_notice_days FROM properties WHERE id = %s",
             (property_id,),
         )
         prop = cur.fetchone()

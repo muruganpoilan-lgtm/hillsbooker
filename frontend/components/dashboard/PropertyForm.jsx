@@ -17,6 +17,8 @@ export default function PropertyForm({ initial, submitLabel, onSubmit }) {
     type: initial?.type || "hotel",
     city: initial?.city || "",
     address: initial?.address || "",
+    map_url: initial?.map_url || "",
+    nearby: initial?.nearby || "",
     description: initial?.description || "",
     advance_percent: String(initial?.advance_percent ?? 30),
     min_notice_days: String(initial?.min_notice_days ?? 2),
@@ -46,6 +48,8 @@ export default function PropertyForm({ initial, submitLabel, onSubmit }) {
       type: form.type,
       city: form.city.trim(),
       address: form.address.trim() || null,
+      map_url: form.map_url.trim(),
+      nearby: form.nearby,
       description: form.description.trim() || null,
       advance_percent: Number(form.advance_percent),
       min_notice_days: Number(form.min_notice_days),
@@ -80,6 +84,16 @@ export default function PropertyForm({ initial, submitLabel, onSubmit }) {
       <label className="field">
         <span>Address</span>
         <input type="text" value={form.address} onChange={set("address")} autoComplete="street-address" />
+      </label>
+      <label className="field">
+        <span>Google Maps link (optional)</span>
+        <input type="url" value={form.map_url} onChange={set("map_url")} placeholder="https://maps.app.goo.gl/..." autoCapitalize="none" />
+        <small>Open your property in Google Maps, tap Share, copy the link and paste it here. Guests then see your exact location on a map.</small>
+      </label>
+      <label className="field">
+        <span>Nearby attractions (optional)</span>
+        <textarea rows={5} value={form.nearby} onChange={set("nearby")} placeholder={"Ooty Lake - 3 km\nBotanical Garden - 5 km\nDoddabetta Peak - 9 km"} />
+        <small>One place per line, with the distance. Up to 10 lines.</small>
       </label>
       <label className="field">
         <span>Description</span>

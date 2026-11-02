@@ -459,3 +459,8 @@ label.btn[aria-busy="true"] { opacity: 0.7; cursor: progress; }
 .hb-video iframe { width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 10px; background: var(--paper); }
 .hb-video figcaption { display: grid; gap: 0.15rem; margin-top: 0.4rem; }
 .hb-video figcaption span { color: var(--ink-soft); font-size: 0.9rem; }
+
+/* Property map */
+.prop-map { position: relative; width: 100%; height: 320px; border-radius: 12px; overflow: hidden; background: var(--paper, #f4f5f0); margin: 0.6rem 0 0.8rem; }
+.prop-map iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+@media (max-width: 640px) { .prop-map { height: 260px; } }

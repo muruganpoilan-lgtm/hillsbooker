@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import PhotoGallery from "../../../components/PhotoGallery";
 import RoomList from "../../../components/RoomList";
+import PropertyMap, { mapPoint } from "../../../components/PropertyMap";
 import { api, isISODate, nightsBetween, plural } from "../../../lib/api";
 import { SITE_URL, jsonLd } from "../../../lib/seo";
 
@@ -60,6 +61,12 @@ export default async function PropertyPage({ params, searchParams }) {
     description: p.description || undefined,
     image: p.photos && p.photos.length ? p.photos : undefined,
     address: { "@type": "PostalAddress", streetAddress: p.address || undefined, addressLocality: p.city, addressCountry: "IN" },
+    geo: (() => {
+      const pt = mapPoint(p);
+      if (!pt) return undefined;
+      const [la, lo] = pt.split(",");
+      return { "@type": "GeoCoordinates", latitude: Number(la), longitude: Number(lo) };
+    })(),
     amenityFeature: p.amenities.map((a) => ({ "@type": "LocationFeatureSpecification", name: a, value: true })),
     priceRange: prices.length ? `from INR ${Math.min(...prices)}` : undefined,
     aggregateRating:
@@ -120,6 +127,8 @@ export default async function PropertyPage({ params, searchParams }) {
           earliest={p.earliest_check_in || ""}
         />
       </section>
+
+      <PropertyMap p={p} />
     </main>
   );
 }

@@ -1,6 +1,27 @@
 from datetime import date
+from urllib.parse import urlparse
 
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import BaseModel, EmailStr, Field, model_validator, field_validator
+
+
+def _clean_map_url(v):
+    """Only an https Google Maps link is accepted. Empty means none."""
+    v = (v or "").strip()
+    if not v:
+        return ""
+    u = urlparse(v)
+    host = (u.hostname or "").lower()
+    allowed = ("goo.gl", "g.page", "google.com", "google.co.in")
+    ok = u.scheme == "https" and any(host == d or host.endswith("." + d) for d in allowed)
+    if not ok:
+        raise ValueError("Paste a Google Maps link (it starts with https://maps.app.goo.gl or https://www.google.com/maps)")
+    return v[:500]
+
+
+def _clean_nearby(v):
+    lines = [" ".join(x.split()) for x in (v or "").splitlines()]
+    lines = [x[:120] for x in lines if x][:10]
+    return "\n".join(lines)
 
 
 class RegisterIn(BaseModel):
@@ -24,11 +45,23 @@ class PropertyIn(BaseModel):
     address: str | None = None
     lat: float | None = None
     lng: float | None = None
+    map_url: str | None = None
+    nearby: str | None = None
     advance_percent: int = Field(default=100, ge=10, le=100)  # share paid online when booking
     min_notice_days: int = Field(default=2, ge=0, le=14)  # earliest check-in = today + this many days
     amenity_ids: list[int] = []
     photo_urls: list[str] = []
     owner_id: str | None = None  # admins only: create the property on behalf of this owner
+
+    @field_validator("map_url")
+    @classmethod
+    def _map(cls, v):
+        return _clean_map_url(v) or None
+
+    @field_validator("nearby")
+    @classmethod
+    def _near(cls, v):
+        return _clean_nearby(v) or None
 
 
 class PropertyUpdate(BaseModel):
@@ -37,9 +70,21 @@ class PropertyUpdate(BaseModel):
     description: str | None = None
     city: str | None = Field(default=None, min_length=1, max_length=80)
     address: str | None = None
+    map_url: str | None = None
+    nearby: str | None = None
     advance_percent: int | None = Field(default=None, ge=10, le=100)
     min_notice_days: int | None = Field(default=None, ge=0, le=14)
     amenity_ids: list[int] | None = None
+
+    @field_validator("map_url")
+    @classmethod
+    def _map(cls, v):
+        return _clean_map_url(v)  # empty text clears it
+
+    @field_validator("nearby")
+    @classmethod
+    def _near(cls, v):
+        return _clean_nearby(v)  # empty text clears it
 
 
 class RoomTypeIn(BaseModel):
