@@ -73,6 +73,7 @@ def load(cur, booking_id: str) -> dict | None:
     cur.execute(
         """SELECT b.id, b.invoice_no, b.check_in, b.check_out, b.rooms, b.guests, b.total_amount,
                   COALESCE(b.advance_amount, b.total_amount) AS advance_amount, b.created_at,
+                  b.coupon_code, b.discount_amount,
                   u.name AS guest, u.email AS guest_email, u.phone AS guest_phone,
                   h.name AS host_name, h.email AS host_email,
                   p.name AS property, p.address, p.city, rt.name AS room_type,
@@ -170,7 +171,12 @@ def build_pdf(d: dict) -> bytes:
     total, adv = Decimal(d["total_amount"]), Decimal(d["advance_amount"])
     paid_online = d["paid_amount"] is not None
     c.setFont("Helvetica", 10)
-    amounts = [("Total for the stay", rs(total), False)]
+    amounts = []
+    disc = Decimal(d.get("discount_amount") or 0)
+    if disc > 0:
+        amounts.append(("Room price", rs(total + disc), False))
+        amounts.append((f"Coupon {d['coupon_code']}", "- " + rs(disc), False))
+    amounts.append(("Total for the stay", rs(total), False))
     if paid_online:
         amounts.append((f"Paid online" + (f" (payment {d['provider_payment_id']})" if d["provider_payment_id"] else ""), rs(d["paid_amount"]), False))
         due = total - Decimal(d["paid_amount"])

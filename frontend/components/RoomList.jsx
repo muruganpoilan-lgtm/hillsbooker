@@ -19,12 +19,63 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [today, setToday] = useState("");
+  const [couponText, setCouponText] = useState("");
+  const [applied, setApplied] = useState("");
+  const [couponMsg, setCouponMsg] = useState("");
+  const [preview, setPreview] = useState({});
 
   // Set after load so the server and the browser agree on first paint, whatever their time zones.
   useEffect(() => setToday(todayISO()), []);
 
   const hasDates = Boolean(ci && co);
   const here = `${pathname}?${new URLSearchParams({ check_in: ci, check_out: co, guests: String(g), children: String(kids) }).toString()}`;
+
+  // With a coupon applied, ask the server what it saves on each room that can be booked, and keep that up to date
+  // when the number of rooms changes. The booking itself checks the coupon again.
+  const bookableKey = rooms.filter((r) => r.bookable).map((r) => `${r.id}:${qty[r.id] || 1}`).join(",");
+  useEffect(() => {
+    if (!applied || !token || !hasDates) {
+      setPreview({});
+      return;
+    }
+    let live = true;
+    (async () => {
+      const out = {};
+      let firstError = "";
+      for (const r of rooms.filter((x) => x.bookable)) {
+        const res = await api("/coupons/check", {
+          method: "POST",
+          token,
+          body: { code: applied, room_type_id: r.id, check_in: ci, check_out: co, rooms: Number(qty[r.id] || 1) },
+        });
+        if (res.ok) out[r.id] = res.data;
+        else if (!firstError) firstError = res.error;
+      }
+      if (!live) return;
+      setPreview(out);
+      setCouponMsg(Object.keys(out).length ? "" : firstError || "This coupon doesn't apply to these rooms.");
+    })();
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applied, token, hasDates, ci, co, bookableKey]);
+
+  function applyCoupon(e) {
+    e.preventDefault();
+    const code = couponText.replace(/\s+/g, "").toUpperCase();
+    if (!code) return setCouponMsg("Type your coupon code first.");
+    if (!token) return goToLogin();
+    setCouponMsg("");
+    setApplied(code);
+  }
+
+  function removeCoupon() {
+    setApplied("");
+    setCouponText("");
+    setCouponMsg("");
+    setPreview({});
+  }
 
   function updateDates(e) {
     e.preventDefault();
@@ -54,7 +105,7 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
     const res = await api("/bookings", {
       method: "POST",
       token,
-      body: { room_type_id: room.id, check_in: ci, check_out: co, rooms: Number(qty[room.id] || 1), guests: Number(g), children: Number(kids) },
+      body: { room_type_id: room.id, check_in: ci, check_out: co, rooms: Number(qty[room.id] || 1), guests: Number(g), children: Number(kids), coupon_code: applied || undefined },
     });
     setBusy("");
     if (res.status === 401) {
@@ -120,6 +171,26 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
         </p>
       )}
 
+      {hasDates && rooms.some((r) => r.bookable) && (
+        <form className="coupon-box" onSubmit={applyCoupon} noValidate>
+          {applied && Object.keys(preview).length > 0 ? (
+            <p className="ok">
+              Coupon <b>{applied}</b> applied.{" "}
+              <button type="button" className="link-btn" onClick={removeCoupon}>Remove</button>
+            </p>
+          ) : (
+            <>
+              <label className="field">
+                <span>Coupon code</span>
+                <input value={couponText} onChange={(e) => setCouponText(e.target.value)} placeholder="Have a code? Type it here" maxLength={40} autoCapitalize="characters" />
+              </label>
+              <button type="submit" className="btn btn-small">Apply</button>
+            </>
+          )}
+          {couponMsg && <p className="form-error" role="alert">{couponMsg}</p>}
+        </form>
+      )}
+
       {rooms.length === 0 && <p className="empty">The owner hasn't added rooms yet.</p>}
 
       {rooms.map((room) => {
@@ -153,6 +224,11 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
                   </p>
                 );
               })()}
+              {bookable && preview[room.id] && (
+                <p className="ok">
+                  Coupon {preview[room.id].code}: you save {money(preview[room.id].discount)}. Pay <b>{money(preview[room.id].pay_now)}</b> now instead of {money(preview[room.id].pay_now_before)}. The balance at the property stays the same.
+                </p>
+              )}
               {bookable && left <= 2 && <p className="scarce">Only {left} left for these dates</p>}
               {hasDates && !bookable && (
                 <p className="unavailable">

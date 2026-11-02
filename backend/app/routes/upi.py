@@ -83,7 +83,7 @@ def _held_booking(cur, kind: str, booking_id: str, user: dict) -> dict:
         release_expired_holds(cur)
         cur.execute(
             """SELECT b.id, b.user_id, b.status, COALESCE(b.advance_amount, b.total_amount) AS pay_now, b.hold_expires_at,
-                      h.upi_id, h.name AS host_name, p.name AS label
+                      b.discount_amount, h.upi_id, h.name AS host_name, p.name AS label
                FROM bookings b JOIN properties p ON p.id = b.property_id JOIN users h ON h.id = p.owner_id
                WHERE b.id = %s FOR UPDATE OF b""",
             (booking_id,),
@@ -108,6 +108,8 @@ def _held_booking(cur, kind: str, booking_id: str, user: dict) -> dict:
         raise HTTPException(409, "Your hold ended, so this booking can't be paid. Search again" if b["status"] == "expired" else f"This booking is already {b['status']}")
     if not b["upi_id"]:
         raise HTTPException(409, "This host hasn't added a UPI ID. Pay online instead")
+    if kind == "stay" and Decimal(b["discount_amount"] or 0) > 0:
+        raise HTTPException(409, "A booking with a coupon has to be paid online. Choose the online payment option")
     return b
 
 

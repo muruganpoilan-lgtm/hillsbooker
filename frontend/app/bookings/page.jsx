@@ -202,6 +202,9 @@ export default function BookingsPage() {
                 {prettyDate(b.check_in)} to {prettyDate(b.check_out)} ({plural(nights, "night")}) ·{" "}
                 <span className="price">{money(b.total_amount)}</span>
               </p>
+              {Number(b.discount_amount) > 0 && (
+                <p className="ok">Coupon {b.coupon_code} saved you {money(b.discount_amount)}.</p>
+              )}
               {Number(b.balance_due) > 0 && (b.status === "held" || b.status === "confirmed") && (
                 <p className="meta">
                   Advance {money(b.advance_amount)} is paid online. Balance {money(b.balance_due)} is paid at the property.

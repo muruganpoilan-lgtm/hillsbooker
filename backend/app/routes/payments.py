@@ -27,11 +27,18 @@ class VerifyIn(BaseModel):
 
 def set_commission(cur, payment_id) -> None:
     """Hill Booker's cut of a payment: commission_percent of the whole booking price (not of the advance), never more
-    than the amount paid. With a 30% advance and 8% commission, 8 points go to Hill Booker and 22 to the host."""
+    than the amount paid. With a 30% advance and 8% commission, 8 points go to Hill Booker and 22 to the host.
+    When the guest used a coupon, the price and the payment are both lower by the discount, so the discount is taken off
+    the commission too. The host's share (paid - commission) is then exactly what it would be without the coupon, and
+    the commission can go below zero when the coupon is bigger than the cut: that is Hill Booker paying for the offer."""
     cur.execute(
-        """UPDATE payments SET commission = LEAST(amount, ROUND(COALESCE(
-               (SELECT total_amount FROM bookings WHERE id = payments.booking_id),
-               (SELECT total_amount FROM vehicle_bookings WHERE id = payments.vehicle_booking_id), amount) * %s / 100, 2))
+        """UPDATE payments SET commission =
+               LEAST(amount + COALESCE((SELECT discount_amount FROM bookings WHERE id = payments.booking_id), 0),
+                     ROUND(COALESCE(
+                       (SELECT total_amount + discount_amount FROM bookings WHERE id = payments.booking_id),
+                       (SELECT total_amount FROM vehicle_bookings WHERE id = payments.vehicle_booking_id),
+                       amount) * %s / 100, 2))
+               - COALESCE((SELECT discount_amount FROM bookings WHERE id = payments.booking_id), 0)
            WHERE id = %s""",
         (Decimal(str(settings.commission_percent)), payment_id),
     )

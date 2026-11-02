@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from .. import invoice, notify
 from ..auth import current_user
 from ..config import settings
+from ..coupons import check_coupon
 from ..db import get_conn
 from ..schemas import BookingIn
 
@@ -87,6 +88,13 @@ def create_booking(body: BookingIn, user: dict = Depends(current_user)):
         # Advance: the share of the stay paid online now, rounded up to a whole rupee. The rest is paid at the property.
         advance = min(total, (total * rt["advance_percent"] / Decimal(100)).quantize(Decimal(1), rounding=ROUND_CEILING))
 
+        # A coupon lowers what the guest pays online. The guest's total drops by the same amount, so the balance paid at
+        # the property is unchanged, and Hill Booker's commission absorbs the discount (see set_commission).
+        coupon, discount = None, Decimal(0)
+        if body.coupon_code and body.coupon_code.strip():
+            coupon, discount = check_coupon(cur, body.coupon_code, user["id"], total, advance, lock=True)
+            total, advance = total - discount, advance - discount
+
         cur.execute(
             """UPDATE room_inventory SET available = available - %s
                WHERE room_type_id = %s AND day >= %s AND day < %s""",
@@ -94,16 +102,18 @@ def create_booking(body: BookingIn, user: dict = Depends(current_user)):
         )
         cur.execute(
             """INSERT INTO bookings (user_id, property_id, room_type_id, check_in, check_out, rooms, guests, children,
-                                     total_amount, advance_amount, status, hold_expires_at)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'held', now() + make_interval(mins => %s))
+                                     total_amount, advance_amount, status, hold_expires_at,
+                                     coupon_id, coupon_code, discount_amount)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'held', now() + make_interval(mins => %s), %s, %s, %s)
                RETURNING id, total_amount, advance_amount, hold_expires_at""",
             (user["id"], rt["property_id"], body.room_type_id, body.check_in, body.check_out,
-             body.rooms, body.guests, body.children, total, advance, settings.hold_minutes),
+             body.rooms, body.guests, body.children, total, advance, settings.hold_minutes,
+             coupon["id"] if coupon else None, coupon["code"] if coupon else None, discount),
         )
         booking = cur.fetchone()
     return {"booking_id": booking["id"], "status": "held", "total_amount": booking["total_amount"],
             "advance_amount": booking["advance_amount"], "balance_due": booking["total_amount"] - booking["advance_amount"],
-            "pay_before": booking["hold_expires_at"], "nights": nights}
+            "pay_before": booking["hold_expires_at"], "nights": nights, "discount": discount}
 
 
 @router.get("/mine")
@@ -112,7 +122,7 @@ def my_bookings(user: dict = Depends(current_user)):
         release_expired_holds(cur)  # so a guest never sees a hold that has already run out
         cur.execute(
             """SELECT b.id, p.name AS property, p.city, rt.name AS room_type, b.check_in, b.check_out,
-                      b.rooms, b.guests, b.children, b.total_amount,
+                      b.rooms, b.guests, b.children, b.total_amount, b.coupon_code, b.discount_amount,
                       COALESCE(b.advance_amount, b.total_amount) AS advance_amount,
                       b.total_amount - COALESCE(b.advance_amount, b.total_amount) AS balance_due,
                       b.status, b.hold_expires_at,
