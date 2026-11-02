@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from ..auth import require_role
 from ..config import settings
 from ..db import get_conn
-from ..schemas import InventoryIn, PropertyIn, PropertyUpdate, RoomTypeIn, RoomTypeUpdate
+from ..schemas import InventoryIn, PropertyIn, PropertyUpdate, RoomTypeIn, RoomTypeUpdate, coords_from_map_url
 from ..storage import delete_image, save_image
 
 REMOVED_KEEP_DAYS = 30  # removed listings stay on the server this long before they are deleted
@@ -88,10 +88,13 @@ def create_property(body: PropertyIn, user: dict = Depends(owner_only)):
             owner_id = body.owner_id
         # Listings made by an admin are trusted and go live at once; owners' listings wait for approval.
         status = "approved" if user["role"] == "admin" else "pending"
+        lat, lng = body.lat, body.lng
+        if lat is None or lng is None:
+            lat, lng = coords_from_map_url(body.map_url) or (None, None)
         cur.execute(
             """INSERT INTO properties (owner_id, name, type, description, city, address, lat, lng, map_url, nearby, status, advance_percent, min_notice_days)
                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
-            (owner_id, body.name, body.type, body.description, body.city, body.address, body.lat, body.lng, body.map_url, body.nearby, status, body.advance_percent, body.min_notice_days),
+            (owner_id, body.name, body.type, body.description, body.city, body.address, lat, lng, body.map_url, body.nearby, status, body.advance_percent, body.min_notice_days),
         )
         pid = cur.fetchone()["id"]
         for amenity_id in body.amenity_ids:
@@ -150,6 +153,10 @@ def update_property(property_id: str, body: PropertyUpdate, user: dict = Depends
         raise HTTPException(400, "Nothing to change")
     with get_conn() as conn, conn.cursor() as cur:
         _own_property(cur, property_id, user)
+        if "map_url" in changes and "lat" not in changes and "lng" not in changes:
+            pt = coords_from_map_url(changes["map_url"])
+            if pt:
+                changes["lat"], changes["lng"] = pt
         if amenity_ids is not None:
             cur.execute("SELECT id FROM amenities WHERE id = ANY(%s)", (amenity_ids,))
             if len(cur.fetchall()) != len(set(amenity_ids)):

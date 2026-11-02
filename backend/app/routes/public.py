@@ -42,7 +42,10 @@ def search(
     max_price: float | None = None,
     property_type: str | None = Query(None, pattern="^(hotel|homestay|apartment|resort)$"),
     min_rating: float | None = None,
-    sort: str = Query("price", pattern="^(price|rating)$"),
+    amenity: list[str] = Query([]),
+    near_lat: float | None = Query(None, ge=-90, le=90),
+    near_lng: float | None = Query(None, ge=-180, le=180),
+    sort: str = Query("price", pattern="^(price|rating|near)$"),
 ):
     if check_out <= check_in:
         raise HTTPException(400, "check_out must be after check_in")
@@ -52,7 +55,10 @@ def search(
     sql = """
         SELECT p.id, p.name, p.type, p.city, p.rating_avg, p.rating_count,
                MIN(x.nightly) AS price_per_night,
-               (SELECT url FROM property_photos ph WHERE ph.property_id = p.id ORDER BY position LIMIT 1) AS photo
+               (SELECT url FROM property_photos ph WHERE ph.property_id = p.id ORDER BY position LIMIT 1) AS photo,
+               CASE WHEN %(nlat)s::float8 IS NULL OR p.lat IS NULL OR p.lng IS NULL THEN NULL
+                    ELSE 6371 * acos(LEAST(1, cos(radians(%(nlat)s::float8)) * cos(radians(p.lat)) * cos(radians(p.lng) - radians(%(nlng)s::float8))
+                                             + sin(radians(%(nlat)s::float8)) * sin(radians(p.lat)))) END AS distance_km
         FROM properties p
         JOIN (
             SELECT rt.property_id, AVG(COALESCE(ri.price, rt.base_price)) AS nightly
@@ -65,7 +71,9 @@ def search(
         WHERE p.status = 'approved'
           AND %(ci)s >= (now() AT TIME ZONE 'Asia/Kolkata')::date + p.min_notice_days
     """
-    params = {"ci": check_in, "co": check_out, "guests": guests, "nights": nights}
+    have_point = near_lat is not None and near_lng is not None
+    params = {"ci": check_in, "co": check_out, "guests": guests, "nights": nights,
+              "nlat": near_lat if have_point else None, "nlng": near_lng if have_point else None}
     if city:
         sql += " AND p.city ILIKE %(city)s"
         params["city"] = f"%{city}%"
@@ -75,6 +83,12 @@ def search(
     if min_rating is not None:
         sql += " AND p.rating_avg >= %(min_rating)s"
         params["min_rating"] = min_rating
+    wanted = sorted({a.strip() for a in amenity if a.strip()})[:12]
+    if wanted:
+        sql += """ AND (SELECT COUNT(DISTINCT a.name) FROM property_amenities pa JOIN amenities a ON a.id = pa.amenity_id
+                        WHERE pa.property_id = p.id AND a.name = ANY(%(wanted)s)) = %(n_wanted)s"""
+        params["wanted"] = wanted
+        params["n_wanted"] = len(wanted)
     sql += " GROUP BY p.id HAVING TRUE"
     if min_price is not None:
         sql += " AND MIN(x.nightly) >= %(min_price)s"
@@ -82,7 +96,12 @@ def search(
     if max_price is not None:
         sql += " AND MIN(x.nightly) <= %(max_price)s"
         params["max_price"] = max_price
-    sql += " ORDER BY p.rating_avg DESC, 7 ASC" if sort == "rating" else " ORDER BY 7 ASC, p.rating_avg DESC"
+    if sort == "near" and have_point:
+        sql += " ORDER BY 9 ASC NULLS LAST, 7 ASC"
+    elif sort == "rating":
+        sql += " ORDER BY p.rating_avg DESC, 7 ASC"
+    else:
+        sql += " ORDER BY 7 ASC, p.rating_avg DESC"
     sql += " LIMIT 50"
 
     with get_conn() as conn, conn.cursor() as cur:

@@ -1,3 +1,4 @@
+import re
 from datetime import date
 from urllib.parse import urlparse
 
@@ -16,6 +17,15 @@ def _clean_map_url(v):
     if not ok:
         raise ValueError("Paste a Google Maps link (it starts with https://maps.app.goo.gl or https://www.google.com/maps)")
     return v[:500]
+
+
+def coords_from_map_url(url):
+    """Latitude and longitude from a long Google Maps link (.../@11.41,76.69,... or !3d..!4d..). Short links have none."""
+    m = re.search(r"@(-?\d+\.\d+),(-?\d+\.\d+)", url or "") or re.search(r"!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)", url or "")
+    if not m:
+        return None
+    lat, lng = float(m.group(1)), float(m.group(2))
+    return (lat, lng) if -90 <= lat <= 90 and -180 <= lng <= 180 else None
 
 
 def _clean_nearby(v):
