@@ -3,15 +3,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../../components/AuthProvider";
-import { api, money, nightsBetween, plural, prettyDate } from "../../lib/api";
+import { api, money, nightsBetween, prettyDate } from "../../lib/api";
+import { useLang } from "../../components/LangProvider";
 import UpiPay from "../../components/UpiPay";
 import PhoneBox from "../../components/PhoneBox";
 import { payForBooking } from "../../lib/pay";
 
-const STATUS_LABEL = { held: "Waiting for payment", confirmed: "Confirmed", cancelled: "Cancelled", expired: "Hold expired" };
+const STATUS_KEY = { held: "bk.sWaiting", confirmed: "bk.sConfirmed", cancelled: "bk.sCancelled", expired: "bk.sExpired" };
 
 // Counts down to the end of the 10-minute hold, then asks the list to reload.
 function HoldTimer({ until, onExpire }) {
+  const { t } = useLang();
   const [left, setLeft] = useState(() => Math.max(0, new Date(until).getTime() - Date.now()));
   const fired = useRef(false);
 
@@ -33,11 +35,12 @@ function HoldTimer({ until, onExpire }) {
   const mins = Math.floor(left / 60000);
   const secs = String(Math.floor((left % 60000) / 1000)).padStart(2, "0");
   const hours = Math.floor(mins / 60);
-  return <span className="scarce">{left > 0 ? (hours >= 1 ? `Room held for ${hours}h ${mins % 60}m` : `Room held for ${mins}:${secs}`) : "Hold ended"}</span>;
+  return <span className="scarce">{left > 0 ? (hours >= 1 ? t("bk.heldH", { h: hours, m: mins % 60 }) : t("bk.heldM", { m: mins, s: secs })) : t("bk.holdEnd")}</span>;
 }
 
 export default function BookingsPage() {
   const { ready, token, logout } = useAuth();
+  const { t } = useLang();
   const [rows, setRows] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
@@ -96,7 +99,7 @@ export default function BookingsPage() {
     const res = await api(`/bookings/${id}/invoice/whatsapp`, { token });
     setBusy("");
     if (!res.ok) return setError(res.error);
-    if (!res.data.has_number) setNotice("Add your phone number to your account to send it straight to your own WhatsApp. For now, choose who to send it to.");
+    if (!res.data.has_number) setNotice(t("bk.invWa"));
     window.open(res.data.url, "_blank");
   }
 
@@ -113,10 +116,10 @@ export default function BookingsPage() {
     if (!res.ok) setError(res.error);
     else if (action === "cancel" && res.data.refund) {
       const r = res.data.refund;
-      if (r.status === "refunded") setNotice(`Cancelled. ${money(r.amount)} is being refunded to your original payment method. It usually takes 5 to 7 working days.`);
-      else if (r.status === "manual") setNotice(`Cancelled. You paid the host directly, so the host will return ${money(r.amount)} to you. Contact them if you do not receive it.`);
-      else if (r.status === "pending") setNotice("Cancelled. Your refund couldn't be sent automatically. We'll process it by hand and email you.");
-      else if (r.reason === "too_late") setNotice("Cancelled. This was inside the no-refund window, so no money is returned.");
+      if (r.status === "refunded") setNotice(t("bk.refunded", { amt: money(r.amount) }));
+      else if (r.status === "manual") setNotice(t("bk.manual", { amt: money(r.amount) }));
+      else if (r.status === "pending") setNotice(t("bk.pendingRefund"));
+      else if (r.reason === "too_late") setNotice(t("bk.tooLate"));
     }
     load();
   }
@@ -134,9 +137,9 @@ export default function BookingsPage() {
     }
     if (!res.ok) setError(res.error);
     else if (res.data.status === "refunded") {
-      setNotice("Your payment arrived after the room was released, and the room was gone. Your money is being refunded in full.");
+      setNotice(t("bk.lateRefund"));
     } else {
-      setNotice("Payment received. Your booking is confirmed.");
+      setNotice(t("bk.paid"));
     }
     load();
   }
@@ -147,9 +150,9 @@ export default function BookingsPage() {
     return (
       <main className="page">
         <div className="empty">
-          <h2>Log in to see your bookings</h2>
+          <h2>{t("bk.loginTitle")}</h2>
           <p>
-            <Link href="/login?next=/bookings">Log in</Link> or <Link href="/register?next=/bookings">create an account</Link>.
+            <Link href="/login?next=/bookings">{t("bk.login")}</Link> {t("bk.or")} <Link href="/register?next=/bookings">{t("bk.create")}</Link>.
           </p>
         </div>
       </main>
@@ -158,9 +161,9 @@ export default function BookingsPage() {
 
   return (
     <main className="page">
-      <h1 className="section-title">My bookings</h1>
+      <h1 className="section-title">{t("bk.title")}</h1>
       <p className="tabs">
-        <b>Stays</b> <Link href="/bookings/vehicles">Vehicles</Link>
+        <b>{t("bk.stays")}</b> <Link href="/bookings/vehicles">{t("bk.vehicles")}</Link>
       </p>
 
       <PhoneBox token={token} />
@@ -177,13 +180,13 @@ export default function BookingsPage() {
         </p>
       )}
 
-      {rows === null && !error && <p className="empty">Loading your bookings…</p>}
+      {rows === null && !error && <p className="empty">{t("bk.loading")}</p>}
 
       {rows && rows.length === 0 && (
         <div className="empty">
-          <h2>No bookings yet</h2>
+          <h2>{t("bk.none")}</h2>
           <p>
-            <Link href="/">Search for a room</Link> and reserve it here.
+            <Link href="/">{t("bk.search")}</Link> {t("bk.searchTail")}
           </p>
         </div>
       )}
@@ -193,21 +196,21 @@ export default function BookingsPage() {
           const nights = nightsBetween(b.check_in, b.check_out);
           return (
             <article key={b.id} className={`booking${b.id === freshId ? " fresh" : ""}`}>
-              <span className={`status status-${b.status}`}>{STATUS_LABEL[b.status] || b.status}</span>
+              <span className={`status status-${b.status}`}>{STATUS_KEY[b.status] ? t(STATUS_KEY[b.status]) : b.status}</span>
               <h2 className="booking-name">{b.property}</h2>
               <p className="meta">
-                {b.room_type}, {plural(b.rooms, "room")}, {plural(b.guests - (b.children || 0), "adult")}{b.children > 0 ? `, ${plural(b.children, "child", "children")}` : ""} · {b.city}
+                {t("bk.roomLine", { room: b.room_type, rooms: t.n("unit.room", b.rooms), adults: t.n("unit.adult", b.guests - (b.children || 0)), kids: b.children > 0 ? `, ${t.n("unit.child", b.children)}` : "", city: b.city })}
               </p>
               <p>
-                {prettyDate(b.check_in)} to {prettyDate(b.check_out)} ({plural(nights, "night")}) ·{" "}
+                {t("bk.dates", { a: prettyDate(b.check_in), b: prettyDate(b.check_out), n: t.n("unit.night", nights) })} ·{" "}
                 <span className="price">{money(b.total_amount)}</span>
               </p>
               {Number(b.discount_amount) > 0 && (
-                <p className="ok">Coupon {b.coupon_code} saved you {money(b.discount_amount)}.</p>
+                <p className="ok">{t("bk.saved", { c: b.coupon_code, amt: money(b.discount_amount) })}</p>
               )}
               {Number(b.balance_due) > 0 && (b.status === "held" || b.status === "confirmed") && (
                 <p className="meta">
-                  Advance {money(b.advance_amount)} is paid online. Balance {money(b.balance_due)} is paid at the property.
+                  {t("bk.advance", { adv: money(b.advance_amount), bal: money(b.balance_due) })}
                 </p>
               )}
 
@@ -216,24 +219,24 @@ export default function BookingsPage() {
                   <HoldTimer until={b.hold_expires_at} onExpire={load} />
                 {b.upi_pending && (
                   <p className="notice" role="status">
-                    You sent a UPI payment. The host will check it and confirm your booking. You will see it here once confirmed.
+                    {t("bk.upiSent")}
                   </p>
                 )}
                   {!payOn && (
-                    <p className="meta">Payments aren't switched on yet. The button below confirms the booking for testing only.</p>
+                    <p className="meta">{t("bk.payOff")}</p>
                   )}
                   <div className="booking-actions">
                     {b.upi_pending ? null : payOn ? (
                       <button type="button" className="btn btn-primary" aria-busy={busy === b.id} onClick={() => pay(b)}>
-                        {busy === b.id ? "Opening payment…" : `Pay ${money(b.advance_amount)}${Number(b.balance_due) > 0 ? " now" : ""}`}
+                        {busy === b.id ? t("bk.opening") : t(Number(b.balance_due) > 0 ? "bk.payNow" : "bk.pay", { amt: money(b.advance_amount) })}
                       </button>
                     ) : (
                       <button type="button" className="btn btn-primary" aria-busy={busy === b.id} onClick={() => act(b.id, "confirm")}>
-                        Confirm booking (test)
+                        {t("bk.testConfirm")}
                       </button>
                     )}
                     <button type="button" className="btn btn-danger" onClick={() => act(b.id, "cancel")}>
-                      Release room
+                      {t("bk.release")}
                     </button>
                   </div>
                 {!b.upi_pending && b.host_upi && (
@@ -245,10 +248,10 @@ export default function BookingsPage() {
               {b.status === "confirmed" && (
                 <div className="booking-actions">
                   <button type="button" className="btn" aria-busy={busy === b.id} onClick={() => openInvoice(b.id)}>
-                    Invoice
+                    {t("bk.invoice")}
                   </button>
                   <button type="button" className="btn" aria-busy={busy === b.id} onClick={() => whatsappInvoice(b.id)}>
-                    Send invoice on WhatsApp
+                    {t("bk.invoiceWa")}
                   </button>
                   {b.can_cancel && (
                     <button
@@ -256,10 +259,10 @@ export default function BookingsPage() {
                       className="btn btn-danger"
                       aria-busy={busy === b.id}
                       onClick={() => {
-                        if (window.confirm("Cancel this booking?")) act(b.id, "cancel");
+                        if (window.confirm(t("bk.cancelAsk"))) act(b.id, "cancel");
                       }}
                     >
-                      Cancel booking
+                      {t("bk.cancel")}
                     </button>
                   )}
                 </div>
@@ -267,8 +270,8 @@ export default function BookingsPage() {
               {b.status === "confirmed" && (
                 <p className="meta">
                   {b.can_cancel
-                    ? "You can cancel for the first 10 minutes after booking and your advance is refunded in full. After that, please call customer care."
-                    : "The 10 minute cancel time is over. To change or cancel this booking, please call Hill Booker customer care."}
+                    ? t("bk.canCancel")
+                    : t("bk.cantCancel")}
                 </p>
               )}
             </article>

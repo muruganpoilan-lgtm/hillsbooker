@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
+import { useLang } from "./LangProvider";
 
 // Lets a guest save their mobile number. It is used to send invoices to their own WhatsApp and so the host can reach them.
 // compact: show only while no number is saved (for the payment page).
 export default function PhoneBox({ token, compact = false }) {
+  const { t } = useLang();
   const [phone, setPhone] = useState("");
   const [saved, setSaved] = useState(null); // null while loading
   const [msg, setMsg] = useState({ text: "", bad: false });
@@ -29,7 +31,7 @@ export default function PhoneBox({ token, compact = false }) {
     setBusy(false);
     if (!res.ok) return setMsg({ text: res.error, bad: true });
     setSaved(res.data.phone || "");
-    setMsg({ text: res.data.phone ? "Saved." : "Removed.", bad: false });
+    setMsg({ text: res.data.phone ? t("ph.saved") : t("ph.removed"), bad: false });
   }
 
   if (saved === null) return null;
@@ -38,13 +40,13 @@ export default function PhoneBox({ token, compact = false }) {
   return (
     <form className="phone-box" onSubmit={save}>
       <label className="field">
-        <span>Your mobile / WhatsApp number</span>
+        <span>{t("ph.label")}</span>
         <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="98765 43210" autoComplete="tel" />
       </label>
-      <p className="meta">Used to send your invoice to your own WhatsApp and so your host can reach you.</p>
+      <p className="meta">{t("ph.hint")}</p>
       <div className="actions">
         <button type="submit" className="btn btn-small" aria-busy={busy}>
-          Save number
+          {t("ph.save")}
         </button>
       </div>
       {msg.text && (
