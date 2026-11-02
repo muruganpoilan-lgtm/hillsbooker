@@ -26,6 +26,15 @@ export default function RegisterPage() {
   }, []);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [invited, setInvited] = useState(false);
+
+  // Came from a friend's invite link: the code is kept by ReferralClaim; just tell the guest about the offer.
+  useEffect(() => {
+    try {
+      const ref = new URLSearchParams(window.location.search).get("ref");
+      setInvited(Boolean(ref) || Boolean(localStorage.getItem("hb_ref")));
+    } catch {}
+  }, []);
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
 
@@ -71,6 +80,7 @@ export default function RegisterPage() {
   return (
     <main className="page auth">
       <h1>Create your account</h1>
+      {invited && <p className="ok">A friend invited you. After you sign up you'll get a welcome coupon for your first stay.</p>}
       <form className="stack" onSubmit={onSubmit} noValidate>
         <label className="field">
           <span>Full name</span>

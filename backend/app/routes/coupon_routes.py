@@ -50,6 +50,22 @@ def check(body: CheckIn, user: dict = Depends(current_user)):
             "total_before": total, "total": total - discount}
 
 
+@public.get("/mine")
+def my_coupons(user: dict = Depends(current_user)):
+    """Coupons made for this guest (welcome and thank-you coupons) that can still be used."""
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT c.code, c.value, c.min_total, c.valid_until
+               FROM coupons c
+               WHERE c.user_id = %s AND c.active
+                 AND (c.valid_until IS NULL OR c.valid_until >= (now() AT TIME ZONE 'Asia/Kolkata')::date)
+                 AND (SELECT count(*) FROM bookings b WHERE b.coupon_id = c.id AND b.status IN ('held', 'confirmed')) < c.per_user
+               ORDER BY c.valid_until NULLS LAST, c.created_at""",
+            (user["id"],),
+        )
+        return cur.fetchall()
+
+
 # ---------- admin ----------
 
 class CouponIn(BaseModel):
@@ -87,6 +103,7 @@ def list_coupons(user: dict = Depends(admin_only)):
                FROM coupons c
                LEFT JOIN users u ON u.id = c.user_id
                LEFT JOIN bookings b ON b.coupon_id = c.id
+               WHERE c.source = 'admin'
                GROUP BY c.id, u.email ORDER BY c.created_at DESC LIMIT 300"""
         )
         return cur.fetchall()

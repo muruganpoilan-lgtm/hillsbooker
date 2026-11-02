@@ -11,7 +11,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from .. import invoice, notify
+from .. import invoice, notify, referrals
 from ..auth import current_user, require_role
 from ..config import settings
 from ..db import get_conn
@@ -246,6 +246,7 @@ def confirm_upi(payment_id: str, user: dict = Depends(host_only)):
         set_commission(cur, payment_id)
         if pay["booking_id"]:
             stay_id = str(pay["booking_id"])
+            referrals.on_stay_confirmed(cur, stay_id)
     if stay_id:
         invoice.email_in_background(stay_id)
         notify.guest_invoice_in_background(stay_id)

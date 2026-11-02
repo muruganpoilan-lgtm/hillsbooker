@@ -14,12 +14,15 @@ function Coupons() {
   const [form, setForm] = useState(blank);
   const [msg, setMsg] = useState({ text: "", bad: false });
   const [busy, setBusy] = useState(false);
+  const [ref, setRef] = useState(null);
 
   const load = useCallback(async () => {
     const res = await api("/admin/coupons", { token });
     if (res.status === 401) return logout();
     if (res.ok) setRows(res.data);
     else setMsg({ text: res.error, bad: true });
+    const r = await api("/admin/referrals/summary", { token });
+    if (r.ok) setRef(r.data);
   }, [token, logout]);
 
   useEffect(() => {
@@ -70,6 +73,12 @@ function Coupons() {
       <p className="meta">
         Hill Booker pays for every coupon out of its own commission. The guest pays less online, and the host still gets the same amount as without the coupon. Coupons work on stays, not vehicles. A coupon bigger than the commission on a booking means Hill Booker pays the difference.
       </p>
+
+      {ref && (
+        <p className="meta">
+          Invite programme: {ref.invited} friends invited, {ref.rewarded} inviters rewarded, {money(ref.cost)} of coupons used so far. The amounts are set in the server settings (default ₹300 each side).
+        </p>
+      )}
 
       <form className="card" style={{ padding: "1rem", display: "grid", gap: "0.8rem", margin: "1rem 0" }} onSubmit={create} noValidate>
         <h2 className="mini-title">New coupon</h2>

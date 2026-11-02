@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     payment_gateway: str = ""
     # Public address of this API, where Cashfree sends payment notices (must be https).
     api_public_url: str = "https://api.hillbooker.com"
+    # Invite-a-friend rewards, in rupees off a stay. Hill Booker pays for them out of its commission.
+    referral_friend_amount: int = 300      # the new guest's welcome coupon, for their first booking
+    referral_referrer_amount: int = 300    # the inviter's coupon, issued when the friend's first stay is confirmed
+    referral_min_total: int = 3000         # smallest booking either coupon works on
+    referral_friend_days: int = 90         # how long the welcome coupon lasts
+    referral_referrer_days: int = 180      # how long the inviter's coupon lasts
     # Cancelling at least this many hours before check-in refunds everything; later cancellations get no refund.
     refund_full_hours: int = 48
     # A guest can cancel a confirmed stay on their own only this many minutes after paying (full refund inside the window).

@@ -4,6 +4,8 @@ import { AuthProvider } from "../components/AuthProvider";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import ChatBot from "../components/ChatBot";
+import ReferralClaim from "../components/ReferralClaim";
+import WelcomeToast from "../components/WelcomeToast";
 import { SITE_NAME, SITE_URL, jsonLd } from "../lib/seo";
 
 const display = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-display", display: "swap" });
@@ -60,6 +62,8 @@ export default function RootLayout({ children }) {
           {children}
           <Footer />
           <ChatBot />
+          <ReferralClaim />
+          <WelcomeToast />
         </AuthProvider>
       </body>
     </html>

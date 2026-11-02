@@ -7,7 +7,7 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from .. import cashfree_client, invoice, notify, razorpay_client
+from .. import cashfree_client, invoice, notify, razorpay_client, referrals
 from ..auth import current_user
 from ..cashfree_client import CashfreeError
 from ..config import active_gateway, payments_enabled, settings
@@ -174,6 +174,9 @@ def settle(order_id: str, payment_id: str, user_id: str | None = None) -> dict:
         elif row["booking_status"] == "cancelled":
             outcome = "refunded"
             refund_args = (str(row["id"]), payment_id, row["amount"], "Booking was released before payment arrived")
+
+        if outcome == "confirmed":
+            referrals.on_stay_confirmed(cur, booking_id)  # first stay of an invited friend: reward the inviter
 
     if refund_args:
         refund_payment(*refund_args)

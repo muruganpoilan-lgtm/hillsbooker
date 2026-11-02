@@ -38,6 +38,7 @@ export default function TermsPage() {
           <li>The balance is paid at the property or to the vehicle operator, as shown on your booking.</li>
           <li>Some hosts accept UPI directly. In that case the host confirms your payment, and your booking is confirmed after that.</li>
           <li>Guests pay no extra fee to Hill Booker. We charge hosts a commission of 8% of the booking price, which is taken out of the advance.</li>
+          <li>Coupon codes and invite offers are paid for by Hill Booker. A coupon lowers the advance you pay online and is not changed into cash. Each coupon has its own limits (for example a smallest booking amount, an end date, or one use per guest), and a coupon is given back if the booking it was used on is not completed. Coupons work on stays, not on vehicles, and a booking that uses one has to be paid online. We can stop a coupon that is being misused. The host's payment for the stay is not reduced by a coupon.</li>
           <li>Your invoice is sent to your WhatsApp number and can also be opened from My bookings.</li>
         </ul>
 

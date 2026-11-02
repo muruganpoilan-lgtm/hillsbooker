@@ -26,6 +26,7 @@ export default function Header() {
             {role === "admin" && <Link href="/dashboard/coupons">Coupons</Link>}
             {role === "guest" && <Link href="/dashboard">Become a host</Link>}
             <Link href="/saved">Saved</Link>
+            <Link href="/invite">Invite friends</Link>
             <Link href="/bookings">My bookings</Link>
             <button
               type="button"

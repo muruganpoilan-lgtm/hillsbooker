@@ -23,6 +23,17 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
   const [applied, setApplied] = useState("");
   const [couponMsg, setCouponMsg] = useState("");
   const [preview, setPreview] = useState({});
+  const [mine, setMine] = useState([]);
+
+  // Coupons made for this guest (welcome and thank-you coupons), so they can tap one instead of typing it.
+  useEffect(() => {
+    if (!token) return setMine([]);
+    let live = true;
+    api("/coupons/mine", { token }).then((res) => live && res.ok && setMine(res.data.slice(0, 4)));
+    return () => {
+      live = false;
+    };
+  }, [token]);
 
   // Set after load so the server and the browser agree on first paint, whatever their time zones.
   useEffect(() => setToday(todayISO()), []);
@@ -185,6 +196,16 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
                 <input value={couponText} onChange={(e) => setCouponText(e.target.value)} placeholder="Have a code? Type it here" maxLength={40} autoCapitalize="characters" />
               </label>
               <button type="submit" className="btn btn-small">Apply</button>
+              {mine.length > 0 && (
+                <p className="meta">
+                  Your coupons:{" "}
+                  {mine.map((c) => (
+                    <button key={c.code} type="button" className="chip-btn" onClick={() => { setCouponText(c.code); setCouponMsg(""); setApplied(c.code); }}>
+                      {c.code} ({money(c.value)} off)
+                    </button>
+                  ))}
+                </p>
+              )}
             </>
           )}
           {couponMsg && <p className="form-error" role="alert">{couponMsg}</p>}
