@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../../components/AuthProvider";
+import { useLang } from "../../components/LangProvider";
 import { api, money, prettyDate } from "../../lib/api";
 
 export default function InvitePage() {
   const { ready, token, logout } = useAuth();
+  const { t } = useLang();
   const [info, setInfo] = useState(null);
   const [mine, setMine] = useState([]);
   const [error, setError] = useState("");
@@ -38,45 +40,45 @@ export default function InvitePage() {
   }
 
   if (error) return <main className="page"><div className="empty" role="alert"><p>{error}</p></div></main>;
-  if (!info) return <main className="page"><p className="result-summary">Loading…</p></main>;
+  if (!info) return <main className="page"><p className="result-summary">{t("saved.loading")}</p></main>;
 
-  const text = `Book hill-station and beach stays on Hill Booker. Sign up with my link and get ${money(info.friend_amount)} off your first stay: ${info.link}`;
+  const text = t("inv.shareText", { amt: money(info.friend_amount), link: info.link });
   return (
     <main className="page">
-      <h1 className="result-title">Invite friends, get {money(info.referrer_amount)} off</h1>
+      <h1 className="result-title">{t("inv.title", { amt: money(info.referrer_amount) })}</h1>
       <p className="result-summary">
-        Your friend gets {money(info.friend_amount)} off their first stay. When that stay is confirmed, you get {money(info.referrer_amount)} off your next one. Both coupons work on stays of {money(info.min_total)} or more.
+        {t("inv.intro", { friend: money(info.friend_amount), me: money(info.referrer_amount), min: money(info.min_total) })}
       </p>
 
       <section className="card invite-box">
-        <p className="meta">Your invite link</p>
+        <p className="meta">{t("inv.link")}</p>
         <p className="invite-link">{info.link}</p>
         <div className="actions">
-          <button type="button" className="btn btn-primary btn-small" onClick={() => copy(info.link, "link")}>{copied === "link" ? "Copied" : "Copy link"}</button>
-          <a className="btn btn-small" href={`https://wa.me/?text=${encodeURIComponent(text)}`} target="_blank" rel="noopener noreferrer">Share on WhatsApp</a>
-          <button type="button" className="btn btn-small" onClick={() => copy(info.code, "code")}>{copied === "code" ? "Copied" : `Copy code ${info.code}`}</button>
+          <button type="button" className="btn btn-primary btn-small" onClick={() => copy(info.link, "link")}>{copied === "link" ? t("inv.copied") : t("inv.copyLink")}</button>
+          <a className="btn btn-small" href={`https://wa.me/?text=${encodeURIComponent(text)}`} target="_blank" rel="noopener noreferrer">{t("inv.wa")}</a>
+          <button type="button" className="btn btn-small" onClick={() => copy(info.code, "code")}>{copied === "code" ? t("inv.copied") : t("inv.copyCode", { c: info.code })}</button>
         </div>
-        <p className="meta">Friends invited: {info.invited}. Rewarded so far: {info.rewarded}.</p>
+        <p className="meta">{t("inv.stats", { a: info.invited, b: info.rewarded })}</p>
       </section>
 
-      <h2 className="mini-title" style={{ marginTop: "1.5rem" }}>Your coupons</h2>
+      <h2 className="mini-title" style={{ marginTop: "1.5rem" }}>{t("inv.coupons")}</h2>
       {mine.length === 0 ? (
-        <p className="meta">You have no coupons right now. They show up here when you earn one.</p>
+        <p className="meta">{t("inv.noCoupons")}</p>
       ) : (
         <ul className="rows" style={{ listStyle: "none", padding: 0, display: "grid", gap: "0.6rem" }}>
           {mine.map((c) => (
             <li key={c.code} className="card" style={{ padding: "0.8rem" }}>
-              <p className="row-name">{c.code} · {money(c.value)} off</p>
+              <p className="row-name">{t("inv.cpOff", { c: c.code, v: money(c.value) })}</p>
               <p className="meta">
-                Stays of {money(c.min_total)} or more{c.valid_until ? ` · until ${prettyDate(String(c.valid_until).slice(0, 10))}` : ""}. Type it in the Coupon box when you book.
+                {t("inv.cpMin", { min: money(c.min_total) })}{c.valid_until ? t("inv.cpUntil", { d: prettyDate(String(c.valid_until).slice(0, 10)) }) : ""}{t("inv.cpHow")}
               </p>
-              <button type="button" className="btn btn-small" onClick={() => copy(c.code, c.code)}>{copied === c.code ? "Copied" : "Copy code"}</button>
+              <button type="button" className="btn btn-small" onClick={() => copy(c.code, c.code)}>{copied === c.code ? t("inv.copied") : t("inv.copyCodeShort")}</button>
             </li>
           ))}
         </ul>
       )}
       <p className="meta" style={{ marginTop: "1rem" }}>
-        Coupons can't be swapped for cash. See the <Link href="/terms">terms</Link>.
+        {t("inv.noCash")} <Link href="/terms">{t("inv.terms")}</Link>.
       </p>
     </main>
   );
