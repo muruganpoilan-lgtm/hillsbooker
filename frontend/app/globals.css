@@ -503,3 +503,27 @@ label.btn[aria-busy="true"] { opacity: 0.7; cursor: progress; }
 /* Search filters */
 .field-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
 .nearme { display: grid; gap: 0.3rem; }
+
+/* Availability calendar */
+.cal { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 0.9rem; margin-bottom: 1.2rem; }
+.cal-head { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; }
+.cal-head p { margin: 0; }
+.cal-nav { display: flex; gap: 0.4rem; align-items: center; }
+.cal-months { display: grid; gap: 1.2rem; }
+@media (min-width: 760px) { .cal-months { grid-template-columns: 1fr 1fr; gap: 1.6rem; } }
+.cal-title { font-size: 1rem; margin: 0 0 0.4rem; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal-dow { text-align: center; font-size: 0.75rem; font-weight: 700; color: var(--ink-soft); padding-bottom: 2px; }
+.cal-day { display: grid; place-items: center; align-content: center; min-height: 3rem; border: 1px solid var(--line); border-radius: 4px; background: #fff; color: var(--ink); cursor: pointer; padding: 2px; font: inherit; line-height: 1.1; }
+.cal-day .cal-num { font-weight: 700; font-size: 0.9rem; }
+.cal-day .cal-price { font-size: 0.65rem; color: var(--ink-soft); }
+.cal-day.open:hover { border-color: var(--ink); }
+.cal-day.closed { background: transparent; color: #9aa39c; border-color: transparent; cursor: default; }
+.cal-day.closed .cal-num { text-decoration: line-through; font-weight: 400; }
+.cal-day.closed:not(:disabled) { cursor: pointer; border-color: var(--line); }
+.cal-day.chosen, .cal-day.pending { background: #dff1e4; border-color: var(--green); }
+.cal-day.start { background: var(--green); color: #fff; border-color: var(--green); }
+.cal-day.start .cal-price { color: #e6f4ea; }
+.cal-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin: 0.7rem 0 0; }
+.cal-key { display: inline-block; width: 0.9rem; height: 0.9rem; border-radius: 3px; border: 1px solid var(--line); vertical-align: middle; }
+.cal-key.open { background: #fff; } .cal-key.closed { background: repeating-linear-gradient(45deg, #e4e8e4, #e4e8e4 3px, #fff 3px, #fff 6px); } .cal-key.chosen { background: #dff1e4; border-color: var(--green); }

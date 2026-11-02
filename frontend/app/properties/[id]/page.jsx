@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import AvailabilityCalendar from "../../../components/AvailabilityCalendar";
 import HeartButton from "../../../components/HeartButton";
 import PhotoGallery from "../../../components/PhotoGallery";
 import RoomList from "../../../components/RoomList";
@@ -116,7 +117,9 @@ export default async function PropertyPage({ params, searchParams }) {
 
       <section className="prop-section">
         <h2>Rooms</h2>
+        <AvailabilityCalendar propertyId={p.id} checkIn={hasDates ? ci : ""} checkOut={hasDates ? co : ""} guests={guests} children={children} />
         <RoomList
+          key={`${hasDates ? ci : ""}|${hasDates ? co : ""}|${guests}|${children}`}
           rooms={p.room_types}
           checkIn={hasDates ? ci : ""}
           checkOut={hasDates ? co : ""}

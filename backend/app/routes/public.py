@@ -1,4 +1,5 @@
-from datetime import date
+import uuid
+from datetime import date, timedelta
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -107,6 +108,36 @@ def search(
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(sql, params)
         return {"nights": nights, "results": cur.fetchall()}
+
+
+@router.get("/properties/{property_id}/availability")
+def availability(property_id: str, days: int = Query(150, ge=7, le=366)):
+    """Which nights can be booked online, with the lowest nightly price that night. Used by the calendar on the property page.
+    Nights before the earliest allowed check-in are left out. Room counts are not shared."""
+    try:
+        pid = str(uuid.UUID(property_id))
+    except ValueError:
+        raise HTTPException(404, "Property not found")
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT (now() AT TIME ZONE 'Asia/Kolkata')::date AS today,
+                      ((now() AT TIME ZONE 'Asia/Kolkata')::date + min_notice_days) AS earliest
+               FROM properties WHERE id = %s AND status = 'approved'""",
+            (pid,),
+        )
+        prop = cur.fetchone()
+        if not prop:
+            raise HTTPException(404, "Property not found")
+        end = prop["today"] + timedelta(days=days)
+        cur.execute(
+            """SELECT ri.day, MIN(COALESCE(ri.price, rt.base_price)) AS price
+               FROM room_types rt JOIN room_inventory ri ON ri.room_type_id = rt.id
+               WHERE rt.property_id = %s AND ri.available >= 1 AND ri.day >= %s AND ri.day < %s
+               GROUP BY ri.day ORDER BY ri.day""",
+            (pid, prop["earliest"], end),
+        )
+        open_nights = {r["day"].isoformat(): float(r["price"]) for r in cur.fetchall()}
+    return {"today": prop["today"].isoformat(), "earliest": prop["earliest"].isoformat(), "last": end.isoformat(), "open": open_nights}
 
 
 @router.get("/properties/{property_id}")
