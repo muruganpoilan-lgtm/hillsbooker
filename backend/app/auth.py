@@ -30,6 +30,9 @@ def current_user(creds: HTTPAuthorizationCredentials | None = Depends(bearer)) -
         data = jwt.decode(creds.credentials, settings.jwt_secret, algorithms=["HS256"])
     except jwt.PyJWTError:
         raise HTTPException(401, "Your session expired. Log in again")
+    # Other signed tokens (invoice links, Google sign-in state) share this key but are not logins.
+    if "role" not in data or "sub" not in data or "kind" in data:
+        raise HTTPException(401, "Log in first")
     return {"id": data["sub"], "role": data["role"]}
 
 
