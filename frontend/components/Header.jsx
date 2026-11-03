@@ -20,6 +20,7 @@ export default function Header() {
       <nav className="nav" aria-label="Main">
         <Link href="/vehicles">{t("nav.cars")}</Link>
         <Link href="/packages">{t("nav.packages")}</Link>
+        <Link href="/blog">{t("nav.blog")}</Link>
         {ready && token ? (
           <>
             {(role === "owner" || role === "operator" || role === "admin") && <Link href="/dashboard">{t("nav.myProperties")}</Link>}
@@ -29,6 +30,7 @@ export default function Header() {
             {role === "admin" && <Link href="/dashboard/enquiries">{t("nav.enquiries")}</Link>}
             {role === "admin" && <Link href="/dashboard/coupons">{t("nav.coupons")}</Link>}
             {role === "admin" && <Link href="/dashboard/packages">{t("nav.packagesAdmin")}</Link>}
+            {role === "admin" && <Link href="/dashboard/blog">{t("nav.blogAdmin")}</Link>}
             {role === "guest" && <Link href="/dashboard">{t("nav.becomeHost")}</Link>}
             <Link href="/saved">{t("nav.saved")}</Link>
             <Link href="/invite">{t("nav.invite")}</Link>

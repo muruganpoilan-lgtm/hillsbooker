@@ -11,6 +11,8 @@ export default async function sitemap() {
   const vehicles = vres.ok ? vres.data : [];
   const pres = await api("/packages");
   const packages = pres.ok ? pres.data : [];
+  const bres = await api("/blog");
+  const posts = bres.ok ? bres.data : [];
 
   // Only cities that have at least one place; an empty city page is kept out of search results.
   const cities = new Map();
@@ -24,6 +26,8 @@ export default async function sitemap() {
     ...vehicles.map((v) => ({ url: `${SITE_URL}/vehicles/${v.id}`, lastModified: now, changeFrequency: "weekly", priority: 0.6 })),
     { url: `${SITE_URL}/packages`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     ...packages.map((p) => ({ url: `${SITE_URL}/packages/${p.slug}`, lastModified: now, changeFrequency: "weekly", priority: 0.6 })),
+    { url: `${SITE_URL}/blog`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
+    ...posts.map((p) => ({ url: `${SITE_URL}/blog/${p.slug}`, lastModified: p.published_at ? new Date(p.published_at) : now, changeFrequency: "monthly", priority: 0.6 })),
     ...props.map((p) => ({ url: `${SITE_URL}/properties/${p.id}`, lastModified: new Date(p.created_at), changeFrequency: "weekly", priority: 0.7 })),
   ];
 }

@@ -553,3 +553,8 @@ label.btn[aria-busy="true"] { opacity: 0.7; cursor: progress; }
 .lang-switch { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; margin-left: 0.4rem; }
 .lang-switch button { border: 0; background: transparent; padding: 0.25rem 0.7rem; font: inherit; font-size: 0.85rem; cursor: pointer; color: inherit; }
 .lang-switch button.on { background: var(--green); color: #fff; }
+
+/* Travel guide text */
+.blog-body h2 { font-size: 1.35rem; margin: 1.6rem 0 0.5rem; }
+.blog-body p { margin: 0 0 1rem; line-height: 1.7; }
+.blog-body ul { margin: 0 0 1rem 1.2rem; padding: 0; line-height: 1.7; }
