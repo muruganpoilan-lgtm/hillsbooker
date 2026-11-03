@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "765708132504",
-    "project_id": "talkory-1",
-    "storage_bucket": "talkory-1.firebasestorage.app"
+    "project_number": "250184219217",
+    "project_id": "hill-booker-c8b26",
+    "storage_bucket": "hill-booker-c8b26.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:765708132504:android:0e1e4bf75eb31327d430ed",
+        "mobilesdk_app_id": "1:250184219217:android:77083b2595b694a39c5670",
         "android_client_info": {
-          "package_name": "com.talkory.talkory_partner"
+          "package_name": "in.roomly.roomly_app"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCxTufRdZ-4EXOMkfv6YUumqK0VcReDfNQ"
+          "current_key": "AIzaSyBpjn_Trr7aV9HMhavHkC90mJmrM4GbMEo"
         }
       ],
       "services": {
