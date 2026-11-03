@@ -43,6 +43,11 @@ function Dashboard() {
       <div className="dash-head">
         <h1 className="section-title">{role === "admin" ? "All properties" : "Your properties"}</h1>
         <div className="actions">
+          {role === "admin" && (
+            <Link href="/dashboard/overview" className="btn btn-small btn-primary">
+              Overview
+            </Link>
+          )}
           <Link href="/dashboard/bookings" className="btn btn-small">
             Bookings
           </Link>

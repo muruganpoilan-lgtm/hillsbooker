@@ -27,6 +27,7 @@ export default function Header() {
             {(role === "owner" || role === "operator" || role === "admin") && <Link href="/operator">{t("nav.myVehicles")}</Link>}
             {(role === "owner" || role === "operator" || role === "admin") && <Link href="/dashboard/payments">{t("nav.payments")}</Link>}
             {(role === "owner" || role === "operator" || role === "admin") && <Link href="/dashboard/reports">{t("nav.reports")}</Link>}
+            {role === "admin" && <Link href="/dashboard/overview">{t("nav.overview")}</Link>}
             {role === "admin" && <Link href="/dashboard/enquiries">{t("nav.enquiries")}</Link>}
             {role === "admin" && <Link href="/dashboard/coupons">{t("nav.coupons")}</Link>}
             {role === "admin" && <Link href="/dashboard/packages">{t("nav.packagesAdmin")}</Link>}

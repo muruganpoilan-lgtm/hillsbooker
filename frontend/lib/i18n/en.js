@@ -482,4 +482,5 @@ export default {
   "sup.thanksText": "We have your message. Our team will contact you on {phone}, usually within a few hours.",
   "sup.ref": "Your ticket number is #{n}",
   "sup.hurry": "In a hurry? Call or WhatsApp",
+  "nav.overview": "Overview",
 };

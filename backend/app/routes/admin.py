@@ -191,3 +191,100 @@ def record_payout(body: PayoutIn, user: dict = Depends(admin_only)):
         po = cur.fetchone()
         cur.execute("UPDATE payments SET payout_id = %s WHERE id = ANY(%s)", (po["id"], [r["payment_id"] for r in ready]))
     return {"id": str(po["id"]), "amount": total, "paid_at": po["paid_at"], "payments": len(ready)}
+
+
+# ---------- overview: the numbers on the admin home page ----------
+
+_IST_TODAY = "(now() AT TIME ZONE 'Asia/Kolkata')::date"
+
+
+@router.get("/overview")
+def overview(user: dict = Depends(admin_only)):
+    with get_conn() as conn, conn.cursor() as cur:
+        # Confirmed bookings (stays and vehicles) with the day they were made, India time.
+        bookings_cte = f"""
+          WITH b AS (
+            SELECT 'stay' AS kind, id, (created_at AT TIME ZONE 'Asia/Kolkata')::date AS day, total_amount, property_id, NULL::uuid AS vehicle_id
+              FROM bookings WHERE status = 'confirmed'
+            UNION ALL
+            SELECT 'vehicle', id, (created_at AT TIME ZONE 'Asia/Kolkata')::date, total_amount, NULL::uuid, vehicle_id
+              FROM vehicle_bookings WHERE status = 'confirmed'
+          )"""
+        cur.execute(
+            bookings_cte
+            + f"""SELECT
+                 count(*) FILTER (WHERE day = {_IST_TODAY}) AS today,
+                 count(*) FILTER (WHERE day > {_IST_TODAY} - 7) AS week,
+                 count(*) FILTER (WHERE day > {_IST_TODAY} - 30) AS month,
+                 count(*) AS total,
+                 count(*) FILTER (WHERE kind = 'stay' AND day > {_IST_TODAY} - 30) AS month_stays,
+                 count(*) FILTER (WHERE kind = 'vehicle' AND day > {_IST_TODAY} - 30) AS month_vehicles,
+                 COALESCE(sum(total_amount) FILTER (WHERE day > {_IST_TODAY} - 30), 0) AS month_value
+               FROM b"""
+        )
+        bookings = cur.fetchone()
+
+        # Money that came in online. A payment counts on the day it was paid; refunds are taken off.
+        cur.execute(
+            f"""SELECT
+                 COALESCE(sum(amount - refunded_amount) FILTER (WHERE d = {_IST_TODAY}), 0) AS today,
+                 COALESCE(sum(amount - refunded_amount) FILTER (WHERE d > {_IST_TODAY} - 7), 0) AS week,
+                 COALESCE(sum(amount - refunded_amount) FILTER (WHERE d > {_IST_TODAY} - 30), 0) AS month,
+                 COALESCE(sum(commission) FILTER (WHERE d > {_IST_TODAY} - 30 AND status = 'paid'), 0) AS month_commission,
+                 COALESCE(sum(commission) FILTER (WHERE status = 'paid'), 0) AS total_commission,
+                 COALESCE(sum(refunded_amount) FILTER (WHERE d > {_IST_TODAY} - 30), 0) AS month_refunded
+               FROM (SELECT amount, refunded_amount, commission, status, (updated_at AT TIME ZONE 'Asia/Kolkata')::date AS d
+                     FROM payments WHERE status IN ('paid', 'refunded') AND provider IN ('razorpay', 'cashfree')) p"""
+        )
+        money = cur.fetchone()
+
+        # Last 14 days, one row per day, so the chart has no gaps.
+        cur.execute(
+            bookings_cte
+            + f"""SELECT to_char(g.day, 'YYYY-MM-DD') AS day,
+                         count(b.id) AS bookings, COALESCE(sum(b.total_amount), 0) AS value
+                  FROM generate_series({_IST_TODAY} - 13, {_IST_TODAY}, interval '1 day') AS g(day)
+                  LEFT JOIN b ON b.day = g.day::date
+                  GROUP BY g.day ORDER BY g.day"""
+        )
+        daily = cur.fetchall()
+
+        cur.execute(
+            bookings_cte
+            + f"""SELECT COALESCE(p.city, v.city) AS city, count(*) AS bookings
+                  FROM b LEFT JOIN properties p ON p.id = b.property_id LEFT JOIN vehicles v ON v.id = b.vehicle_id
+                  WHERE b.day > {_IST_TODAY} - 30
+                  GROUP BY 1 ORDER BY bookings DESC, city LIMIT 5"""
+        )
+        top_cities = cur.fetchall()
+
+        cur.execute(
+            f"""SELECT
+                 (SELECT count(*) FROM users) AS users,
+                 (SELECT count(*) FROM users WHERE created_at > now() - interval '7 days') AS new_users,
+                 (SELECT count(*) FROM users WHERE role IN ('owner', 'operator')) AS hosts,
+                 (SELECT count(*) FROM properties WHERE status = 'approved') AS properties,
+                 (SELECT count(*) FROM vehicles WHERE status = 'approved') AS vehicles,
+                 (SELECT count(*) FROM properties WHERE status = 'pending') AS pending_properties,
+                 (SELECT count(*) FROM vehicles WHERE status = 'pending') AS pending_vehicles,
+                 (SELECT count(*) FROM enquiries WHERE status = 'new') AS new_enquiries,
+                 (SELECT count(*) FROM support_tickets WHERE status <> 'resolved') AS open_tickets,
+                 (SELECT count(*) FROM bookings WHERE status = 'confirmed' AND check_in = {_IST_TODAY} + 1) AS checkins_tomorrow,
+                 (SELECT count(*) FROM bookings WHERE status = 'confirmed' AND check_in BETWEEN {_IST_TODAY} AND {_IST_TODAY} + 7) AS checkins_week"""
+        )
+        counts = cur.fetchone()
+
+        cur.execute(f"SELECT COALESCE(sum(share), 0) AS due FROM ({_PAYOUT_READY}) r")
+        due = cur.fetchone()["due"]
+
+        cur.execute(
+            """SELECT * FROM (
+                 SELECT 'stay' AS kind, b.created_at, p.name AS item, g.name AS guest, b.total_amount, b.check_in AS start_date
+                   FROM bookings b JOIN properties p ON p.id = b.property_id JOIN users g ON g.id = b.user_id WHERE b.status = 'confirmed'
+                 UNION ALL
+                 SELECT 'vehicle', b.created_at, v.name, g.name, b.total_amount, b.start_date
+                   FROM vehicle_bookings b JOIN vehicles v ON v.id = b.vehicle_id JOIN users g ON g.id = b.user_id WHERE b.status = 'confirmed'
+               ) x ORDER BY created_at DESC LIMIT 8"""
+        )
+        recent = cur.fetchall()
+    return {"bookings": bookings, "money": money, "daily": daily, "top_cities": top_cities, "counts": counts, "payouts_due": due, "recent": recent}
