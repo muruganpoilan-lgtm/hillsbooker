@@ -7,7 +7,7 @@ import { api, todayISO } from "../../lib/api";
 function Form() {
   const params = useSearchParams();
   const [kind, setKind] = useState(params.get("kind") === "corporate" ? "corporate" : "group");
-  const [f, setF] = useState({ name: "", company: "", phone: "", email: "", destination: "", start_date: "", people: "", budget: "", notes: "", website: "" });
+  const [f, setF] = useState({ name: "", company: "", phone: "+91 ", email: "", destination: "", start_date: "", people: "", budget: "", notes: "", website: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
@@ -16,9 +16,20 @@ function Form() {
     setError("");
   };
 
+  // The phone box always starts with +91. People type or paste the 10-digit number (with or without 91 or 0 in front).
+  const setPhone = (e) => {
+    const raw = e.target.value;
+    let d = raw.replace(/\D/g, "");
+    if (raw.startsWith("+91") || (d.startsWith("91") && d.length > 10)) d = d.replace(/^91/, "");
+    d = d.replace(/^0+/, "").slice(0, 10);
+    setF({ ...f, phone: `+91 ${d}` });
+    setError("");
+  };
+
   async function submit(e) {
     e.preventDefault();
     if (busy) return;
+    if (f.phone.replace(/\D/g, "").length !== 12) return setError("Enter your 10-digit mobile number after +91.");
     setBusy(true);
     const body = { kind, ...f, people: f.people ? Number(f.people) : null, start_date: f.start_date || null };
     for (const k of ["company", "email", "destination", "budget", "notes"]) if (!body[k]) body[k] = null;
@@ -56,7 +67,7 @@ function Form() {
         {kind === "corporate" && (
           <label className="field"><span>Company name</span><input value={f.company} onChange={set("company")} maxLength={120} /></label>
         )}
-        <label className="field"><span>Phone or WhatsApp number</span><input type="tel" value={f.phone} onChange={set("phone")} required maxLength={20} /></label>
+        <label className="field"><span>Phone or WhatsApp number</span><input type="tel" inputMode="tel" value={f.phone} onChange={setPhone} required maxLength={14} autoComplete="tel" /></label>
         <label className="field"><span>Email (optional)</span><input type="email" value={f.email} onChange={set("email")} maxLength={120} /></label>
         <label className="field"><span>Where do you want to go?</span><input value={f.destination} onChange={set("destination")} placeholder="e.g. Munnar, Ooty, Goa" maxLength={120} /></label>
         <label className="field"><span>Start date (roughly)</span><input type="date" min={todayISO()} value={f.start_date} onChange={set("start_date")} /></label>
