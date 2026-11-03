@@ -482,4 +482,5 @@ export default {
   "sup.ref": "உங்கள் டிக்கெட் எண் #{n}",
   "sup.hurry": "அவசரமா? அழையுங்கள் அல்லது WhatsApp செய்யுங்கள்",
   "nav.overview": "மேலோட்டம்",
+  "nav.admin": "நிர்வாகம்",
 };

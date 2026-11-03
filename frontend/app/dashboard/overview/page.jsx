@@ -6,31 +6,45 @@ import { useAuth } from "../../../components/AuthProvider";
 import Guard from "../../../components/dashboard/Guard";
 import { api, money, prettyDate } from "../../../lib/api";
 
-function Tile({ label, value, sub }) {
+const WEEKDAY = ["S", "M", "T", "W", "T", "F", "S"];
+
+function greeting() {
+  const h = Number(new Date().toLocaleString("en-IN", { hour: "numeric", hour12: false, timeZone: "Asia/Kolkata" }));
+  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+}
+
+function Tile({ tone = "", label, value, sub }) {
   return (
-    <div className="card" style={{ padding: "0.9rem" }}>
-      <p className="meta">{label}</p>
-      <p className="price" style={{ margin: "0.15rem 0" }}>{value}</p>
-      {sub && <p className="meta">{sub}</p>}
+    <div className={`ov-tile ${tone}`}>
+      <p className="l">{label}</p>
+      <p className="v">{value}</p>
+      <p className="s">{sub}</p>
     </div>
   );
 }
 
-// One bar for each of the last 14 days. The bar height follows the number of bookings that day.
+// One bar for each of the last 14 days. Today is yellow, days without a booking are grey.
 function Bars({ days }) {
   const max = Math.max(1, ...days.map((d) => Number(d.bookings)));
   return (
-    <div style={{ display: "flex", alignItems: "flex-end", gap: "4px", height: "110px", margin: "0.6rem 0 0.2rem" }} role="img" aria-label="Bookings made in the last 14 days">
-      {days.map((d) => {
-        const n = Number(d.bookings);
-        return (
-          <div key={d.day} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%", textAlign: "center" }} title={`${prettyDate(d.day)}: ${n} bookings, ${money(d.value)}`}>
-            <span className="meta" style={{ fontSize: "0.7rem" }}>{n || ""}</span>
-            <div style={{ height: `${Math.max(n ? 6 : 2, (n / max) * 80)}%`, background: n ? "var(--green, #2f6f4e)" : "#d8d8d8", borderRadius: "3px 3px 0 0" }} />
-          </div>
-        );
-      })}
-    </div>
+    <>
+      <div className="ov-bars" role="img" aria-label="Bookings made in the last 14 days">
+        {days.map((d, i) => {
+          const n = Number(d.bookings);
+          return (
+            <div key={d.day} className={`ov-bar${i === days.length - 1 ? " today" : ""}${n ? "" : " zero"}`} title={`${prettyDate(d.day)}: ${n} bookings, ${money(d.value)}`}>
+              <span>{n || ""}</span>
+              <i style={{ height: `${n ? Math.max(6, (n / max) * 78) : 2}%` }} />
+            </div>
+          );
+        })}
+      </div>
+      <div className="ov-days">
+        {days.map((d) => (
+          <span key={d.day}>{WEEKDAY[new Date(`${d.day}T00:00:00`).getDay()]}</span>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -57,73 +71,81 @@ function Overview() {
 
   const { bookings: b, money: m, counts: c } = d;
   const todo = [
-    { n: Number(c.pending_properties), text: "properties waiting for approval", href: "/dashboard" },
-    { n: Number(c.pending_vehicles), text: "vehicles waiting for approval", href: "/operator" },
-    { n: Number(c.open_tickets), text: "customer-care tickets not resolved", href: "/dashboard/support" },
+    { n: Number(c.pending_properties), text: "properties to approve", href: "/dashboard" },
+    { n: Number(c.pending_vehicles), text: "vehicles to approve", href: "/operator" },
+    { n: Number(c.open_tickets), text: "support tickets not resolved", href: "/dashboard/support" },
     { n: Number(c.new_enquiries), text: "new tour enquiries", href: "/dashboard/enquiries" },
-    { n: Number(d.payouts_due) > 0 ? 1 : 0, text: `to pay hosts: ${money(d.payouts_due)}`, href: "/dashboard/payouts" },
   ].filter((x) => x.n > 0);
+  const due = Number(d.payouts_due);
+  const topMax = Math.max(1, ...d.top_cities.map((x) => Number(x.bookings)));
 
   return (
     <>
-      <p className="meta"><Link href="/dashboard">← Dashboard</Link></p>
-      <h1 className="section-title">Overview</h1>
-      <p className="meta">How Hill Booker is doing. Numbers are in India time. Money is what guests paid online, after refunds.</p>
+      <h1 className="section-title">{greeting()}</h1>
+      <p className="meta">
+        Today: {b.today} {Number(b.today) === 1 ? "booking" : "bookings"} and {money(m.today)} paid online. All numbers are in India time, and money is what guests paid online after refunds.
+      </p>
 
-      <section className="card" style={{ padding: "1rem", margin: "1rem 0" }}>
-        <h2 className="mini-title">Needs your attention</h2>
-        {todo.length === 0 ? (
-          <p className="ok">All clear. Nothing is waiting for you.</p>
-        ) : (
-          <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: "0.4rem", margin: 0 }}>
-            {todo.map((x) => (
-              <li key={x.text}>
-                <Link href={x.href}>
-                  {x.href === "/dashboard/payouts" ? "" : <b>{x.n} </b>}
-                  {x.text} →
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(10rem, 1fr))", gap: "0.7rem" }}>
-        <Tile label="Bookings today" value={b.today} sub={`${b.week} in 7 days`} />
-        <Tile label="Bookings, 30 days" value={b.month} sub={`${b.month_stays} stays · ${b.month_vehicles} vehicles`} />
-        <Tile label="Paid online today" value={money(m.today)} sub={`${money(m.week)} in 7 days`} />
-        <Tile label="Paid online, 30 days" value={money(m.month)} sub={Number(m.month_refunded) > 0 ? `${money(m.month_refunded)} refunded` : "no refunds"} />
-        <Tile label="Your commission, 30 days" value={money(m.month_commission)} sub={`${money(m.total_commission)} in total`} />
-        <Tile label="Check-ins tomorrow" value={c.checkins_tomorrow} sub={`${c.checkins_week} in the next 7 days`} />
-        <Tile label="Live stays and vehicles" value={`${c.properties} · ${c.vehicles}`} sub={`${c.hosts} hosts`} />
+      <div className="ov-tiles">
+        <Tile tone="green" label="Paid online, 30 days" value={money(m.month)} sub={`${money(m.month_commission)} commission`} />
+        <Tile tone="indigo" label="Bookings, 30 days" value={b.month} sub={`${b.month_stays} stays · ${b.month_vehicles} vehicles`} />
+        <Tile tone="gold" label="Check-ins tomorrow" value={c.checkins_tomorrow} sub={`${c.checkins_week} in the next 7 days`} />
         <Tile label="Users" value={c.users} sub={`${c.new_users} joined this week`} />
       </div>
 
-      <section className="card" style={{ padding: "1rem", margin: "1rem 0" }}>
-        <h2 className="mini-title">Bookings, last 14 days</h2>
-        <Bars days={d.daily} />
-        <p className="meta">{prettyDate(d.daily[0].day)} to {prettyDate(d.daily[d.daily.length - 1].day)}</p>
-      </section>
+      <div className="ov-row">
+        <section className="ov-panel">
+          <h2>Bookings, last 14 days</h2>
+          <Bars days={d.daily} />
+        </section>
+        <section className="ov-panel">
+          <h2>Needs your attention</h2>
+          {todo.length === 0 && due <= 0 ? (
+            <p className="ov-clear">All clear. Nothing is waiting for you.</p>
+          ) : (
+            <ul className="ov-todo">
+              {todo.map((x) => (
+                <li key={x.text}>
+                  <Link href={x.href}>
+                    <span className="n">{x.n}</span>
+                    {x.text}
+                  </Link>
+                </li>
+              ))}
+              {due > 0 && (
+                <li>
+                  <Link href="/dashboard/payouts">
+                    <span className="n">₹</span>
+                    {money(due)} to pay hosts
+                  </Link>
+                </li>
+              )}
+            </ul>
+          )}
+        </section>
+      </div>
 
-      <div className="dates-bar" style={{ alignItems: "start" }}>
-        <section className="card" style={{ padding: "1rem" }}>
-          <h2 className="mini-title">Top places, 30 days</h2>
+      <div className="ov-row even">
+        <section className="ov-panel">
+          <h2>Top places, 30 days</h2>
           {d.top_cities.length === 0 ? (
             <p className="meta">No bookings yet.</p>
           ) : (
-            <ol style={{ margin: 0, paddingLeft: "1.2rem" }}>
-              {d.top_cities.map((x) => (
-                <li key={x.city}>{x.city} · {x.bookings} {Number(x.bookings) === 1 ? "booking" : "bookings"}</li>
-              ))}
-            </ol>
+            d.top_cities.map((x) => (
+              <div key={x.city} className="ov-place">
+                <span>{x.city}</span>
+                <div className="track"><i style={{ width: `${(Number(x.bookings) / topMax) * 100}%` }} /></div>
+                <b>{x.bookings}</b>
+              </div>
+            ))
           )}
         </section>
-        <section className="card" style={{ padding: "1rem" }}>
-          <h2 className="mini-title">Latest bookings</h2>
+        <section className="ov-panel">
+          <h2>Latest bookings</h2>
           {d.recent.length === 0 ? (
             <p className="meta">No bookings yet.</p>
           ) : (
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: "0.5rem" }}>
+            <ul className="ov-recent">
               {d.recent.map((r, i) => (
                 <li key={i}>
                   <span className="row-name">{r.item}</span>
@@ -133,13 +155,6 @@ function Overview() {
             </ul>
           )}
         </section>
-      </div>
-
-      <div className="actions" style={{ margin: "1rem 0" }}>
-        <Link className="btn btn-small" href="/dashboard/bookings">All bookings</Link>
-        <Link className="btn btn-small" href="/dashboard/payments">Payments</Link>
-        <Link className="btn btn-small" href="/dashboard/payouts">Payouts</Link>
-        <Link className="btn btn-small" href="/dashboard/reports">Reports</Link>
       </div>
     </>
   );

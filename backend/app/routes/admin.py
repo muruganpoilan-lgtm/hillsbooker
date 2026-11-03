@@ -288,3 +288,20 @@ def overview(user: dict = Depends(admin_only)):
         )
         recent = cur.fetchall()
     return {"bookings": bookings, "money": money, "daily": daily, "top_cities": top_cities, "counts": counts, "payouts_due": due, "recent": recent}
+
+
+@router.get("/badges")
+def badges(user: dict = Depends(admin_only)):
+    """Small counts for the admin side menu: what is waiting for the admin."""
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT
+                 (SELECT count(*) FROM properties WHERE status = 'pending') AS pending_properties,
+                 (SELECT count(*) FROM vehicles WHERE status = 'pending') AS pending_vehicles,
+                 (SELECT count(*) FROM enquiries WHERE status = 'new') AS new_enquiries,
+                 (SELECT count(*) FROM support_tickets WHERE status <> 'resolved') AS open_tickets"""
+        )
+        out = cur.fetchone()
+        cur.execute(f"SELECT COALESCE(sum(share), 0) AS due FROM ({_PAYOUT_READY}) r")
+        out["payouts_due"] = cur.fetchone()["due"]
+        return out

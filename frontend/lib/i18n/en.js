@@ -483,4 +483,5 @@ export default {
   "sup.ref": "Your ticket number is #{n}",
   "sup.hurry": "In a hurry? Call or WhatsApp",
   "nav.overview": "Overview",
+  "nav.admin": "Admin",
 };

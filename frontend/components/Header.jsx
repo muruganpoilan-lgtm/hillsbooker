@@ -23,16 +23,11 @@ export default function Header() {
         <Link href="/blog">{t("nav.blog")}</Link>
         {ready && token ? (
           <>
-            {(role === "owner" || role === "operator" || role === "admin") && <Link href="/dashboard">{t("nav.myProperties")}</Link>}
-            {(role === "owner" || role === "operator" || role === "admin") && <Link href="/operator">{t("nav.myVehicles")}</Link>}
-            {(role === "owner" || role === "operator" || role === "admin") && <Link href="/dashboard/payments">{t("nav.payments")}</Link>}
-            {(role === "owner" || role === "operator" || role === "admin") && <Link href="/dashboard/reports">{t("nav.reports")}</Link>}
-            {role === "admin" && <Link href="/dashboard/overview">{t("nav.overview")}</Link>}
-            {role === "admin" && <Link href="/dashboard/enquiries">{t("nav.enquiries")}</Link>}
-            {role === "admin" && <Link href="/dashboard/coupons">{t("nav.coupons")}</Link>}
-            {role === "admin" && <Link href="/dashboard/packages">{t("nav.packagesAdmin")}</Link>}
-            {role === "admin" && <Link href="/dashboard/blog">{t("nav.blogAdmin")}</Link>}
-            {role === "admin" && <Link href="/dashboard/support">{t("nav.supportAdmin")}</Link>}
+            {role === "admin" && <Link href="/dashboard/overview">{t("nav.admin")}</Link>}
+            {(role === "owner" || role === "operator") && <Link href="/dashboard">{t("nav.myProperties")}</Link>}
+            {(role === "owner" || role === "operator") && <Link href="/operator">{t("nav.myVehicles")}</Link>}
+            {(role === "owner" || role === "operator") && <Link href="/dashboard/payments">{t("nav.payments")}</Link>}
+            {(role === "owner" || role === "operator") && <Link href="/dashboard/reports">{t("nav.reports")}</Link>}
             {role === "guest" && <Link href="/dashboard">{t("nav.becomeHost")}</Link>}
             <Link href="/saved">{t("nav.saved")}</Link>
             <Link href="/invite">{t("nav.invite")}</Link>
