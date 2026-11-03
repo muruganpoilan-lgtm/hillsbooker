@@ -21,7 +21,7 @@ def seo_properties(city: str | None = None):
     sql = """
         SELECT p.id, p.name, p.type, p.city, p.description, p.rating_avg, p.rating_count, p.created_at,
                (SELECT MIN(base_price) FROM room_types rt WHERE rt.property_id = p.id) AS price_from,
-               (SELECT url FROM property_photos ph WHERE ph.property_id = p.id ORDER BY position LIMIT 1) AS photo
+               (SELECT url FROM property_photos ph WHERE ph.property_id = p.id AND ph.status = 'approved' ORDER BY position LIMIT 1) AS photo
         FROM properties p WHERE p.status = 'approved'"""
     params: dict = {}
     if city:
@@ -56,7 +56,7 @@ def search(
     sql = """
         SELECT p.id, p.name, p.type, p.city, p.rating_avg, p.rating_count,
                MIN(x.nightly) AS price_per_night,
-               (SELECT url FROM property_photos ph WHERE ph.property_id = p.id ORDER BY position LIMIT 1) AS photo,
+               (SELECT url FROM property_photos ph WHERE ph.property_id = p.id AND ph.status = 'approved' ORDER BY position LIMIT 1) AS photo,
                CASE WHEN %(nlat)s::float8 IS NULL OR p.lat IS NULL OR p.lng IS NULL THEN NULL
                     ELSE 6371 * acos(LEAST(1, cos(radians(%(nlat)s::float8)) * cos(radians(p.lat)) * cos(radians(p.lng) - radians(%(nlng)s::float8))
                                              + sin(radians(%(nlat)s::float8)) * sin(radians(p.lat)))) END AS distance_km
@@ -158,7 +158,7 @@ def property_detail(property_id: str, check_in: date | None = None, check_out: d
         prop = cur.fetchone()
         if not prop:
             raise HTTPException(404, "Property not found")
-        cur.execute("SELECT url FROM property_photos WHERE property_id = %s ORDER BY position", (property_id,))
+        cur.execute("SELECT url FROM property_photos WHERE property_id = %s AND status = 'approved' ORDER BY position", (property_id,))
         prop["photos"] = [r["url"] for r in cur.fetchall()]
         cur.execute(
             """SELECT a.name FROM property_amenities pa JOIN amenities a ON a.id = pa.amenity_id
@@ -184,7 +184,7 @@ def property_detail(property_id: str, check_in: date | None = None, check_out: d
         photos_by_room: dict = {r["id"]: [] for r in rooms}
         if rooms:
             cur.execute(
-                "SELECT room_type_id, url FROM room_type_photos WHERE room_type_id = ANY(%s) ORDER BY position",
+                "SELECT room_type_id, url FROM room_type_photos WHERE room_type_id = ANY(%s) AND status = 'approved' ORDER BY position",
                 ([r["id"] for r in rooms],),
             )
             for p in cur.fetchall():

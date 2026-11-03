@@ -23,6 +23,7 @@ const ADMIN_GROUPS = [
     items: [
       { href: "/dashboard", label: "Properties", badge: "pending_properties" },
       { href: "/operator", label: "Vehicles", badge: "pending_vehicles" },
+      { href: "/dashboard/photos", label: "Photo review", badge: "pending_photos" },
       { href: "/dashboard/packages", label: "Trip packages" },
       { href: "/dashboard/blog", label: "Travel guides" },
     ],

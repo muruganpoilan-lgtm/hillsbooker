@@ -33,7 +33,7 @@ def _own_room_type(cur, room_type_id: str, user: dict) -> dict:
     return rt
 
 
-def _upload_photos(table: str, parent_col: str, parent_id: str, folder: str, files: list[UploadFile], user: dict, check):
+def _upload_photos(table: str, parent_col: str, parent_id: str, folder: str, files: list[UploadFile], user: dict, check, moderated: bool = False):
     """Shared photo upload for properties and room types. Files are saved first, then recorded in one
     transaction; if the database step fails, the saved files are removed again."""
     if not files:
@@ -49,10 +49,15 @@ def _upload_photos(table: str, parent_col: str, parent_id: str, folder: str, fil
             for f in files:
                 saved.append(save_image(f, folder))
             out = []
+            # Photos from hosts wait for the admin's approval. The admin's own uploads go live straight away.
+            review = ", status" if moderated else ""
+            review_val = (", %s" if moderated else "")
+            state = "approved" if user["role"] == "admin" else "pending"
             for i, (url, key) in enumerate(saved, start=1):
+                params = (parent_id, url, key, info["last"] + i) + ((state,) if moderated else ())
                 cur.execute(
-                    f"INSERT INTO {table} ({parent_col}, url, storage_key, position) VALUES (%s, %s, %s, %s) RETURNING id, url, position",
-                    (parent_id, url, key, info["last"] + i),
+                    f"INSERT INTO {table} ({parent_col}, url, storage_key, position{review}) VALUES (%s, %s, %s, %s{review_val}) RETURNING id, url, position" + (", status" if moderated else ""),
+                    params,
                 )
                 out.append(cur.fetchone())
             return out
@@ -103,7 +108,10 @@ def create_property(body: PropertyIn, user: dict = Depends(owner_only)):
                 (pid, amenity_id),
             )
         for pos, url in enumerate(body.photo_urls):
-            cur.execute("INSERT INTO property_photos (property_id, url, position) VALUES (%s, %s, %s)", (pid, url, pos))
+            cur.execute(
+                "INSERT INTO property_photos (property_id, url, position, status) VALUES (%s, %s, %s, %s)",
+                (pid, url, pos, "approved" if user["role"] == "admin" else "pending"),
+            )
     return {"id": pid, "status": status}
 
 
@@ -129,7 +137,7 @@ def my_property_detail(property_id: str, user: dict = Depends(owner_only)):
             (property_id,),
         )
         prop = cur.fetchone()
-        cur.execute("SELECT id, url, position FROM property_photos WHERE property_id = %s ORDER BY position", (property_id,))
+        cur.execute("SELECT id, url, position, status, reject_reason FROM property_photos WHERE property_id = %s ORDER BY position", (property_id,))
         prop["photos"] = cur.fetchall()
         cur.execute(
             "SELECT id, name, max_guests, base_price, total_rooms FROM room_types WHERE property_id = %s ORDER BY base_price",
@@ -137,7 +145,7 @@ def my_property_detail(property_id: str, user: dict = Depends(owner_only)):
         )
         rooms = cur.fetchall()
         for r in rooms:
-            cur.execute("SELECT id, url, position FROM room_type_photos WHERE room_type_id = %s ORDER BY position", (r["id"],))
+            cur.execute("SELECT id, url, position, status, reject_reason FROM room_type_photos WHERE room_type_id = %s ORDER BY position", (r["id"],))
             r["photos"] = cur.fetchall()
         prop["room_types"] = rooms
         cur.execute("SELECT amenity_id FROM property_amenities WHERE property_id = %s", (property_id,))
@@ -222,7 +230,7 @@ def purge_removed_properties() -> int:
 
 @router.post("/properties/{property_id}/photos", status_code=201)
 def upload_property_photos(property_id: str, files: list[UploadFile] = File(...), user: dict = Depends(owner_only)):
-    return _upload_photos("property_photos", "property_id", property_id, f"properties/{property_id}", files, user, _own_property)
+    return _upload_photos("property_photos", "property_id", property_id, f"properties/{property_id}", files, user, _own_property, moderated=True)
 
 
 @router.delete("/properties/{property_id}/photos/{photo_id}")
@@ -281,7 +289,7 @@ def delete_room_type(room_type_id: str, user: dict = Depends(owner_only)):
 
 @router.post("/room-types/{room_type_id}/photos", status_code=201)
 def upload_room_photos(room_type_id: str, files: list[UploadFile] = File(...), user: dict = Depends(owner_only)):
-    return _upload_photos("room_type_photos", "room_type_id", room_type_id, f"rooms/{room_type_id}", files, user, _own_room_type)
+    return _upload_photos("room_type_photos", "room_type_id", room_type_id, f"rooms/{room_type_id}", files, user, _own_room_type, moderated=True)
 
 
 @router.delete("/room-types/{room_type_id}/photos/{photo_id}")

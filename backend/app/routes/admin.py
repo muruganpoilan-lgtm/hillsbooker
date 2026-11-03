@@ -1,8 +1,9 @@
 import re
 from decimal import Decimal
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ..auth import require_role
 from ..db import get_conn
@@ -299,9 +300,70 @@ def badges(user: dict = Depends(admin_only)):
                  (SELECT count(*) FROM properties WHERE status = 'pending') AS pending_properties,
                  (SELECT count(*) FROM vehicles WHERE status = 'pending') AS pending_vehicles,
                  (SELECT count(*) FROM enquiries WHERE status = 'new') AS new_enquiries,
-                 (SELECT count(*) FROM support_tickets WHERE status <> 'resolved') AS open_tickets"""
+                 (SELECT count(*) FROM support_tickets WHERE status <> 'resolved') AS open_tickets,
+                 (SELECT count(*) FROM property_photos WHERE status = 'pending')
+                   + (SELECT count(*) FROM room_type_photos WHERE status = 'pending')
+                   + (SELECT count(*) FROM vehicle_photos WHERE status = 'pending') AS pending_photos"""
         )
         out = cur.fetchone()
         cur.execute(f"SELECT COALESCE(sum(share), 0) AS due FROM ({_PAYOUT_READY}) r")
         out["payouts_due"] = cur.fetchone()["due"]
         return out
+
+
+# ---------- photo review: photos from hosts wait here until the admin approves them ----------
+
+_PHOTO_TABLE = {"property": "property_photos", "room": "room_type_photos", "vehicle": "vehicle_photos"}
+
+
+@router.get("/photos/pending")
+def pending_photos(user: dict = Depends(admin_only)):
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT * FROM (
+                 SELECT 'property' AS kind, ph.id, ph.url, ph.created_at, p.id AS listing_id, p.name AS listing, p.city, NULL::text AS room, h.name AS host
+                   FROM property_photos ph JOIN properties p ON p.id = ph.property_id JOIN users h ON h.id = p.owner_id
+                  WHERE ph.status = 'pending' AND p.status <> 'removed'
+                 UNION ALL
+                 SELECT 'room', ph.id, ph.url, ph.created_at, p.id, p.name, p.city, rt.name, h.name
+                   FROM room_type_photos ph JOIN room_types rt ON rt.id = ph.room_type_id
+                   JOIN properties p ON p.id = rt.property_id JOIN users h ON h.id = p.owner_id
+                  WHERE ph.status = 'pending' AND p.status <> 'removed'
+                 UNION ALL
+                 SELECT 'vehicle', ph.id, ph.url, ph.created_at, v.id, v.name, v.city, NULL, h.name
+                   FROM vehicle_photos ph JOIN vehicles v ON v.id = ph.vehicle_id JOIN users h ON h.id = v.operator_id
+                  WHERE ph.status = 'pending' AND v.status <> 'removed'
+               ) x ORDER BY listing, created_at LIMIT 500"""
+        )
+        return cur.fetchall()
+
+
+class PhotoRef(BaseModel):
+    kind: Literal["property", "room", "vehicle"]
+    id: int
+
+
+class PhotoReview(BaseModel):
+    items: list[PhotoRef] = Field(min_length=1, max_length=200)
+    action: Literal["approve", "reject"]
+    reason: Optional[str] = Field(default=None, max_length=200)
+
+
+@router.post("/photos/review")
+def review_photos(body: PhotoReview, user: dict = Depends(admin_only)):
+    """Approves or rejects photos that are still waiting. A rejected photo stays with the host, with the reason, until they remove it."""
+    reason = (body.reason or "").strip()
+    if body.action == "reject" and len(reason) < 3:
+        raise HTTPException(400, "Write a short reason, so the host knows what to fix")
+    done = 0
+    with get_conn() as conn, conn.cursor() as cur:
+        for kind, table in _PHOTO_TABLE.items():
+            ids = [i.id for i in body.items if i.kind == kind]
+            if not ids:
+                continue
+            cur.execute(
+                f"UPDATE {table} SET status = %s, reject_reason = %s WHERE id = ANY(%s) AND status = 'pending' RETURNING id",
+                ("approved" if body.action == "approve" else "rejected", reason if body.action == "reject" else None, ids),
+            )
+            done += len(cur.fetchall())
+    return {"updated": done}

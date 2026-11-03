@@ -38,7 +38,9 @@ export default function PhotoManager({ base, photos, token, onChange, onAuthErro
         <ul className="photo-grid">
           {photos.map((p) => (
             <li key={p.id}>
-              <img src={p.url} alt="" loading="lazy" />
+              <img src={p.url} alt="" loading="lazy" style={p.status && p.status !== "approved" ? { opacity: 0.6 } : undefined} />
+              {p.status === "pending" && <span className="status status-held" style={{ position: "absolute", left: 6, top: 6, background: "#fff" }}>Waiting for approval</span>}
+              {p.status === "rejected" && <span className="status status-cancelled" style={{ position: "absolute", left: 6, top: 6, background: "#fff", color: "var(--brick)" }} title={p.reject_reason || ""}>Not approved{p.reject_reason ? `: ${p.reject_reason}` : ""}</span>}
               <button type="button" className="photo-remove" onClick={() => remove(p.id)} aria-label="Remove photo">
                 Remove
               </button>
@@ -54,7 +56,7 @@ export default function PhotoManager({ base, photos, token, onChange, onAuthErro
         {busy ? "Uploading…" : photos.length ? "Add more photos" : "Add photos"}
         <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={upload} disabled={busy || !own} className="sr-only" />
       </label>
-      <p className="meta">JPG, PNG or WebP, up to 5 MB each. The first photo is the cover.</p>
+      <p className="meta">JPG, PNG or WebP, up to 5 MB each. The first photo is the cover. Hill Booker checks new photos before guests can see them, usually within a day.</p>
       {error && (
         <p className="form-error" role="alert">
           {error}

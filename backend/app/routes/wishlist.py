@@ -28,7 +28,7 @@ def saved_places(user: dict = Depends(current_user)):
         cur.execute(
             """SELECT p.id, p.name, p.type, p.city, p.rating_avg, p.rating_count,
                       (SELECT MIN(base_price) FROM room_types rt WHERE rt.property_id = p.id) AS price_from,
-                      (SELECT url FROM property_photos ph WHERE ph.property_id = p.id ORDER BY position LIMIT 1) AS photo
+                      (SELECT url FROM property_photos ph WHERE ph.property_id = p.id AND ph.status = 'approved' ORDER BY position LIMIT 1) AS photo
                FROM wishlist w JOIN properties p ON p.id = w.property_id
                WHERE w.user_id = %s AND p.status = 'approved'
                ORDER BY w.created_at DESC LIMIT 200""",

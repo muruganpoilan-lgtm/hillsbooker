@@ -73,7 +73,7 @@ def list_vehicles(city: str | None = None, kind: str | None = None, seats: int |
         cur.execute(
             f"""SELECT v.id, v.name, v.kind, v.seats, v.ac, v.city, v.price_per_day, v.km_per_day, v.quantity,
                        v.advance_percent,
-                       (SELECT url FROM vehicle_photos WHERE vehicle_id = v.id ORDER BY position LIMIT 1) AS photo,
+                       (SELECT url FROM vehicle_photos WHERE vehicle_id = v.id AND status = 'approved' ORDER BY position LIMIT 1) AS photo,
                        (SELECT MIN(price) FROM vehicle_trips WHERE vehicle_id = v.id AND active) AS trip_from
                 FROM vehicles v WHERE {' AND '.join(where)} ORDER BY v.price_per_day, v.name LIMIT 100""",
             params,
@@ -104,7 +104,7 @@ def vehicle_detail(vehicle_id: str, start: date | None = None, end: date | None 
         v = cur.fetchone()
         if not v:
             raise HTTPException(404, "Vehicle not found")
-        cur.execute("SELECT id, url FROM vehicle_photos WHERE vehicle_id = %s ORDER BY position", (vehicle_id,))
+        cur.execute("SELECT id, url FROM vehicle_photos WHERE vehicle_id = %s AND status = 'approved' ORDER BY position", (vehicle_id,))
         v["photos"] = cur.fetchall()
         cur.execute(
             "SELECT id, title, from_place, to_place, details, price FROM vehicle_trips WHERE vehicle_id = %s AND active ORDER BY price",
@@ -165,7 +165,7 @@ def my_vehicle(vehicle_id: str, user: dict = Depends(operator_only)):
             (vehicle_id,),
         )
         v = cur.fetchone()
-        cur.execute("SELECT id, url, position FROM vehicle_photos WHERE vehicle_id = %s ORDER BY position", (vehicle_id,))
+        cur.execute("SELECT id, url, position, status, reject_reason FROM vehicle_photos WHERE vehicle_id = %s ORDER BY position", (vehicle_id,))
         v["photos"] = cur.fetchall()
         cur.execute(
             "SELECT id, title, from_place, to_place, details, price, active FROM vehicle_trips WHERE vehicle_id = %s ORDER BY created_at",
@@ -232,7 +232,7 @@ def purge_removed_vehicles() -> int:
 
 @operator.post("/vehicles/{vehicle_id}/photos", status_code=201)
 def upload_vehicle_photos(vehicle_id: str, files: list[UploadFile] = File(...), user: dict = Depends(operator_only)):
-    return _upload_photos("vehicle_photos", "vehicle_id", vehicle_id, f"vehicles/{vehicle_id}", files, user, _own_vehicle)
+    return _upload_photos("vehicle_photos", "vehicle_id", vehicle_id, f"vehicles/{vehicle_id}", files, user, _own_vehicle, moderated=True)
 
 
 @operator.delete("/vehicles/{vehicle_id}/photos/{photo_id}")
