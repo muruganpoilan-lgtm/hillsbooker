@@ -150,3 +150,26 @@ def set_active(coupon_id: str, body: ActiveIn, user: dict = Depends(admin_only))
         if not row:
             raise HTTPException(404, "Coupon not found")
         return row
+
+
+@admin.delete("/{coupon_id}")
+def delete_coupon(coupon_id: str, user: dict = Depends(admin_only)):
+    """Deletes a coupon nobody has used. A coupon that is on a booking or an invite reward stays (switch it off instead)."""
+    import uuid
+
+    try:
+        cid = str(uuid.UUID(coupon_id))
+    except ValueError:
+        raise HTTPException(404, "Coupon not found")
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT EXISTS (SELECT 1 FROM bookings WHERE coupon_id = %s)
+                      OR EXISTS (SELECT 1 FROM referrals WHERE reward_coupon_id = %s) AS used""",
+            (cid, cid),
+        )
+        if cur.fetchone()["used"]:
+            raise HTTPException(409, "This coupon was already used, so it cannot be deleted. Switch it off instead")
+        cur.execute("DELETE FROM coupons WHERE id = %s RETURNING id", (cid,))
+        if not cur.fetchone():
+            raise HTTPException(404, "Coupon not found")
+    return {"deleted": cid}

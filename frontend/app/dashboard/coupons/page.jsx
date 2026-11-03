@@ -65,6 +65,14 @@ function Coupons() {
     load();
   }
 
+  async function remove(c) {
+    if (!window.confirm(`Delete coupon ${c.code}? This cannot be undone.`)) return;
+    const res = await api(`/admin/coupons/${c.id}`, { method: "DELETE", token });
+    if (!res.ok) return setMsg({ text: res.error, bad: true });
+    setMsg({ text: `Coupon ${c.code} deleted.`, bad: false });
+    load();
+  }
+
   if (role !== "admin") return <p className="empty">Only the Hill Booker admin can open this page.</p>;
   return (
     <>
@@ -138,6 +146,7 @@ function Coupons() {
               </p>
               <div className="actions">
                 <button type="button" className="btn btn-small" onClick={() => toggle(c)}>{c.active ? "Switch off" : "Switch on"}</button>
+                {Number(c.used) === 0 && Number(c.in_progress) === 0 && <button type="button" className="btn btn-small" onClick={() => remove(c)}>Delete</button>}
               </div>
             </li>
           ))}
