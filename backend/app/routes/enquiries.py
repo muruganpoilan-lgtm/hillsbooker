@@ -6,10 +6,10 @@ from datetime import date
 from email.message import EmailMessage
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from .. import notify
+from .. import notify, ratelimit
 from ..auth import require_role
 from ..config import settings
 from ..db import get_conn
@@ -64,9 +64,10 @@ def _email(row: dict) -> None:
 
 
 @public.post("", status_code=201)
-def create_enquiry(body: EnquiryIn):
+def create_enquiry(body: EnquiryIn, request: Request):
     if body.website:  # a bot filled the hidden field: pretend it worked
         return {"ok": True}
+    ratelimit.form_guard(request)
     phone = notify.wa_number(body.phone)
     if not phone:
         raise HTTPException(422, "Please enter a valid phone number")

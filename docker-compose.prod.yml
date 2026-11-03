@@ -22,7 +22,7 @@ services:
       DATABASE_URL: postgresql://roomly:${DB_PASSWORD}@db:5432/roomly
       JWT_SECRET: ${JWT_SECRET}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
-      ALLOW_FAKE_CONFIRM: ${ALLOW_FAKE_CONFIRM:-true}
+      ALLOW_FAKE_CONFIRM: ${ALLOW_FAKE_CONFIRM:-false}
       UPLOAD_DIR: /data/uploads
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       BUSINESS_NAME: ${BUSINESS_NAME:-Hill Booker}

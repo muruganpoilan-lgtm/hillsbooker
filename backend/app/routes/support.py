@@ -2,10 +2,10 @@
 The team is told on WhatsApp (using the enquiry alert) and by email when those are set up. Failures never block the form."""
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from .. import notify
+from .. import notify, ratelimit
 from ..auth import require_role
 from ..db import get_conn
 from .enquiries import _mail
@@ -42,9 +42,10 @@ def _clean(v: Optional[str]) -> Optional[str]:
 
 
 @public.post("", status_code=201)
-def create_ticket(body: TicketIn):
+def create_ticket(body: TicketIn, request: Request):
     if body.website:
         return {"ticket_no": 0}
+    ratelimit.form_guard(request)
     phone = notify.wa_number(body.phone)
     if not phone:
         raise HTTPException(422, "Please enter a valid phone number")

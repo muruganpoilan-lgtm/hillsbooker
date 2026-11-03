@@ -3,10 +3,10 @@ import re
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Request
 from pydantic import BaseModel, Field
 
-from .. import notify
+from .. import notify, ratelimit
 from ..auth import require_role
 from ..db import get_conn
 from .enquiries import _email
@@ -69,9 +69,10 @@ class PackageEnquiryIn(BaseModel):
 
 
 @public.post("/{slug}/enquiry", status_code=201)
-def package_enquiry(slug: str, body: PackageEnquiryIn):
+def package_enquiry(slug: str, body: PackageEnquiryIn, request: Request):
     if body.website:
         return {"ok": True}
+    ratelimit.form_guard(request)
     phone = notify.wa_number(body.phone)
     if not phone:
         raise HTTPException(422, "Please enter a valid phone number")

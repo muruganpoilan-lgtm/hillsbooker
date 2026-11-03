@@ -55,6 +55,13 @@ def guard(key: str, limit: int, window: float, message: str) -> None:
         raise HTTPException(429, message)
 
 
+def form_guard(request: Request) -> None:
+    """Public forms (enquiry, support): at most 12 messages an hour from one connection, whatever phone numbers are typed."""
+    key = f"form:{client_ip(request)}"
+    guard(key, 12, 3600, "Too many messages from this connection. Please try again in an hour")
+    hit(key)
+
+
 def reset_for_tests() -> None:
     with _lock:
         _hits.clear()

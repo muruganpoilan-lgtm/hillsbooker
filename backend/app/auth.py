@@ -37,5 +37,13 @@ def require_role(*roles: str):
     def checker(user: dict = Depends(current_user)) -> dict:
         if user["role"] not in roles:
             raise HTTPException(403, "You don't have access to this")
+        if user["role"] == "admin":
+            # A login token lasts days. For admin power, ask the database too, so a removed admin loses access at once.
+            from .db import get_conn
+            with get_conn() as conn, conn.cursor() as cur:
+                cur.execute("SELECT role FROM users WHERE id = %s", (user["id"],))
+                row = cur.fetchone()
+            if not row or row["role"] != "admin":
+                raise HTTPException(403, "You don't have access to this")
         return user
     return checker

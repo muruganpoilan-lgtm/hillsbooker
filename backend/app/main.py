@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from .config import settings
 from .db import pool
 from . import notify
 from .routes import admin, auth_routes, blog, bookings, channels, coupon_routes, referral_routes, enquiries, google_auth, invoices, owner, packages, payments, public, push_routes, reports, support, upi, vehicles, wishlist
@@ -85,14 +86,30 @@ async def lifespan(app: FastAPI):
 
 # The interactive API pages (/docs) are only for development. Set ENABLE_DOCS=1 to turn them on.
 _docs = os.environ.get("ENABLE_DOCS") == "1"
+# Refuse to start with a guessable login-signing key: anyone who knows it could make themselves admin.
+if settings.jwt_secret == "dev-secret-change-me" or len(settings.jwt_secret) < 32:
+    if os.environ.get("ALLOW_WEAK_SECRET") != "1":
+        raise RuntimeError("JWT_SECRET is missing or too short (use at least 32 random characters)")
+
 app = FastAPI(title="Hill Booker API", lifespan=lifespan, docs_url="/docs" if _docs else None, redoc_url=None, openapi_url="/openapi.json" if _docs else None)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",") if o.strip()],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
+
+
+@app.middleware("http")
+async def security_headers(request, call_next):
+    resp = await call_next(request)
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["X-Frame-Options"] = "DENY"
+    resp.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    resp.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    return resp
 
 # Uploaded photos are served from here in development. In production, serve them from S3 or a CDN.
 app.mount("/uploads", StaticFiles(directory=upload_root()), name="uploads")
