@@ -63,7 +63,7 @@ def _details(kind: str, booking_id: str):
         return cur.fetchone()
 
 
-def _send(to: str, params: list[str], template: str | None = None, document: tuple[str, str] | None = None) -> None:
+def _send(to: str, params: list[str], template: str | None = None, document: tuple[str, str] | None = None, lang: str | None = None) -> None:
     """document is (link, filename): sent as the template's PDF header, so the guest gets the file itself."""
     components = []
     if document:
@@ -75,7 +75,7 @@ def _send(to: str, params: list[str], template: str | None = None, document: tup
         "type": "template",
         "template": {
             "name": template or settings.whatsapp_template,
-            "language": {"code": settings.whatsapp_lang},
+            "language": {"code": lang or settings.whatsapp_lang},
             "components": components,
         },
     }
@@ -215,7 +215,7 @@ def _cancelled(kind: str, booking_id: str, refund: dict) -> None:
             note = "No refund is due to the guest"
         # Template body (create it in Meta Business Manager, in this order):
         # Hi {{1}}, a booking at {{2}} for {{3}} was cancelled by the guest ({{4}}). {{5}}. The dates are open for booking again.
-        _send(to, [d["host_name"] or "there", d["item"], when, guest, note], template=settings.whatsapp_cancel_template)
+        _send(to, [d["host_name"] or "there", d["item"], when, guest, note], template=settings.whatsapp_cancel_template, lang=settings.whatsapp_alert_lang)
     except Exception as e:
         log.warning("Host cancel alert failed: %s", e)
 
@@ -236,7 +236,7 @@ def _enquiry(row: dict) -> None:
         when = _day(row["start_date"]) if row["start_date"] else "not given"
         # Template body (create it in Meta Business Manager, in this order):
         # New {{1}} enquiry on Hill Booker from {{2}}, phone {{3}}. Destination: {{4}}. Start date: {{5}}. People: {{6}}. Open your Hill Booker dashboard for the details.
-        _send(to, [label, who, row["phone"], row["destination"] or "not given", when, str(row["people"] or "not given")], template=settings.whatsapp_enquiry_template)
+        _send(to, [label, who, row["phone"], row["destination"] or "not given", when, str(row["people"] or "not given")], template=settings.whatsapp_enquiry_template, lang=settings.whatsapp_alert_lang)
     except Exception as e:
         log.warning("Enquiry alert failed: %s", e)
 
@@ -271,7 +271,7 @@ def send_checkin_reminders() -> int:
                 continue
             # Template body (create it in Meta Business Manager, in this order):
             # Hi {{1}}, a reminder that your stay at {{2}} starts tomorrow, {{3}}. ...
-            _send(to, [d["guest"] or "there", d["property"], _day(d["check_in"])], template=settings.whatsapp_reminder_template)
+            _send(to, [d["guest"] or "there", d["property"], _day(d["check_in"])], template=settings.whatsapp_reminder_template, lang=settings.whatsapp_alert_lang)
             sent += 1
         except Exception as e:
             log.warning("Check-in reminder failed: %s", e)

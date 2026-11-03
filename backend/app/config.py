@@ -69,6 +69,8 @@ class Settings(BaseSettings):
     whatsapp_phone_id: str = ""    # the sender number's Phone Number ID
     whatsapp_template: str = "new_booking"
     whatsapp_lang: str = "en"
+    # Language the cancellation, enquiry and check-in reminder templates were created in (shown as "English" = en in WhatsApp Manager).
+    whatsapp_alert_lang: str = "en"
     whatsapp_host_copy_template: str = ""  # approved template with a PDF header that sends the owner a copy; empty = off
     whatsapp_enquiry_template: str = ""  # approved template that tells the owner about a tour enquiry; empty = off
     enquiry_whatsapp_to: str = "918300841442"  # who is told about tour enquiries
