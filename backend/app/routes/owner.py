@@ -422,3 +422,80 @@ def owner_bookings(user: dict = Depends(owner_only)):
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(sql + " ORDER BY b.check_in DESC", params)
         return cur.fetchall()
+
+
+# ---------- host overview: the numbers on the host's home page ----------
+
+@router.get("/overview")
+def host_overview(user: dict = Depends(owner_only)):
+    """A summary of the signed-in host's own stays and vehicles. Admins see their own listings here, like any host."""
+    from .admin import _PAYOUT_READY  # the same "ready to pay out" rule the admin uses
+
+    uid = user["id"]
+    today = "(now() AT TIME ZONE 'Asia/Kolkata')::date"
+    mine = """
+      WITH mine AS (
+        SELECT 'stay' AS kind, b.id, b.status, (b.created_at AT TIME ZONE 'Asia/Kolkata')::date AS day, b.total_amount,
+               p.name AS item, g.name AS guest, b.guests AS people, b.check_in AS start_date, b.check_out AS end_date
+          FROM bookings b JOIN properties p ON p.id = b.property_id JOIN users g ON g.id = b.user_id WHERE p.owner_id = %(u)s
+        UNION ALL
+        SELECT 'vehicle', b.id, b.status, (b.created_at AT TIME ZONE 'Asia/Kolkata')::date, b.total_amount,
+               v.name, g.name, b.passengers, b.start_date, b.end_date
+          FROM vehicle_bookings b JOIN vehicles v ON v.id = b.vehicle_id JOIN users g ON g.id = b.user_id WHERE v.operator_id = %(u)s
+      )"""
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("SELECT name FROM users WHERE id = %s", (uid,))
+        name = (cur.fetchone() or {}).get("name") or ""
+        cur.execute(
+            mine
+            + f"""SELECT
+                   count(*) FILTER (WHERE status = 'confirmed' AND day > {today} - 30) AS month,
+                   count(*) FILTER (WHERE status = 'confirmed' AND day > {today} - 7) AS week,
+                   count(*) FILTER (WHERE status = 'confirmed' AND start_date = {today} + 1) AS arrivals_tomorrow,
+                   count(*) FILTER (WHERE status = 'confirmed' AND start_date BETWEEN {today} AND {today} + 7) AS arrivals_week
+                 FROM mine""",
+            {"u": uid},
+        )
+        counts = cur.fetchone()
+        # The host's share of what guests paid online in the last 30 days (after commission and refunds).
+        cur.execute(
+            mine
+            + f"""SELECT COALESCE(sum(pm.amount - pm.commission - pm.refunded_amount), 0) AS share
+                  FROM payments pm JOIN mine m ON (m.kind = 'stay' AND pm.booking_id = m.id) OR (m.kind = 'vehicle' AND pm.vehicle_booking_id = m.id)
+                  WHERE pm.status IN ('paid', 'refunded') AND pm.provider IN ('razorpay', 'cashfree')
+                    AND (pm.updated_at AT TIME ZONE 'Asia/Kolkata')::date > {today} - 30""",
+            {"u": uid},
+        )
+        share = cur.fetchone()["share"]
+        cur.execute(f"SELECT COALESCE(sum(share), 0) AS due FROM ({_PAYOUT_READY}) r WHERE r.host_id = %s", (uid,))
+        due = cur.fetchone()["due"]
+        cur.execute("SELECT COALESCE(sum(amount), 0) AS paid FROM payouts WHERE host_id = %s AND paid_at > now() - interval '30 days'", (uid,))
+        paid_out = cur.fetchone()["paid"]
+        cur.execute(
+            mine
+            + f"""SELECT to_char(g.day, 'YYYY-MM-DD') AS day, count(m.id) AS bookings
+                  FROM generate_series({today} - 13, {today}, interval '1 day') AS g(day)
+                  LEFT JOIN mine m ON m.day = g.day::date AND m.status = 'confirmed'
+                  GROUP BY g.day ORDER BY g.day""",
+            {"u": uid},
+        )
+        daily = cur.fetchall()
+        cur.execute(
+            mine
+            + f"""SELECT kind, item, guest, people, start_date, end_date FROM mine
+                  WHERE status = 'confirmed' AND start_date >= {today} ORDER BY start_date, item LIMIT 5""",
+            {"u": uid},
+        )
+        coming = cur.fetchall()
+        cur.execute(
+            """SELECT id, name, type, city, status FROM properties WHERE owner_id = %s AND status <> 'removed'
+               ORDER BY created_at DESC LIMIT 6""",
+            (uid,),
+        )
+        properties = cur.fetchall()
+        cur.execute(
+            "SELECT id, name, kind, city, status FROM vehicles WHERE operator_id = %s AND status <> 'removed' ORDER BY created_at DESC LIMIT 6",
+            (uid,),
+        )
+        vehicles = cur.fetchall()
+    return {"name": name, "counts": counts, "share_30d": share, "due": due, "paid_out_30d": paid_out, "daily": daily, "coming": coming, "properties": properties, "vehicles": vehicles}

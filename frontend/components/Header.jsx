@@ -24,14 +24,9 @@ export default function Header() {
         {ready && token ? (
           <>
             {role === "admin" && <Link href="/dashboard/overview">{t("nav.admin")}</Link>}
-            {(role === "owner" || role === "operator") && <Link href="/dashboard">{t("nav.myProperties")}</Link>}
-            {(role === "owner" || role === "operator") && <Link href="/operator">{t("nav.myVehicles")}</Link>}
-            {(role === "owner" || role === "operator") && <Link href="/dashboard/payments">{t("nav.payments")}</Link>}
-            {(role === "owner" || role === "operator") && <Link href="/dashboard/reports">{t("nav.reports")}</Link>}
+            {(role === "owner" || role === "operator") && <Link href="/dashboard/home">{t("nav.hostPanel")}</Link>}
             {role === "guest" && <Link href="/dashboard">{t("nav.becomeHost")}</Link>}
-            <Link href="/saved">{t("nav.saved")}</Link>
-            <Link href="/invite">{t("nav.invite")}</Link>
-            <Link href="/bookings">{t("nav.myBookings")}</Link>
+            <Link href="/account">{t("nav.account")}</Link>
             <button
               type="button"
               className="link-btn"

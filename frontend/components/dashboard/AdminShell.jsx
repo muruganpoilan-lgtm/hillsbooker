@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "../AuthProvider";
 import { api } from "../../lib/api";
 
-// The admin's side menu. Hosts and guests never see it: the pages look the same for them as before.
-const GROUPS = [
+// The side menu on host and admin pages. The admin gets the full menu with badges; hosts get their own.
+const ADMIN_GROUPS = [
   { title: null, items: [{ href: "/dashboard/overview", label: "Overview" }] },
   {
     title: "Sales",
@@ -37,8 +37,30 @@ const GROUPS = [
   },
 ];
 
+const HOST_GROUPS = [
+  { title: null, items: [{ href: "/dashboard/home", label: "Overview" }] },
+  {
+    title: "My business",
+    items: [
+      { href: "/dashboard", label: "My properties" },
+      { href: "/operator", label: "My vehicles" },
+      { href: "/dashboard/bookings", label: "Stay bookings" },
+      { href: "/operator/bookings", label: "Vehicle bookings" },
+    ],
+  },
+  {
+    title: "Money",
+    items: [
+      { href: "/dashboard/payments", label: "Payments" },
+      { href: "/dashboard/reports", label: "Reports" },
+    ],
+  },
+  { title: "Help", items: [{ href: "/support", label: "Help & support" }] },
+];
+
 function isActive(path, href) {
   if (href === "/dashboard") return path === "/dashboard" || path.startsWith("/dashboard/properties") || path === "/dashboard/new";
+  if (href === "/operator") return path === "/operator" || path.startsWith("/operator/vehicles") || path === "/operator/new";
   return path === href || path.startsWith(href + "/");
 }
 
@@ -46,9 +68,11 @@ export default function AdminShell({ children }) {
   const { ready, token, role } = useAuth();
   const path = usePathname() || "";
   const [counts, setCounts] = useState(null);
+  const isAdmin = role === "admin";
+  const isHost = role === "owner" || role === "operator";
 
   useEffect(() => {
-    if (role !== "admin" || !token) return;
+    if (!isAdmin || !token) return;
     let off = false;
     api("/admin/badges", { token }).then((res) => {
       if (!off && res.ok) setCounts(res.data);
@@ -56,14 +80,15 @@ export default function AdminShell({ children }) {
     return () => {
       off = true;
     };
-  }, [role, token, path]);
+  }, [isAdmin, token, path]);
 
-  if (!ready || role !== "admin") return children;
+  if (!ready || !(isAdmin || isHost)) return children;
+  const groups = isAdmin ? ADMIN_GROUPS : HOST_GROUPS;
   return (
     <div className="admin-shell">
-      <nav className="admin-nav" aria-label="Admin">
-        <p className="admin-nav-title">Admin</p>
-        {GROUPS.map((g, gi) => (
+      <nav className="admin-nav" aria-label={isAdmin ? "Admin" : "Host panel"}>
+        <p className="admin-nav-title">{isAdmin ? "Admin" : "My panel"}</p>
+        {groups.map((g, gi) => (
           <div key={gi} className="admin-group">
             {g.title && <p className="admin-group-title">{g.title}</p>}
             <ul>
