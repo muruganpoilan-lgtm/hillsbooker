@@ -31,6 +31,7 @@ export default function Header() {
             {role === "admin" && <Link href="/dashboard/coupons">{t("nav.coupons")}</Link>}
             {role === "admin" && <Link href="/dashboard/packages">{t("nav.packagesAdmin")}</Link>}
             {role === "admin" && <Link href="/dashboard/blog">{t("nav.blogAdmin")}</Link>}
+            {role === "admin" && <Link href="/dashboard/support">{t("nav.supportAdmin")}</Link>}
             {role === "guest" && <Link href="/dashboard">{t("nav.becomeHost")}</Link>}
             <Link href="/saved">{t("nav.saved")}</Link>
             <Link href="/invite">{t("nav.invite")}</Link>

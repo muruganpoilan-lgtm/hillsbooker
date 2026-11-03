@@ -35,17 +35,16 @@ class EnquiryIn(BaseModel):
     website: Optional[str] = None  # hidden field: real people leave it empty, form-filling bots don't
 
 
-def _email(row: dict) -> None:
+def _mail(subject: str, text: str) -> None:
+    """Emails the business address when SMTP is set up. Never raises."""
     to = settings.business_email
     if not (settings.smtp_host and settings.smtp_from and to):
         return
     try:
         msg = EmailMessage()
-        msg["Subject"] = f"New {LABEL[row['kind']].lower()} enquiry: {row['name']}"
+        msg["Subject"] = subject
         msg["From"], msg["To"] = settings.smtp_from, to
-        msg.set_content(
-            "\n".join(f"{k}: {row.get(k) or '-'}" for k in ("name", "company", "phone", "email", "destination", "start_date", "people", "budget", "notes"))
-        )
+        msg.set_content(text)
         server = smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=20) if settings.smtp_security == "ssl" else smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=20)
         with server:
             if settings.smtp_security == "starttls":
@@ -54,7 +53,14 @@ def _email(row: dict) -> None:
                 server.login(settings.smtp_user, settings.smtp_password)
             server.send_message(msg)
     except Exception:
-        log.exception("Could not email an enquiry")
+        log.exception("Could not send an email to the business address")
+
+
+def _email(row: dict) -> None:
+    _mail(
+        f"New {LABEL[row['kind']].lower()} enquiry: {row['name']}",
+        "\n".join(f"{k}: {row.get(k) or '-'}" for k in ("name", "company", "phone", "email", "destination", "start_date", "people", "budget", "notes")),
+    )
 
 
 @public.post("", status_code=201)

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export const metadata = {
   title: "Contact Hill Booker",
   description: "Contact Hill Booker customer care by phone, WhatsApp or email, and find our office address.",
@@ -17,6 +19,9 @@ export default function ContactPage() {
           WhatsApp: <a href="https://wa.me/918300841442" target="_blank" rel="noopener noreferrer">+91 83008 41442</a>
           <br />
           Email: <a href="mailto:hillbookerbookings@gmail.com">hillbookerbookings@gmail.com</a>
+        </p>
+        <p>
+          Prefer to write? <Link href="/support">Send us a message</Link> and our team will call you back.
         </p>
         <p>Please keep your booking details handy: the property name, your check-in date and the phone number you booked with.</p>
         <h2>Office address</h2>

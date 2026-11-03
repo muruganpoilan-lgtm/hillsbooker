@@ -231,7 +231,7 @@ def _enquiry(row: dict) -> None:
         to = wa_number(settings.enquiry_whatsapp_to)
         if not to:
             return
-        label = {"group": "Group tour", "corporate": "Corporate tour", "package": "Trip package"}.get(row["kind"], "Tour")
+        label = {"group": "Group tour", "corporate": "Corporate tour", "package": "Trip package", "support": "customer-care"}.get(row["kind"], "Tour")
         who = f"{row['name']} {row['company'] or ''}".strip()
         when = _day(row["start_date"]) if row["start_date"] else "not given"
         # Template body (create it in Meta Business Manager, in this order):

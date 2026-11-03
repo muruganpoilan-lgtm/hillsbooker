@@ -31,6 +31,7 @@ export default async function Footer() {
         <nav className="footer-links" aria-label="About and policies">
           <Link href="/about">{t("footer.about")}</Link>
           <Link href="/contact">{t("footer.contact")}</Link>
+          <Link href="/support">{t("footer.support")}</Link>
           <Link href="/terms">{t("footer.terms")}</Link>
           <Link href="/privacy">{t("footer.privacy")}</Link>
           <Link href="/refund-policy">{t("footer.refund")}</Link>
