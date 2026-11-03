@@ -83,7 +83,9 @@ async def lifespan(app: FastAPI):
     pool.close()
 
 
-app = FastAPI(title="Hill Booker API", lifespan=lifespan)
+# The interactive API pages (/docs) are only for development. Set ENABLE_DOCS=1 to turn them on.
+_docs = os.environ.get("ENABLE_DOCS") == "1"
+app = FastAPI(title="Hill Booker API", lifespan=lifespan, docs_url="/docs" if _docs else None, redoc_url=None, openapi_url="/openapi.json" if _docs else None)
 
 app.add_middleware(
     CORSMiddleware,

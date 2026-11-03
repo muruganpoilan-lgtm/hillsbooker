@@ -1,10 +1,10 @@
 import hashlib
 import secrets
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from psycopg.errors import UniqueViolation
 
-from .. import mailer, notify
+from .. import mailer, notify, ratelimit
 from ..config import settings
 from ..auth import check_password, current_user, hash_password, make_token
 from ..db import get_conn
@@ -15,7 +15,10 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", status_code=201)
-def register(body: RegisterIn):
+def register(body: RegisterIn, request: Request):
+    ip = ratelimit.client_ip(request)
+    ratelimit.guard(f"reg:{ip}", 10, 3600, "Too many sign-ups from this connection. Please try again in an hour")
+    ratelimit.hit(f"reg:{ip}")
     if not notify.wa_number(body.phone):
         raise HTTPException(400, "Enter a valid mobile number, for example 98765 43210")
     try:
@@ -32,12 +35,22 @@ def register(body: RegisterIn):
 
 
 @router.post("/login")
-def login(body: LoginIn):
+def login(body: LoginIn, request: Request):
+    ip = ratelimit.client_ip(request)
+    email = body.email.lower()
+    pair, by_ip, by_email = f"login:{ip}:{email}", f"login-ip:{ip}", f"login-email:{email}"
+    wait = "Too many wrong tries. Please wait 15 minutes, or use Forgot password"
+    ratelimit.guard(pair, 5, 900, wait)  # 5 wrong tries for one email from one connection
+    ratelimit.guard(by_ip, 30, 900, wait)  # 30 wrong tries from one connection, any email
+    ratelimit.guard(by_email, 40, 3600, wait)  # spread-out guessing against one email
     with get_conn() as conn, conn.cursor() as cur:
-        cur.execute("SELECT id, role, password_hash FROM users WHERE email = %s", (body.email.lower(),))
+        cur.execute("SELECT id, role, password_hash FROM users WHERE email = %s", (email,))
         user = cur.fetchone()
     if not user or not check_password(body.password, user["password_hash"]):
+        for k in (pair, by_ip, by_email):
+            ratelimit.hit(k)
         raise HTTPException(401, "Wrong email or password")
+    ratelimit.clear(pair)
     return {"token": make_token(str(user["id"]), user["role"]), "role": user["role"]}
 
 
@@ -90,8 +103,11 @@ def _hash_token(token: str) -> str:
 
 
 @router.post("/forgot")
-def forgot_password(body: ForgotIn):
+def forgot_password(body: ForgotIn, request: Request):
     """Emails a one-hour reset link. The answer is always the same, so nobody can use this to find out who has an account."""
+    ip = ratelimit.client_ip(request)
+    ratelimit.guard(f"forgot:{ip}", 10, 3600, "Too many requests. Please try again in an hour")
+    ratelimit.hit(f"forgot:{ip}")
     email = body.email.lower()
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute("SELECT id, name FROM users WHERE email = %s", (email,))
@@ -116,7 +132,10 @@ def forgot_password(body: ForgotIn):
 
 
 @router.post("/reset")
-def reset_password(body: ResetIn):
+def reset_password(body: ResetIn, request: Request):
+    ip = ratelimit.client_ip(request)
+    ratelimit.guard(f"reset:{ip}", 20, 3600, "Too many tries. Please try again in an hour")
+    ratelimit.hit(f"reset:{ip}")
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(
             "SELECT id, user_id FROM password_resets WHERE token_hash = %s AND used_at IS NULL AND expires_at > now() FOR UPDATE",
