@@ -30,7 +30,7 @@ export const TOPICS = [
     words: ["cancel", "cancellation", "refund", "money back", "ரத்து", "கேன்சல்", "திரும்ப"],
     a: {
       en: "You can cancel a stay yourself within 10 minutes of paying, from My bookings, and your advance is refunded in full. After 10 minutes, please call Hill Booker customer care. For vehicles, you get a full refund if you cancel at least 2 days (48 hours) before the trip starts.",
-      ta: "பணம் செலுத்திய 10 நிமிடங்களுக்குள் 'My bookings' பக்கத்தில் நீங்களே ரத்து செய்யலாம்; முன்பணம் முழுவதும் திரும்பக் கிடைக்கும். 10 நிமிடங்களுக்குப் பிறகு Hill Booker வாடிக்கையாளர் சேவையை அழைக்கவும். வாகனங்களுக்கு, பயணம் தொடங்குவதற்கு குறைந்தது 2 நாட்கள் (48 மணி நேரம்) முன்பு ரத்து செய்தால் முழு பணம் திரும்பக் கிடைக்கும்.",
+      ta: "முன்பதிவு செய்த 10 நிமிடங்களுக்குள் 'My bookings' பக்கத்தில் நீங்களே ரத்து செய்யலாம்; முன்பணம் முழுவதும் திரும்பக் கிடைக்கும். 10 நிமிடங்களுக்குப் பிறகு Hill Booker வாடிக்கையாளர் சேவையை அழைக்கவும். வாகனங்களுக்கு, பயணம் தொடங்குவதற்கு குறைந்தது 2 நாட்கள் (48 மணி நேரம்) முன்பு ரத்து செய்தால் முழு பணம் திரும்பக் கிடைக்கும்.",
     },
     links: [
       { label: { en: "My bookings", ta: "என் முன்பதிவுகள்" }, href: "/bookings" },
@@ -53,7 +53,7 @@ export const TOPICS = [
     words: ["car", "van", "bus", "vehicle", "driver", "taxi", "cab", "tempo", "கார்", "வேன்", "பேருந்து", "வாகனம்", "டாக்ஸி"],
     a: {
       en: "Yes. Open Cars & vans to see vehicles with a driver. If you do not find what you need, send us your trip details and we will arrange it.",
-      ta: "ஆம். டிரைவருடன் உள்ள வாகனங்களைப் பார்க்க 'Cars & vans' பக்கத்தைத் திறக்கவும். தேவையானது கிடைக்கவில்லை என்றால் உங்கள் பயண விவரங்களை அனுப்புங்கள், நாங்கள் ஏற்பாடு செய்கிறோம்.",
+      ta: "ஆம். ஓட்டுநருடன் உள்ள வாகனங்களைப் பார்க்க 'Cars & vans' பக்கத்தைத் திறக்கவும். தேவையானது கிடைக்கவில்லை என்றால் உங்கள் பயண விவரங்களை அனுப்புங்கள், நாங்கள் ஏற்பாடு செய்கிறோம்.",
     },
     links: [
       { label: { en: "Cars & vans", ta: "கார்கள் & வேன்கள்" }, href: "/vehicles" },
@@ -79,7 +79,7 @@ export const TOPICS = [
     words: ["list", "host", "property", "owner", "add my", "homestay", "become", "பட்டியல்", "உரிமையாளர்", "ஹோஸ்ட்", "சேர்க்க"],
     a: {
       en: "Create an account (or log in), choose to become a host, then add your property with photos, rooms and prices, and your UPI ID so we can pay you. Our team checks every listing before it goes live.",
-      ta: "கணக்கை உருவாக்குங்கள் (அல்லது உள்நுழையுங்கள்), ஹோஸ்ட் ஆக மாறுங்கள். பிறகு புகைப்படங்கள், அறைகள், விலைகள் மற்றும் உங்களுக்குப் பணம் அனுப்புவதற்கான UPI ID ஆகியவற்றுடன் சொத்தைச் சேர்க்கவும். ஒவ்வொரு பட்டியலையும் எங்கள் குழு சரிபார்த்த பிறகே வெளியிடப்படும்.",
+      ta: "கணக்கை உருவாக்குங்கள் (அல்லது உள்நுழையுங்கள்), ஹோஸ்ட் ஆக மாறுங்கள். பிறகு புகைப்படங்கள், அறைகள், விலைகள் மற்றும் உங்களுக்குப் பணம் அனுப்புவதற்கான UPI ID ஆகியவற்றுடன் சொத்தைச் சேர்க்கவும். ஒவ்வொரு பட்டியலையும் எங்கள் குழு சரிபார்த்த பிறகே வெளியிடுவோம்.",
     },
     links: [{ label: { en: "List your property", ta: "சொத்தைப் பட்டியலிடுங்கள்" }, href: "/dashboard" }],
   },
