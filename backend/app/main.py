@@ -145,6 +145,6 @@ app.include_router(support.admin)
 app.include_router(push_routes.router)
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])  # uptime monitors often probe with HEAD
 def health():
     return {"ok": True}
