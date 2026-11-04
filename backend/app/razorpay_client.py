@@ -11,16 +11,20 @@ from .config import settings
 
 
 class RazorpayError(Exception):
-    pass
+    def __init__(self, message: str = "", definite: bool = False):
+        super().__init__(message)
+        # definite: Razorpay clearly refused the request (HTTP 4xx), so nothing was done on their side.
+        # Not definite: a timeout or server error, where the request may or may not have gone through.
+        self.definite = definite
 
 
-def _call(method: str, path: str, payload: dict | None = None) -> dict:
+def _call(method: str, path: str, payload: dict | None = None, headers: dict | None = None) -> dict:
     token = base64.b64encode(f"{settings.razorpay_key_id}:{settings.razorpay_key_secret}".encode()).decode()
     req = urllib.request.Request(
         f"{settings.razorpay_api_base}{path}",
         method=method,
         data=json.dumps(payload).encode() if payload is not None else None,
-        headers={"Authorization": f"Basic {token}", "Content-Type": "application/json"},
+        headers={"Authorization": f"Basic {token}", "Content-Type": "application/json", **(headers or {})},
     )
     try:
         with urllib.request.urlopen(req, timeout=15) as res:
@@ -31,7 +35,7 @@ def _call(method: str, path: str, payload: dict | None = None) -> dict:
             detail = json.loads(e.read()).get("error", {}).get("description", "")
         except Exception:
             pass
-        raise RazorpayError(detail or f"Razorpay answered with HTTP {e.code}") from e
+        raise RazorpayError(detail or f"Razorpay answered with HTTP {e.code}", definite=400 <= e.code < 500) from e
     except Exception as e:
         raise RazorpayError("Could not reach Razorpay") from e
 

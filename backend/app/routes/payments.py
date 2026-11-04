@@ -7,7 +7,7 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from .. import cashfree_client, invoice, notify, razorpay_client, referrals
+from .. import cashfree_client, invoice, notify, payout_service, razorpay_client, razorpayx, referrals
 from ..auth import current_user
 from ..cashfree_client import CashfreeError
 from ..config import active_gateway, payments_enabled, settings
@@ -309,6 +309,25 @@ async def webhook(request: Request):
             await asyncio.to_thread(settle, entity["order_id"], entity["id"])
     except HTTPException:
         pass  # a payment we have no booking for: answer 200 so Razorpay stops retrying
+    except (KeyError, ValueError, TypeError):
+        pass  # an event shape we don't use
+    return {"ok": True}
+
+
+@router.post("/razorpayx/webhook")
+async def razorpayx_webhook(request: Request):
+    """RazorpayX calls this when a payout to a host is processed, fails or is reversed.
+    Dashboard setup: RazorpayX > Settings > Webhooks > URL https://YOUR-API/payments/razorpayx/webhook,
+    events payout.processed, payout.failed, payout.reversed, payout.rejected, and the secret from RAZORPAYX_WEBHOOK_SECRET."""
+    raw = await request.body()
+    if not razorpayx.valid_webhook_signature(raw, request.headers.get("X-Razorpay-Signature", "")):
+        raise HTTPException(400, "Bad signature")
+    try:
+        event = json.loads(raw)
+        if str(event.get("event", "")).startswith("payout."):
+            e = event["payload"]["payout"]["entity"]
+            reason = (e.get("status_details") or {}).get("description") or e.get("failure_reason")
+            await asyncio.to_thread(payout_service.apply_status, e.get("status"), e.get("reference_id"), e.get("id"), e.get("utr"), reason)
     except (KeyError, ValueError, TypeError):
         pass  # an event shape we don't use
     return {"ok": True}

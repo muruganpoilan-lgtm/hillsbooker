@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     razorpay_key_secret: str = ""
     razorpay_webhook_secret: str = ""
     razorpay_api_base: str = "https://api.razorpay.com/v1"
+    # RazorpayX: pays hosts from your RazorpayX balance. Leave the account number empty to keep automatic payouts off.
+    razorpayx_account_number: str = ""
+    razorpayx_webhook_secret: str = ""
     # Cashfree (https://merchant.cashfree.com > Developers > API Keys). Leave empty to keep it off.
     # CASHFREE_ENV is "sandbox" while testing and "production" for real money.
     cashfree_app_id: str = ""

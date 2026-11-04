@@ -477,7 +477,7 @@ def host_overview(user: dict = Depends(owner_only)):
         share = cur.fetchone()["share"]
         cur.execute(f"SELECT COALESCE(sum(share), 0) AS due FROM ({_PAYOUT_READY}) r WHERE r.host_id = %s", (uid,))
         due = cur.fetchone()["due"]
-        cur.execute("SELECT COALESCE(sum(amount), 0) AS paid FROM payouts WHERE host_id = %s AND paid_at > now() - interval '30 days'", (uid,))
+        cur.execute("SELECT COALESCE(sum(amount), 0) AS paid FROM payouts WHERE host_id = %s AND status <> 'failed' AND paid_at > now() - interval '30 days'", (uid,))
         paid_out = cur.fetchone()["paid"]
         cur.execute(
             mine

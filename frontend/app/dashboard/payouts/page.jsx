@@ -15,6 +15,8 @@ function Payouts() {
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState("");
+  const [xBusy, setXBusy] = useState("");
+  const [xResults, setXResults] = useState(null);
 
   const load = useCallback(async () => {
     const res = await api("/admin/payouts", { token });
@@ -44,6 +46,54 @@ function Payouts() {
     setRef("");
     setFormError("");
     setDone("");
+  }
+
+  function canAuto(h) {
+    return Boolean(h.upi_id || h.bank);
+  }
+
+  async function payViaRazorpay(hosts) {
+    const list = hosts.filter(canAuto);
+    if (list.length === 0) return;
+    const total = list.reduce((sum, h) => sum + Number(h.amount), 0);
+    const names = list.map((h) => `${h.host_name} ${money(h.amount)}`).join("\n");
+    if (!window.confirm(`Send ${money(total)} through Razorpay now?\n\n${names}\n\nThis moves real money and cannot be undone.`)) return;
+    setXBusy(list.length === 1 ? list[0].host_id : "all");
+    setXResults(null);
+    setError("");
+    setDone("");
+    const res = await api("/admin/payouts/razorpayx", {
+      method: "POST",
+      token,
+      body: { items: list.map((h) => ({ host_id: h.host_id, expected_amount: h.amount })) },
+    });
+    setXBusy("");
+    if (res.status === 401) return logout();
+    if (!res.ok) return setError(res.error);
+    const names2 = Object.fromEntries(list.map((h) => [h.host_id, h.host_name]));
+    setXResults(res.data.results.map((r) => ({ ...r, name: names2[r.host_id] || "Host" })));
+    load();
+  }
+
+  async function checkStatus(id) {
+    setXBusy(id);
+    setError("");
+    const res = await api(`/admin/payouts/${id}/sync`, { method: "POST", token });
+    setXBusy("");
+    if (res.status === 401) return logout();
+    if (!res.ok) setError(res.error);
+    load();
+  }
+
+  async function releasePayout(id) {
+    if (!window.confirm("Only do this if you have checked in RazorpayX that NO money was sent for this payout.\n\nThe amount will become due again. Continue?")) return;
+    setXBusy(id);
+    setError("");
+    const res = await api(`/admin/payouts/${id}/release`, { method: "POST", token, body: { confirm_not_sent: true } });
+    setXBusy("");
+    if (res.status === 401) return logout();
+    if (!res.ok) setError(res.error);
+    load();
   }
 
   async function save(host) {
@@ -135,6 +185,28 @@ function Payouts() {
 
           <section className="prop-section">
             <h2>Due now</h2>
+            {data.razorpayx_enabled && data.hosts.length > 0 && (
+              <div style={{ margin: "0.4rem 0 0.8rem" }}>
+                <button type="button" className="btn btn-primary" aria-busy={xBusy === "all"} onClick={() => payViaRazorpay(data.hosts)}>
+                  Pay all hosts via Razorpay ({data.hosts.filter(canAuto).length} of {data.hosts.length})
+                </button>
+                {data.hosts.some((h) => !canAuto(h)) && (
+                  <p className="meta">Hosts with no UPI ID or bank account are skipped. Ask them to add one on their Payments page.</p>
+                )}
+              </div>
+            )}
+            {xResults && (
+              <ul className="rows" style={{ marginBottom: "1rem" }}>
+                {xResults.map((r) => (
+                  <li key={r.host_id} className="plain-row">
+                    <div>
+                      <p className="row-name">{r.name}</p>
+                      <p className={r.ok === true ? "ok" : r.ok === false ? "form-error" : "meta"}>{r.message}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
             {data.hosts.length === 0 && <p className="meta">Nothing is due. Bookings appear here after the guest's check-in date.</p>}
             <ul className="rows">
               {data.hosts.map((h) => (
@@ -156,9 +228,16 @@ function Payouts() {
                         {h.items.length} booking{h.items.length !== 1 ? "s" : ""}
                       </p>
                       {open !== h.host_id && (
-                        <button type="button" className="btn btn-primary btn-small" onClick={() => start(h)}>
-                          Mark as paid
-                        </button>
+                        <div className="actions">
+                          {data.razorpayx_enabled && canAuto(h) && (
+                            <button type="button" className="btn btn-primary btn-small" aria-busy={xBusy === h.host_id} onClick={() => payViaRazorpay([h])}>
+                              Pay via Razorpay
+                            </button>
+                          )}
+                          <button type="button" className="btn btn-small" onClick={() => start(h)}>
+                            Mark as paid
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -216,12 +295,36 @@ function Payouts() {
                   <div>
                     <p className="row-name">{p.host_name}</p>
                     <p className="meta">
-                      {prettyDate(p.paid_at)} · reference {p.reference}
-                      {p.upi_id ? ` · to ${p.upi_id}` : ""}
+                      {prettyDate(p.paid_at)}
+                      {p.method === "razorpayx" ? " · via Razorpay" : " · by hand"}
+                      {p.status === "paid" && ` · reference ${p.reference}`}
+                      {p.destination ? ` · to ${p.destination}` : p.upi_id ? ` · to ${p.upi_id}` : ""}
                     </p>
+                    {p.status === "processing" && (
+                      <p className="meta">
+                        <b>On its way.</b> {p.failure_reason || "Razorpay is still sending it."}
+                      </p>
+                    )}
+                    {p.status === "failed" && (
+                      <p className="form-error">
+                        Not sent. {p.failure_reason || ""} The amount is due again.
+                      </p>
+                    )}
+                    {p.status === "processing" && p.method === "razorpayx" && (
+                      <div className="actions">
+                        <button type="button" className="btn btn-small" aria-busy={xBusy === p.id} onClick={() => checkStatus(p.id)}>
+                          Check status
+                        </button>
+                        <button type="button" className="btn btn-danger btn-small" onClick={() => releasePayout(p.id)}>
+                          Money was not sent
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="right">
-                    <p className="price">{money(p.amount)}</p>
+                    <p className="price" style={p.status === "failed" ? { textDecoration: "line-through" } : undefined}>
+                      {money(p.amount)}
+                    </p>
                   </div>
                 </li>
               ))}

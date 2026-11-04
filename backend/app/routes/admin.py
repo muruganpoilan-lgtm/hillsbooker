@@ -1,3 +1,4 @@
+import logging
 import re
 from decimal import Decimal
 from typing import Literal, Optional
@@ -5,9 +6,11 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from .. import payout_service, razorpayx
 from ..auth import require_role
 from ..db import get_conn
 
+log = logging.getLogger("roomly")
 router = APIRouter(prefix="/admin", tags=["admin"])
 admin_only = require_role("admin")
 
@@ -138,14 +141,15 @@ def payouts_overview(user: dict = Depends(admin_only)):
         cur.execute(f"SELECT r.*, h.name AS host_name, h.upi_id, h.phone, h.bank_holder, h.bank_account, h.bank_ifsc FROM ({_PAYOUT_READY}) r JOIN users h ON h.id = r.host_id ORDER BY h.name, r.start_date")
         rows = cur.fetchall()
         cur.execute(
-            """SELECT po.id, po.amount, po.upi_id, po.reference, po.paid_at, h.name AS host_name
+            """SELECT po.id, po.amount, po.upi_id, po.reference, po.paid_at, h.name AS host_name,
+                      po.method, po.status, po.failure_reason, po.destination
                FROM payouts po JOIN users h ON h.id = po.host_id ORDER BY po.paid_at DESC LIMIT 100"""
         )
         history = cur.fetchall()
-        cur.execute("SELECT COALESCE(sum(amount), 0) AS total FROM payouts")
+        cur.execute("SELECT COALESCE(sum(amount), 0) AS total FROM payouts WHERE status <> 'failed'")
         paid_total = cur.fetchone()["total"]
         cur.execute(
-            """SELECT u.id, u.name, u.phone, u.upi_id, u.bank_holder, u.bank_account, u.bank_ifsc, COALESCE((SELECT sum(amount) FROM payouts WHERE host_id = u.id), 0) AS paid_out
+            """SELECT u.id, u.name, u.phone, u.upi_id, u.bank_holder, u.bank_account, u.bank_ifsc, COALESCE((SELECT sum(amount) FROM payouts WHERE host_id = u.id AND status <> 'failed'), 0) AS paid_out
                FROM users u WHERE u.role IN ('owner', 'operator') ORDER BY u.name"""
         )
         everyone = cur.fetchall()
@@ -160,7 +164,75 @@ def payouts_overview(user: dict = Depends(admin_only)):
          "due": hosts[str(e["id"])]["amount"] if str(e["id"]) in hosts else Decimal(0), "paid_out": e["paid_out"]}
         for e in everyone
     ]
-    return {"all_hosts": all_hosts, "hosts": host_list, "due_total": sum((h["amount"] for h in host_list), Decimal(0)), "paid_total": paid_total, "history": history}
+    return {"all_hosts": all_hosts, "hosts": host_list, "due_total": sum((h["amount"] for h in host_list), Decimal(0)), "paid_total": paid_total, "history": history,
+            "razorpayx_enabled": razorpayx.enabled()}
+
+
+class XItem(BaseModel):
+    host_id: str
+    expected_amount: Decimal
+
+
+class XPayIn(BaseModel):
+    items: list[XItem] = Field(min_length=1, max_length=50)
+
+
+@router.post("/payouts/razorpayx")
+def pay_via_razorpayx(body: XPayIn, user: dict = Depends(admin_only)):
+    """Pays each listed host their due share through RazorpayX. One host failing never stops the others."""
+    if not razorpayx.enabled():
+        raise HTTPException(409, "Automatic payouts are not switched on yet")
+    seen: set[str] = set()
+    results = []
+    for it in body.items:
+        if it.host_id in seen:
+            continue
+        seen.add(it.host_id)
+        try:
+            results.append(payout_service.pay_host(it.host_id, it.expected_amount, user["id"]))
+        except Exception:
+            log.exception("RazorpayX payout for host %s crashed", it.host_id)
+            results.append({"host_id": it.host_id, "ok": None, "message": "Something went wrong. Check Paid out below before trying again"})
+    return {"results": results}
+
+
+@router.post("/payouts/{payout_id}/sync")
+def sync_payout(payout_id: str, user: dict = Depends(admin_only)):
+    """Asks Razorpay where a payout stands and updates it here."""
+    try:
+        status = payout_service.sync(payout_id)
+    except LookupError:
+        raise HTTPException(404, "Payout not found")
+    except razorpayx.RazorpayError as e:
+        raise HTTPException(502, f"Razorpay: {e}")
+    return {"status": status}
+
+
+class ReleaseIn(BaseModel):
+    confirm_not_sent: bool = False
+
+
+@router.post("/payouts/{payout_id}/release")
+def release_payout(payout_id: str, body: ReleaseIn, user: dict = Depends(admin_only)):
+    """For a payout stuck on 'processing' because Razorpay never answered. Makes the money due again, so only use
+    it after checking in RazorpayX that nothing was sent."""
+    if not body.confirm_not_sent:
+        raise HTTPException(400, "Confirm that you checked RazorpayX and no money was sent")
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("SELECT provider_payout_id FROM payouts WHERE id = %s AND method = 'razorpayx' AND status = 'processing'", (payout_id,))
+        row = cur.fetchone()
+    if not row:
+        raise HTTPException(404, "No processing payout with that id")
+    if row["provider_payout_id"]:
+        try:
+            state = payout_service.sync(payout_id)  # Razorpay may have settled it meanwhile
+        except razorpayx.RazorpayError as e:
+            raise HTTPException(502, f"Could not ask Razorpay: {e}")
+        if state == "failed":
+            return {"released": True}  # Razorpay itself says it failed, and the money is due again
+    if not payout_service.release(payout_id, "Released by admin: no money was sent"):
+        raise HTTPException(409, "Razorpay shows this payout as sent or still in progress, so it cannot be released")
+    return {"released": True}
 
 
 class PayoutIn(BaseModel):
