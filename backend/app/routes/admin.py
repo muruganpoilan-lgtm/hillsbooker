@@ -125,10 +125,17 @@ WHERE pm.status = 'paid' AND pm.provider IN ('razorpay', 'cashfree') AND pm.payo
 """
 
 
+def _bank(r) -> dict | None:
+    """A host's bank details for the admin to pay by bank transfer (admin-only screen)."""
+    if not r.get("bank_account"):
+        return None
+    return {"holder": r["bank_holder"], "account": r["bank_account"], "ifsc": r["bank_ifsc"]}
+
+
 @router.get("/payouts")
 def payouts_overview(user: dict = Depends(admin_only)):
     with get_conn() as conn, conn.cursor() as cur:
-        cur.execute(f"SELECT r.*, h.name AS host_name, h.upi_id, h.phone FROM ({_PAYOUT_READY}) r JOIN users h ON h.id = r.host_id ORDER BY h.name, r.start_date")
+        cur.execute(f"SELECT r.*, h.name AS host_name, h.upi_id, h.phone, h.bank_holder, h.bank_account, h.bank_ifsc FROM ({_PAYOUT_READY}) r JOIN users h ON h.id = r.host_id ORDER BY h.name, r.start_date")
         rows = cur.fetchall()
         cur.execute(
             """SELECT po.id, po.amount, po.upi_id, po.reference, po.paid_at, h.name AS host_name
@@ -138,18 +145,18 @@ def payouts_overview(user: dict = Depends(admin_only)):
         cur.execute("SELECT COALESCE(sum(amount), 0) AS total FROM payouts")
         paid_total = cur.fetchone()["total"]
         cur.execute(
-            """SELECT u.id, u.name, u.phone, u.upi_id, COALESCE((SELECT sum(amount) FROM payouts WHERE host_id = u.id), 0) AS paid_out
+            """SELECT u.id, u.name, u.phone, u.upi_id, u.bank_holder, u.bank_account, u.bank_ifsc, COALESCE((SELECT sum(amount) FROM payouts WHERE host_id = u.id), 0) AS paid_out
                FROM users u WHERE u.role IN ('owner', 'operator') ORDER BY u.name"""
         )
         everyone = cur.fetchall()
     hosts: dict[str, dict] = {}
     for r in rows:
-        h = hosts.setdefault(str(r["host_id"]), {"host_id": str(r["host_id"]), "host_name": r["host_name"], "upi_id": r["upi_id"], "phone": r["phone"], "amount": Decimal(0), "items": []})
+        h = hosts.setdefault(str(r["host_id"]), {"host_id": str(r["host_id"]), "host_name": r["host_name"], "upi_id": r["upi_id"], "phone": r["phone"], "bank": _bank(r), "amount": Decimal(0), "items": []})
         h["amount"] += Decimal(r["share"])
         h["items"].append({"item": r["item"], "guest": r["guest"], "start_date": r["start_date"], "end_date": r["end_date"], "share": r["share"]})
     host_list = list(hosts.values())
     all_hosts = [
-        {"host_id": str(e["id"]), "host_name": e["name"], "phone": e["phone"], "upi_id": e["upi_id"],
+        {"host_id": str(e["id"]), "host_name": e["name"], "phone": e["phone"], "upi_id": e["upi_id"], "has_bank": bool(e["bank_account"]),
          "due": hosts[str(e["id"])]["amount"] if str(e["id"]) in hosts else Decimal(0), "paid_out": e["paid_out"]}
         for e in everyone
     ]
@@ -168,7 +175,7 @@ def record_payout(body: PayoutIn, user: dict = Depends(admin_only)):
     expected_amount is what the screen showed: if it changed meanwhile (a refund, a new check-in), nothing is saved."""
     ref = body.reference.strip()
     if not re.fullmatch(r"[A-Za-z0-9]{6,30}", ref):
-        raise HTTPException(400, "Enter the UPI reference of your transfer (letters and numbers only, 6 to 30 characters)")
+        raise HTTPException(400, "Enter the reference of your transfer (letters and numbers only, 6 to 30 characters)")
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute("SELECT upi_id FROM users WHERE id = %s", (body.host_id,))
         host = cur.fetchone()

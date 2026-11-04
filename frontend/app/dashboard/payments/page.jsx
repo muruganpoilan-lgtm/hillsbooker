@@ -15,6 +15,11 @@ function Payments() {
   const [error, setError] = useState("");
   const [upi, setUpi] = useState("");
   const [upiMsg, setUpiMsg] = useState("");
+  const [bank, setBank] = useState(null);
+  const [editBank, setEditBank] = useState(false);
+  const [bankForm, setBankForm] = useState({ holder: "", account: "", account2: "", ifsc: "" });
+  const [bankMsg, setBankMsg] = useState("");
+  const [bankErr, setBankErr] = useState("");
   const [phone, setPhone] = useState("");
   const [phoneMsg, setPhoneMsg] = useState("");
   const [alertsOn, setAlertsOn] = useState(false);
@@ -27,6 +32,8 @@ function Payments() {
     setError("");
     setData(res.data);
     setUpi(res.data.upi_id || "");
+    const b = await api("/me/bank", { token });
+    if (b.ok) setBank(b.data);
     const p = await api("/me/phone", { token });
     if (p.ok) {
       setPhone(p.data.phone || "");
@@ -45,6 +52,30 @@ function Payments() {
     if (res.status === 401) return logout();
     setUpiMsg(res.ok ? (res.data.upi_id ? "Saved. We will pay your share to this UPI ID." : "Removed. Add a UPI ID so we can pay you.") : res.error);
     if (res.ok) load();
+  }
+
+  async function saveBank(e) {
+    e.preventDefault();
+    setBankMsg("");
+    setBankErr("");
+    if (bankForm.account !== bankForm.account2) return setBankErr("The two account numbers don't match. Please check them");
+    const res = await api("/me/bank", { method: "PUT", token, body: { holder: bankForm.holder, account: bankForm.account, ifsc: bankForm.ifsc } });
+    if (res.status === 401) return logout();
+    if (!res.ok) return setBankErr(res.error);
+    setBank(res.data);
+    setEditBank(false);
+    setBankForm({ holder: "", account: "", account2: "", ifsc: "" });
+    setBankMsg(res.data.saved ? "Saved." : "Removed.");
+  }
+
+  async function removeBank() {
+    if (!window.confirm("Remove your saved bank account?")) return;
+    const res = await api("/me/bank", { method: "PUT", token, body: { holder: "", account: "", ifsc: "" } });
+    if (res.status === 401) return logout();
+    if (res.ok) {
+      setBank(res.data);
+      setBankMsg("Removed.");
+    }
   }
 
   async function savePhone(e) {
@@ -152,6 +183,69 @@ function Payments() {
                 </p>
               )}
             </form>
+          </section>
+
+          <section className="prop-section">
+            <h2>Your bank account</h2>
+            <p className="meta">Optional. Add this if you want your share sent by bank transfer instead of UPI. Only Hill Booker's team can see it.</p>
+            {bank && bank.saved && !editBank && (
+              <div className="narrow">
+                <p>
+                  <b>{bank.holder}</b>
+                </p>
+                <p className="meta">
+                  Account {bank.account} · IFSC {bank.ifsc}
+                </p>
+                <div className="actions">
+                  <button type="button" className="btn btn-small" onClick={() => { setEditBank(true); setBankMsg(""); }}>
+                    Change
+                  </button>
+                  <button type="button" className="btn btn-danger btn-small" onClick={removeBank}>
+                    Remove
+                  </button>
+                </div>
+              </div>
+            )}
+            {(!bank || !bank.saved || editBank) && (
+              <form className="narrow" onSubmit={saveBank}>
+                <label className="field">
+                  <span>Account holder name</span>
+                  <input value={bankForm.holder} onChange={(e) => setBankForm({ ...bankForm, holder: e.target.value })} placeholder="Name as in the bank" autoComplete="off" />
+                </label>
+                <label className="field">
+                  <span>Account number</span>
+                  <input inputMode="numeric" value={bankForm.account} onChange={(e) => setBankForm({ ...bankForm, account: e.target.value })} placeholder="Digits only" autoComplete="off" />
+                </label>
+                <label className="field">
+                  <span>Enter the account number again</span>
+                  <input inputMode="numeric" value={bankForm.account2} onChange={(e) => setBankForm({ ...bankForm, account2: e.target.value })} autoComplete="off" />
+                </label>
+                <label className="field">
+                  <span>IFSC code</span>
+                  <input value={bankForm.ifsc} onChange={(e) => setBankForm({ ...bankForm, ifsc: e.target.value.toUpperCase() })} placeholder="SBIN0001234" maxLength={11} autoCapitalize="characters" autoComplete="off" />
+                </label>
+                <div className="actions">
+                  <button type="submit" className="btn btn-primary btn-small">
+                    Save bank account
+                  </button>
+                  {editBank && (
+                    <button type="button" className="btn btn-small" onClick={() => { setEditBank(false); setBankErr(""); }}>
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </form>
+            )}
+            {bankErr && (
+              <p className="form-error" role="alert">
+                {bankErr}
+              </p>
+            )}
+            {bankMsg && (
+              <p className="ok" role="status">
+                {bankMsg}
+              </p>
+            )}
           </section>
 
           <section className="prop-section">

@@ -23,6 +23,9 @@ host_only = require_role("owner", "operator", "admin")
 
 UPI_RE = re.compile(r"^[A-Za-z0-9._-]{2,64}@[A-Za-z][A-Za-z0-9]{1,31}$")
 UTR_RE = re.compile(r"^\d{12}$")
+IFSC_RE = re.compile(r"^[A-Z]{4}0[A-Z0-9]{6}$")
+ACCOUNT_RE = re.compile(r"^\d{9,18}$")
+HOLDER_RE = re.compile(r"^[A-Za-z][A-Za-z .'-]{1,79}$")
 
 
 class UpiIdIn(BaseModel):
@@ -54,6 +57,45 @@ def set_upi(body: UpiIdIn, user: dict = Depends(host_only)):
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute("UPDATE users SET upi_id = %s WHERE id = %s", (upi or None, user["id"]))
     return {"upi_id": upi or None}
+
+
+# ---------- the host's bank account (optional, next to the UPI ID) ----------
+
+class BankIn(BaseModel):
+    holder: str = ""
+    account: str = ""
+    ifsc: str = ""
+
+
+def mask_account(number: str | None) -> str | None:
+    """Only the last 4 digits are ever shown back to the host."""
+    return ("X" * max(len(number) - 4, 0) + number[-4:]) if number else None
+
+
+@router.get("/me/bank")
+def my_bank(user: dict = Depends(host_only)):
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("SELECT bank_holder, bank_account, bank_ifsc FROM users WHERE id = %s", (user["id"],))
+        r = cur.fetchone()
+    return {"saved": bool(r["bank_account"]), "holder": r["bank_holder"], "account": mask_account(r["bank_account"]), "ifsc": r["bank_ifsc"]}
+
+
+@router.put("/me/bank")
+def set_bank(body: BankIn, user: dict = Depends(host_only)):
+    holder, account, ifsc = body.holder.strip(), re.sub(r"\s+", "", body.account), re.sub(r"\s+", "", body.ifsc).upper()
+    if not (holder or account or ifsc):  # all empty: remove the saved details
+        with get_conn() as conn, conn.cursor() as cur:
+            cur.execute("UPDATE users SET bank_holder = NULL, bank_account = NULL, bank_ifsc = NULL WHERE id = %s", (user["id"],))
+        return {"saved": False, "holder": None, "account": None, "ifsc": None}
+    if not HOLDER_RE.match(holder):
+        raise HTTPException(400, "Enter the account holder's name exactly as it is in the bank")
+    if not ACCOUNT_RE.match(account):
+        raise HTTPException(400, "The account number should be 9 to 18 digits")
+    if not IFSC_RE.match(ifsc):
+        raise HTTPException(400, "That IFSC code doesn't look right. It is 11 characters, like SBIN0001234")
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("UPDATE users SET bank_holder = %s, bank_account = %s, bank_ifsc = %s WHERE id = %s", (holder, account, ifsc, user["id"]))
+    return {"saved": True, "holder": holder, "account": mask_account(account), "ifsc": ifsc}
 
 
 # ---------- the host's WhatsApp number for booking alerts ----------

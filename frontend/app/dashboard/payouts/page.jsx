@@ -110,6 +110,7 @@ function Payouts() {
                     <tr style={{ textAlign: "left" }}>
                       <th>Host</th>
                       <th>UPI ID</th>
+                      <th>Bank</th>
                       <th>Phone</th>
                       <th>Due now</th>
                       <th>Paid out</th>
@@ -120,6 +121,7 @@ function Payouts() {
                       <tr key={h.host_id}>
                         <td>{h.host_name}</td>
                         <td>{h.upi_id || <span className="meta">Not added yet</span>}</td>
+                        <td>{h.has_bank ? "Added" : <span className="meta">Not added</span>}</td>
                         <td>{h.phone || "-"}</td>
                         <td>{money(h.due)}</td>
                         <td>{money(h.paid_out)}</td>
@@ -141,6 +143,11 @@ function Payouts() {
                     <div>
                       <p className="row-name">{h.host_name}</p>
                       <p className="meta">{h.upi_id ? <>UPI ID: <b>{h.upi_id}</b></> : "This host has not saved a UPI ID yet. Ask them to add it on their Payments page."}</p>
+                      {h.bank && (
+                        <p className="meta">
+                          Bank: <b>{h.bank.holder}</b> · A/C <b>{h.bank.account}</b> · IFSC <b>{h.bank.ifsc}</b>
+                        </p>
+                      )}
                       {h.phone && <p className="meta">Phone: {h.phone}</p>}
                     </div>
                     <div className="right">
@@ -165,10 +172,10 @@ function Payouts() {
                   {open === h.host_id && (
                     <div className="narrow" style={{ marginTop: "0.8rem" }}>
                       <p className="meta">
-                        After you have sent <b>{money(h.amount)}</b> to {h.upi_id || "the host"}, enter the UPI reference (UTR) shown in your UPI app.
+                        After you have sent <b>{money(h.amount)}</b> to {h.upi_id || "the host"}, enter the transfer reference (UTR) from your UPI app or bank.
                       </p>
                       <label className="field">
-                        <span>UPI reference</span>
+                        <span>Transfer reference</span>
                         <input
                           value={ref}
                           onChange={(e) => {
