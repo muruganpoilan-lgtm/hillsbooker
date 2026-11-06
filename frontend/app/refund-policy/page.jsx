@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export const metadata = {
   title: "Refund and Cancellation Policy",
-  description: "How cancellations and refunds work on Hill Booker: a full refund of your advance when you cancel at least 2 days before check-in.",
+  description: "How cancellations and refunds work on Hill Booker: cancel a stay online within 10 minutes of booking for a full refund of your advance, or a vehicle booking at least 2 days before the trip.",
   alternates: { canonical: "/refund-policy" },
 };
 

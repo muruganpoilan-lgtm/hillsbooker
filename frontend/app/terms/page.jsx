@@ -11,7 +11,7 @@ export default function TermsPage() {
     <main className="page">
       <div className="prose">
         <h1 className="section-title">Terms and Conditions</h1>
-        <p className="meta">Last updated: 29 October 2026</p>
+        <p className="meta">Last updated: 6 November 2026</p>
         <p>
           These terms apply when you use hillbooker.com or the Hill Booker app ("Hill Booker", "we", "us"). By creating an account or making a booking you agree to them.
           Hill Booker is operated from No: 105A, Villagio, Green Groove, Jeyam Nagar, Kanchivakkam, Sriperumbudur, Chennai - 601301, Tamil Nadu, India.
@@ -75,15 +75,27 @@ export default function TermsPage() {
         </p>
 
         <h2>8. Privacy</h2>
-        <p>How we handle your information is explained in our <Link href="/privacy">Privacy Policy</Link>.</p>
+        <p>
+          How we handle your information, including payments, WhatsApp messages, Google sign-in and messages you send us on social media, is explained in our <Link href="/privacy">Privacy Policy</Link>.
+          To ask us to delete your account and data, see <Link href="/privacy#data-deletion">Deleting your data</Link> or email <a href="mailto:hillbookerbookings@gmail.com">hillbookerbookings@gmail.com</a>.
+        </p>
 
-        <h2>9. Changes to these terms</h2>
+        <h2 id="messages-and-social-media">9. WhatsApp, Google sign-in and social media</h2>
+        <ul>
+          <li>By giving us your mobile number you agree that we may send you WhatsApp messages about your bookings (confirmations, invoices, reminders and cancellations). Hosts agree to receive booking alerts on the WhatsApp number they give us. You can ask us to stop at any time.</li>
+          <li>If you sign in with Google, Google's terms also apply to your Google account. Hill Booker only uses your name and email from Google to run your Hill Booker account.</li>
+          <li>We share destinations, stays and vehicles on our Instagram, Facebook and YouTube accounts. Those posts are for information and promotion only: prices, availability and details are confirmed only when you book on hillbooker.com or our team confirms them on WhatsApp.</li>
+          <li>Comments and messages you send us on those platforms must be lawful and respectful. We may hide or ignore spam, abuse or misleading comments, and replies on social media do not change these terms.</li>
+          <li>Your use of Instagram, Facebook, WhatsApp and YouTube is also covered by those platforms' own terms.</li>
+        </ul>
+
+        <h2>10. Changes to these terms</h2>
         <p>We may update these terms. The date at the top shows when they last changed. Using Hill Booker after a change means you accept it.</p>
 
-        <h2>10. Law and disputes</h2>
+        <h2>11. Law and disputes</h2>
         <p>These terms are governed by the laws of India. Courts at Chennai, Tamil Nadu have jurisdiction over any dispute.</p>
 
-        <h2 id="copyright">11. Copyright and trademarks</h2>
+        <h2 id="copyright">12. Copyright and trademarks</h2>
         <p>
           © {new Date().getFullYear()} Hill Booker. All rights reserved. The Hill Booker name, logo, website, mobile app, software, design, layout, text and videos belong to Hill Booker and are protected by copyright and trademark law.
           You may not copy, sell, scrape or reuse them, or use the Hill Booker name or logo, without our written permission. Photos and descriptions of a property or vehicle belong to the host or operator who uploaded them, and the host
@@ -91,7 +103,7 @@ export default function TermsPage() {
           {" "}<a href="mailto:hillbookerbookings@gmail.com">hillbookerbookings@gmail.com</a> with the page address and proof that it is yours, and we will review it and remove it where it is right to do so.
         </p>
 
-        <h2>12. Contact</h2>
+        <h2>13. Contact</h2>
         <p>
           <a href="mailto:hillbookerbookings@gmail.com">hillbookerbookings@gmail.com</a> · <a href="tel:+918300841442">+91 83008 41442</a> · see also our <Link href="/contact">Contact page</Link>.
         </p>
