@@ -62,7 +62,7 @@ export default function RefundPolicyPage() {
 
         <h2>Problems with a refund</h2>
         <p>
-          Write to <a href="mailto:hillbookerbookings@gmail.com">hillbookerbookings@gmail.com</a> or call <a href="tel:+918300841442">+91 83008 41442</a> with your booking details.
+          Write to <a href="mailto:info@hillbooker.com">info@hillbooker.com</a> or call <a href="tel:+918300841442">+91 83008 41442</a> with your booking details.
           See also our <Link href="/terms">Terms and Conditions</Link>.
         </p>
       </div>

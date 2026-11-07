@@ -77,7 +77,7 @@ export default function TermsPage() {
         <h2>8. Privacy</h2>
         <p>
           How we handle your information, including payments, WhatsApp messages, Google sign-in and messages you send us on social media, is explained in our <Link href="/privacy">Privacy Policy</Link>.
-          To ask us to delete your account and data, see <Link href="/privacy#data-deletion">Deleting your data</Link> or email <a href="mailto:hillbookerbookings@gmail.com">hillbookerbookings@gmail.com</a>.
+          To ask us to delete your account and data, see <Link href="/privacy#data-deletion">Deleting your data</Link> or email <a href="mailto:info@hillbooker.com">info@hillbooker.com</a>.
         </p>
 
         <h2 id="messages-and-social-media">9. WhatsApp, Google sign-in and social media</h2>
@@ -100,12 +100,12 @@ export default function TermsPage() {
           © {new Date().getFullYear()} Hill Booker. All rights reserved. The Hill Booker name, logo, website, mobile app, software, design, layout, text and videos belong to Hill Booker and are protected by copyright and trademark law.
           You may not copy, sell, scrape or reuse them, or use the Hill Booker name or logo, without our written permission. Photos and descriptions of a property or vehicle belong to the host or operator who uploaded them, and the host
           allows Hill Booker to show them on the website and app to promote the listing. If you believe something on Hill Booker infringes your copyright, write to
-          {" "}<a href="mailto:hillbookerbookings@gmail.com">hillbookerbookings@gmail.com</a> with the page address and proof that it is yours, and we will review it and remove it where it is right to do so.
+          {" "}<a href="mailto:info@hillbooker.com">info@hillbooker.com</a> with the page address and proof that it is yours, and we will review it and remove it where it is right to do so.
         </p>
 
         <h2>13. Contact</h2>
         <p>
-          <a href="mailto:hillbookerbookings@gmail.com">hillbookerbookings@gmail.com</a> · <a href="tel:+918300841442">+91 83008 41442</a> · see also our <Link href="/contact">Contact page</Link>.
+          <a href="mailto:info@hillbooker.com">info@hillbooker.com</a> · <a href="tel:+918300841442">+91 83008 41442</a> · see also our <Link href="/contact">Contact page</Link>.
         </p>
       </div>
     </main>

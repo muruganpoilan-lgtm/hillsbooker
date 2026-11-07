@@ -49,7 +49,7 @@ export default async function Footer() {
             <b>{t("footer.office")}</b> Hillbooker, No: 105A, Villagio, Green Groove, Jeyam Nagar, Kanchivakkam, Sriperumbudur, Chennai - 601301
           </p>
           <p>
-            <b>{t("footer.email")}</b> <a href="mailto:hillbookerbookings@gmail.com">hillbookerbookings@gmail.com</a>
+            <b>{t("footer.email")}</b> <a href="mailto:info@hillbooker.com">info@hillbooker.com</a>
           </p>
           <p>
             <b>{t("footer.care")}</b> <a href="tel:+918300841442">+91 83008 41442</a> · <a href="tel:+919345777130">+91 93457 77130</a> ·{" "}

@@ -92,7 +92,7 @@ export default function PrivacyPage() {
         <h2 id="data-deletion">Deleting your data</h2>
         <p>You can ask us to delete your account and the personal information we hold about you, including information we received through Google sign-in, WhatsApp, Instagram or Facebook.</p>
         <ul>
-          <li>Email <a href="mailto:hillbookerbookings@gmail.com?subject=Data%20deletion%20request">hillbookerbookings@gmail.com</a> with the subject "Data deletion request". Send it from the email address on your account, or include the mobile number or Instagram/Facebook username you used with us, so we can find your data.</li>
+          <li>Email <a href="mailto:info@hillbooker.com?subject=Data%20deletion%20request">info@hillbooker.com</a> with the subject "Data deletion request". Send it from the email address on your account, or include the mobile number or Instagram/Facebook username you used with us, so we can find your data.</li>
           <li>We will confirm we have received your request, may ask you to verify that it is you, and will complete it within 30 days.</li>
           <li>We will delete your account, profile, saved items and messages. Booking and payment records that the law requires us to keep are retained only for that purpose and then deleted.</li>
           <li>If you have an upcoming booking, please cancel it first or tell us what you would like us to do with it.</li>
@@ -109,7 +109,7 @@ export default function PrivacyPage() {
 
         <h2>Changes and contact</h2>
         <p>
-          We may update this policy and will change the date above. Questions? Email <a href="mailto:hillbookerbookings@gmail.com">hillbookerbookings@gmail.com</a> or call <a href="tel:+918300841442">+91 83008 41442</a>.
+          We may update this policy and will change the date above. Questions? Email <a href="mailto:info@hillbooker.com">info@hillbooker.com</a> or call <a href="tel:+918300841442">+91 83008 41442</a>.
           See also our <Link href="/terms">Terms and Conditions</Link>.
         </p>
       </div>

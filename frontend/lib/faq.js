@@ -129,8 +129,8 @@ export const TOPICS = [
     q: { en: "Talk to a person", ta: "ஒருவரிடம் பேச வேண்டும்" },
     words: ["contact", "call", "phone", "number", "whatsapp", "email", "help", "support", "agent", "human", "person", "தொடர்பு", "அழை", "போன்", "உதவி", "வாட்ஸ்அப்"],
     a: {
-      en: "Our customer care is happy to help. Phone or WhatsApp: +91 83008 41442 (also +91 93457 77130). Email: hillbookerbookings@gmail.com. Please keep your booking details handy.",
-      ta: "எங்கள் வாடிக்கையாளர் சேவை உதவ தயாராக உள்ளது. தொலைபேசி அல்லது WhatsApp: +91 83008 41442 (மேலும் +91 93457 77130). மின்னஞ்சல்: hillbookerbookings@gmail.com. உங்கள் முன்பதிவு விவரங்களை தயாராக வைத்துக்கொள்ளுங்கள்.",
+      en: "Our customer care is happy to help. Phone or WhatsApp: +91 83008 41442 (also +91 93457 77130). Email: info@hillbooker.com. Please keep your booking details handy.",
+      ta: "எங்கள் வாடிக்கையாளர் சேவை உதவ தயாராக உள்ளது. தொலைபேசி அல்லது WhatsApp: +91 83008 41442 (மேலும் +91 93457 77130). மின்னஞ்சல்: info@hillbooker.com. உங்கள் முன்பதிவு விவரங்களை தயாராக வைத்துக்கொள்ளுங்கள்.",
     },
     links: [{ label: { en: "Chat on WhatsApp", ta: "WhatsApp-ல் பேசுங்கள்" }, href: WHATSAPP_LINK("Hi Hill Booker, I need help with my booking."), external: true }],
   },

@@ -18,7 +18,7 @@ export default function ContactPage() {
           <br />
           WhatsApp: <a href="https://wa.me/918300841442" target="_blank" rel="noopener noreferrer">+91 83008 41442</a>
           <br />
-          Email: <a href="mailto:hillbookerbookings@gmail.com">hillbookerbookings@gmail.com</a>
+          Email: <a href="mailto:info@hillbooker.com">info@hillbooker.com</a>
         </p>
         <p>
           Prefer to write? <Link href="/support">Send us a message</Link> and our team will call you back.
@@ -36,7 +36,7 @@ export default function ContactPage() {
         </address>
         <h2>Grievances</h2>
         <p>
-          If you are not happy with how a booking or payment was handled, write to <a href="mailto:hillbookerbookings@gmail.com">hillbookerbookings@gmail.com</a> with the subject
+          If you are not happy with how a booking or payment was handled, write to <a href="mailto:info@hillbooker.com">info@hillbooker.com</a> with the subject
           "Grievance". We will reply within 2 working days and aim to resolve the matter within 15 days.
         </p>
       </div>
