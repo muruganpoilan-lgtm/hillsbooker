@@ -39,6 +39,7 @@ def search(
     check_in: date = Query(...),
     check_out: date = Query(...),
     guests: int = Query(1, ge=1),
+    rooms: int = Query(1, ge=1, le=10),
     min_price: float | None = None,
     max_price: float | None = None,
     property_type: str | None = Query(None, pattern="^(hotel|homestay|apartment|resort)$"),
@@ -65,15 +66,15 @@ def search(
             SELECT rt.property_id, AVG(COALESCE(ri.price, rt.base_price)) AS nightly
             FROM room_types rt
             JOIN room_inventory ri ON ri.room_type_id = rt.id
-            WHERE ri.day >= %(ci)s AND ri.day < %(co)s AND rt.max_guests >= %(guests)s
+            WHERE ri.day >= %(ci)s AND ri.day < %(co)s AND rt.max_guests * %(rooms)s >= %(guests)s
             GROUP BY rt.property_id, rt.id
-            HAVING COUNT(*) = %(nights)s AND MIN(ri.available) >= 1
+            HAVING COUNT(*) = %(nights)s AND MIN(ri.available) >= %(rooms)s
         ) x ON x.property_id = p.id
         WHERE p.status = 'approved'
           AND %(ci)s >= (now() AT TIME ZONE 'Asia/Kolkata')::date + p.min_notice_days
     """
     have_point = near_lat is not None and near_lng is not None
-    params = {"ci": check_in, "co": check_out, "guests": guests, "nights": nights,
+    params = {"ci": check_in, "co": check_out, "guests": guests, "rooms": rooms, "nights": nights,
               "nlat": near_lat if have_point else None, "nlng": near_lng if have_point else None}
     if city:
         sql += " AND p.city ILIKE %(city)s"
@@ -167,7 +168,7 @@ def property_detail(property_id: str, check_in: date | None = None, check_out: d
         )
         prop["amenities"] = [r["name"] for r in cur.fetchall()]
         cur.execute(
-            """SELECT rt.id, rt.name, rt.max_guests, rt.base_price,
+            """SELECT rt.id, rt.name, rt.max_guests, rt.base_price, rt.bed_type, rt.bed_count,
                       x.nights_open, x.min_available, x.stay_total
                FROM room_types rt
                LEFT JOIN LATERAL (

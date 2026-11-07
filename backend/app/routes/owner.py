@@ -140,7 +140,7 @@ def my_property_detail(property_id: str, user: dict = Depends(owner_only)):
         cur.execute("SELECT id, url, position, status, reject_reason FROM property_photos WHERE property_id = %s ORDER BY position", (property_id,))
         prop["photos"] = cur.fetchall()
         cur.execute(
-            "SELECT id, name, max_guests, base_price, total_rooms FROM room_types WHERE property_id = %s ORDER BY base_price",
+            "SELECT id, name, max_guests, base_price, total_rooms, bed_type, bed_count FROM room_types WHERE property_id = %s ORDER BY base_price",
             (property_id,),
         )
         rooms = cur.fetchall()
@@ -245,9 +245,9 @@ def add_room_type(property_id: str, body: RoomTypeIn, user: dict = Depends(owner
     with get_conn() as conn, conn.cursor() as cur:
         _own_property(cur, property_id, user)
         cur.execute(
-            """INSERT INTO room_types (property_id, name, max_guests, base_price, total_rooms)
-               VALUES (%s, %s, %s, %s, %s) RETURNING id""",
-            (property_id, body.name, body.max_guests, body.base_price, body.total_rooms),
+            """INSERT INTO room_types (property_id, name, max_guests, base_price, total_rooms, bed_type, bed_count)
+               VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+            (property_id, body.name, body.max_guests, body.base_price, body.total_rooms, body.bed_type, body.bed_count),
         )
         return {"id": cur.fetchone()["id"]}
 

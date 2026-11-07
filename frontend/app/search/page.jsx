@@ -5,6 +5,7 @@ import NearMeButton from "../../components/NearMeButton";
 import SearchForm from "../../components/SearchForm";
 import { addDays, api, isISODate, money, nightsBetween, todayISO } from "../../lib/api";
 import { getT } from "../../lib/lang";
+import { readOccupancy, writeOccupancy } from "../../lib/occupancy";
 
 export const metadata = { title: "Search stays", robots: { index: false, follow: true } };
 
@@ -18,8 +19,10 @@ export default async function SearchPage({ searchParams }) {
   const checkIn = isISODate(get("check_in")) ? get("check_in") : addDays(todayISO(), 2);
   const checkOutRaw = isISODate(get("check_out")) ? get("check_out") : "";
   const checkOut = checkOutRaw && checkOutRaw > checkIn ? checkOutRaw : addDays(checkIn, 1);
-  const guests = Math.min(Math.max(Number(get("guests")) || 2, 1), 40);
-  const children = Math.min(Math.max(Number(get("children")) || 0, 0), guests - 1);
+  const occ = readOccupancy(get);
+  const guests = occ.adults + occ.ages.length;
+  const children = occ.ages.length;
+  const occInitial = { guests, children, ages: occ.ages.filter((a) => a >= 0).join(","), rooms: occ.rooms };
   const city = get("city");
   const nearLat = Number(get("near_lat"));
   const nearLng = Number(get("near_lng"));
@@ -33,7 +36,7 @@ export default async function SearchPage({ searchParams }) {
   const maxPrice = Number(get("max_price")) > 0 ? get("max_price") : "";
   const nights = nightsBetween(checkIn, checkOut);
 
-  const q = new URLSearchParams({ check_in: checkIn, check_out: checkOut, guests: String(guests), sort });
+  const q = new URLSearchParams({ check_in: checkIn, check_out: checkOut, guests: String(guests), rooms: String(occ.rooms), sort });
   if (city) q.set("city", city);
   if (type) q.set("property_type", type);
   if (maxPrice) q.set("max_price", maxPrice);
@@ -49,17 +52,15 @@ export default async function SearchPage({ searchParams }) {
   }
   const res = await api(`/search?${q.toString()}`);
   const activeFilters = [type, maxPrice, minPrice, minRating, picked.length ? "x" : "", sort === "near" ? "x" : ""].filter(Boolean).length;
-  const clearParams = new URLSearchParams({ check_in: checkIn, check_out: checkOut, guests: String(guests) });
+  const clearParams = writeOccupancy(new URLSearchParams({ check_in: checkIn, check_out: checkOut }), occ);
   if (city) clearParams.set("city", city);
-  if (children > 0) clearParams.set("children", String(children));
 
-  const detailParams = new URLSearchParams({ check_in: checkIn, check_out: checkOut, guests: String(guests) });
-  if (children > 0) detailParams.set("children", String(children));
+  const detailParams = writeOccupancy(new URLSearchParams({ check_in: checkIn, check_out: checkOut }), occ);
   const detailQuery = detailParams.toString();
 
   return (
     <main className="page">
-      <SearchForm compact initial={{ city, check_in: checkIn, check_out: checkOut, guests, children }} />
+      <SearchForm compact initial={{ city, check_in: checkIn, check_out: checkOut, ...occInitial }} />
 
       <div className="results-layout">
         <form className="filters" method="get" action="/search">
@@ -69,6 +70,8 @@ export default async function SearchPage({ searchParams }) {
           <input type="hidden" name="check_out" value={checkOut} />
           <input type="hidden" name="guests" value={guests} />
           <input type="hidden" name="children" value={children} />
+          {occInitial.ages && <input type="hidden" name="ages" value={occInitial.ages} />}
+          {occ.rooms > 1 && <input type="hidden" name="rooms" value={occ.rooms} />}
           <fieldset className="radios">
             <legend>{t("filters.type")}</legend>
             {[["", t("type.any")], ...TYPES.map((k) => [k, t(`type.${k}`)])].map(([v, label]) => (

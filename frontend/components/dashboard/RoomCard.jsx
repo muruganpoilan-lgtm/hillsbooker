@@ -6,6 +6,9 @@ import AvailabilityCalendar from "./AvailabilityCalendar";
 import SeasonPricing from "./SeasonPricing";
 import ChannelSync from "./ChannelSync";
 import PhotoManager from "./PhotoManager";
+import { BED_TYPES, BedIcon } from "../BedInfo";
+
+const BED_LABELS = { single: "Single cot", double: "Double cot", queen: "Queen size cot", king: "King size cot", twin: "Twin (2 single cots)", bunk: "Bunk bed" };
 
 // One room type: details, photos, and the calendar of open nights.
 export default function RoomCard({ room, token, reload, onAuthError }) {
@@ -14,6 +17,8 @@ export default function RoomCard({ room, token, reload, onAuthError }) {
     max_guests: String(room.max_guests),
     base_price: String(Number(room.base_price)),
     total_rooms: String(room.total_rooms),
+    bed_type: room.bed_type || "",
+    bed_count: String(room.bed_count || 1),
   });
   const [msg, setMsg] = useState({ text: "", bad: false });
   const [busy, setBusy] = useState("");
@@ -46,7 +51,9 @@ export default function RoomCard({ room, token, reload, onAuthError }) {
       max_guests: Number(form.max_guests),
       base_price: Number(form.base_price),
       total_rooms: Number(form.total_rooms),
+      bed_count: Number(form.bed_count) || 1,
     };
+    if (form.bed_type) body.bed_type = form.bed_type;
     if (!body.name || !(body.base_price >= 0) || !(body.max_guests >= 1) || !(body.total_rooms >= 1)) {
       return say("Fill in the name, price, guests and number of rooms.", true);
     }
@@ -89,7 +96,9 @@ export default function RoomCard({ room, token, reload, onAuthError }) {
 
   return (
     <section className="room-card">
-      <h3>{room.name}</h3>
+      <h3>
+        {room.bed_type && <BedIcon type={room.bed_type} />} {room.name}
+      </h3>
 
       <form className="stack" onSubmit={saveDetails} noValidate>
         <div className="four">
@@ -108,6 +117,21 @@ export default function RoomCard({ room, token, reload, onAuthError }) {
           <label className="field">
             <span>Rooms of this type</span>
             <input type="number" min="1" max="500" value={form.total_rooms} onChange={setF("total_rooms")} />
+          </label>
+          <label className="field">
+            <span>Bed type</span>
+            <select value={form.bed_type} onChange={setF("bed_type")}>
+              <option value="">Not set</option>
+              {BED_TYPES.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {BED_LABELS[b.id]} ({b.size})
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>Number of beds</span>
+            <input type="number" min="1" max="10" value={form.bed_count} onChange={setF("bed_count")} />
           </label>
         </div>
         <div className="actions">

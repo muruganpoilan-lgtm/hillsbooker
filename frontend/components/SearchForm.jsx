@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLang } from "./LangProvider";
 import { addDays, nightsBetween, todayISO } from "../lib/api";
+import OccupancyPicker from "./OccupancyPicker";
+import { agesComplete, readOccupancy, writeOccupancy } from "../lib/occupancy";
 
 // The booking slip: city, two dates, guests. Used big on the home page and compact above search results.
 export default function SearchForm({ initial = {}, compact = false }) {
@@ -12,8 +14,7 @@ export default function SearchForm({ initial = {}, compact = false }) {
   const [city, setCity] = useState(initial.city || "");
   const [checkIn, setCheckIn] = useState(initial.check_in || "");
   const [checkOut, setCheckOut] = useState(initial.check_out || "");
-  const [children, setChildren] = useState(String(initial.children || 0));
-  const [adults, setAdults] = useState(String(Math.max(1, (initial.guests || 2) - (initial.children || 0))));
+  const [occ, setOcc] = useState(() => readOccupancy(initial));
   const [error, setError] = useState("");
   const [today, setToday] = useState("");
 
@@ -40,9 +41,12 @@ export default function SearchForm({ initial = {}, compact = false }) {
       setError(t("form.errOrder"));
       return;
     }
+    if (!agesComplete(occ.ages)) {
+      setError(t("occ.ageMissing"));
+      return;
+    }
     setError("");
-    const params = new URLSearchParams({ check_in: checkIn, check_out: checkOut, guests: String(Number(adults) + Number(children)) });
-    if (Number(children) > 0) params.set("children", children);
+    const params = writeOccupancy(new URLSearchParams({ check_in: checkIn, check_out: checkOut }), occ);
     if (city.trim()) params.set("city", city.trim());
     router.push(`/search?${params.toString()}`);
   }
@@ -75,26 +79,7 @@ export default function SearchForm({ initial = {}, compact = false }) {
             onChange={(e) => setCheckOut(e.target.value)}
           />
         </label>
-        <label className="field">
-          <span>{t("form.adults")}</span>
-          <select value={adults} onChange={(e) => setAdults(e.target.value)}>
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          <span>{t("form.children")}</span>
-          <select value={children} onChange={(e) => setChildren(e.target.value)}>
-            {[0, 1, 2, 3, 4, 5, 6].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
+        <OccupancyPicker value={occ} onChange={setOcc} />
         <button type="submit" className="btn btn-primary">
           {t("form.search")}
         </button>

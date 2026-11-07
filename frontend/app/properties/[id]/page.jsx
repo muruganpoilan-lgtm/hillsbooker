@@ -6,6 +6,7 @@ import RoomList from "../../../components/RoomList";
 import PropertyMap, { mapPoint } from "../../../components/PropertyMap";
 import { api, isISODate, nightsBetween } from "../../../lib/api";
 import { getT } from "../../../lib/lang";
+import { readOccupancy } from "../../../lib/occupancy";
 import { SITE_URL, jsonLd } from "../../../lib/seo";
 
 const TYPE_LABEL = { hotel: "Hotel", homestay: "Homestay", apartment: "Apartment", resort: "Resort" };
@@ -38,8 +39,9 @@ export default async function PropertyPage({ params, searchParams }) {
   const ci = isISODate(get("check_in")) ? get("check_in") : "";
   const co = isISODate(get("check_out")) ? get("check_out") : "";
   const hasDates = Boolean(ci && co && co > ci);
-  const guests = Math.min(Math.max(Number(get("guests")) || 2, 1), 40);
-  const children = Math.min(Math.max(Number(get("children")) || 0, 0), guests - 1);
+  const occ = readOccupancy(get);
+  const guests = occ.adults + occ.ages.length;
+  const children = occ.ages.length;
 
   const qs = hasDates ? `?${new URLSearchParams({ check_in: ci, check_out: co }).toString()}` : "";
   const res = await api(`/properties/${id}${qs}`);
@@ -122,12 +124,14 @@ export default async function PropertyPage({ params, searchParams }) {
         <h2>{t("prop.rooms")}</h2>
         <AvailabilityCalendar propertyId={p.id} checkIn={hasDates ? ci : ""} checkOut={hasDates ? co : ""} guests={guests} children={children} />
         <RoomList
-          key={`${hasDates ? ci : ""}|${hasDates ? co : ""}|${guests}|${children}`}
+          key={`${hasDates ? ci : ""}|${hasDates ? co : ""}|${guests}|${occ.ages.join(",")}|${occ.rooms}`}
           rooms={p.room_types}
           checkIn={hasDates ? ci : ""}
           checkOut={hasDates ? co : ""}
           guests={guests}
           children={children}
+          ages={occ.ages}
+          roomsWanted={occ.rooms}
           nights={hasDates ? nightsBetween(ci, co) : 0}
           advancePercent={p.advance_percent || 100}
           tooSoon={Boolean(p.too_soon)}

@@ -9,6 +9,9 @@ import PropertyForm from "../../../../components/dashboard/PropertyForm";
 import PhotoManager from "../../../../components/dashboard/PhotoManager";
 import RoomCard from "../../../../components/dashboard/RoomCard";
 import { api } from "../../../../lib/api";
+import { BED_TYPES } from "../../../../components/BedInfo";
+
+const BED_LABELS = { single: "Single cot", double: "Double cot", queen: "Queen size cot", king: "King size cot", twin: "Twin (2 single cots)", bunk: "Bunk bed" };
 
 const STATUS_NOTE = {
   pending: "Waiting for approval. Guests can't see this property until an admin approves it.",
@@ -23,7 +26,7 @@ function Editor({ id }) {
   const [prop, setProp] = useState(null);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState("");
-  const [room, setRoom] = useState({ name: "", max_guests: "2", base_price: "", total_rooms: "1" });
+  const [room, setRoom] = useState({ name: "", max_guests: "2", base_price: "", total_rooms: "1", bed_type: "", bed_count: "1" });
   const [roomError, setRoomError] = useState("");
   const [roomBusy, setRoomBusy] = useState(false);
 
@@ -62,7 +65,9 @@ function Editor({ id }) {
       max_guests: Number(room.max_guests),
       base_price: Number(room.base_price),
       total_rooms: Number(room.total_rooms),
+      bed_count: Number(room.bed_count) || 1,
     };
+    if (room.bed_type) body.bed_type = room.bed_type;
     if (!body.name || room.base_price === "" || !(body.base_price >= 0)) {
       return setRoomError("Enter a room name and the usual price for a night.");
     }
@@ -71,7 +76,7 @@ function Editor({ id }) {
     setRoomBusy(false);
     if (res.status === 401) return logout();
     if (!res.ok) return setRoomError(res.error);
-    setRoom({ name: "", max_guests: "2", base_price: "", total_rooms: "1" });
+    setRoom({ name: "", max_guests: "2", base_price: "", total_rooms: "1", bed_type: "", bed_count: "1" });
     load();
   }
 
@@ -150,6 +155,21 @@ function Editor({ id }) {
             <label className="field">
               <span>Rooms of this type</span>
               <input type="number" min="1" max="500" value={room.total_rooms} onChange={setR("total_rooms")} />
+            </label>
+            <label className="field">
+              <span>Bed type</span>
+              <select value={room.bed_type} onChange={setR("bed_type")}>
+                <option value="">Not set</option>
+                {BED_TYPES.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {BED_LABELS[b.id]} ({b.size})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Number of beds</span>
+              <input type="number" min="1" max="10" value={room.bed_count} onChange={setR("bed_count")} />
             </label>
           </div>
           {roomError && (

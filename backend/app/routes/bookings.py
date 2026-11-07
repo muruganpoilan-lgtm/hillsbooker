@@ -101,13 +101,13 @@ def create_booking(body: BookingIn, user: dict = Depends(current_user)):
             (body.rooms, body.room_type_id, body.check_in, body.check_out),
         )
         cur.execute(
-            """INSERT INTO bookings (user_id, property_id, room_type_id, check_in, check_out, rooms, guests, children,
+            """INSERT INTO bookings (user_id, property_id, room_type_id, check_in, check_out, rooms, guests, children, child_ages,
                                      total_amount, advance_amount, status, hold_expires_at,
                                      coupon_id, coupon_code, discount_amount)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'held', now() + make_interval(mins => %s), %s, %s, %s)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'held', now() + make_interval(mins => %s), %s, %s, %s)
                RETURNING id, total_amount, advance_amount, hold_expires_at""",
             (user["id"], rt["property_id"], body.room_type_id, body.check_in, body.check_out,
-             body.rooms, body.guests, body.children, total, advance, settings.hold_minutes,
+             body.rooms, body.guests, body.children, body.child_ages or None, total, advance, settings.hold_minutes,
              coupon["id"] if coupon else None, coupon["code"] if coupon else None, discount),
         )
         booking = cur.fetchone()

@@ -97,11 +97,16 @@ class PropertyUpdate(BaseModel):
         return _clean_nearby(v)  # empty text clears it
 
 
+BED_TYPES = "^(single|double|queen|king|twin|bunk)$"
+
+
 class RoomTypeIn(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     max_guests: int = Field(default=2, ge=1, le=20)
     base_price: float = Field(ge=0)
     total_rooms: int = Field(ge=1, le=500)
+    bed_type: str | None = Field(default=None, pattern=BED_TYPES)
+    bed_count: int = Field(default=1, ge=1, le=10)
 
 
 class RoomTypeUpdate(BaseModel):
@@ -109,6 +114,8 @@ class RoomTypeUpdate(BaseModel):
     max_guests: int | None = Field(default=None, ge=1, le=20)
     base_price: float | None = Field(default=None, ge=0)
     total_rooms: int | None = Field(default=None, ge=1, le=500)
+    bed_type: str | None = Field(default=None, pattern=BED_TYPES)
+    bed_count: int | None = Field(default=None, ge=1, le=10)
 
 
 class InventoryIn(BaseModel):
@@ -134,9 +141,14 @@ class BookingIn(BaseModel):
     guests: int = Field(default=1, ge=1, le=40)  # adults + children
     children: int = Field(default=0, ge=0, le=39)  # how many of the guests are children; at least one adult is needed
     coupon_code: str | None = Field(default=None, max_length=40)
+    child_ages: list[int] = Field(default_factory=list, max_length=39)  # age of each child at check-out, 0-17
 
     @model_validator(mode="after")
     def check_dates(self):
+        if any(a < 0 or a > 17 for a in self.child_ages):
+            raise ValueError("Child ages must be between 0 and 17")
+        if self.child_ages and len(self.child_ages) != self.children:
+            raise ValueError("Give one age for each child")
         if self.check_out <= self.check_in:
             raise ValueError("check_out must be after check_in")
         if (self.check_out - self.check_in).days > 30:

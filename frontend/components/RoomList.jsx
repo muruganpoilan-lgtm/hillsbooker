@@ -6,8 +6,11 @@ import { useAuth } from "./AuthProvider";
 import Ridge from "./Ridge";
 import { useLang } from "./LangProvider";
 import { addDays, advanceFor, api, money, prettyDate, todayISO } from "../lib/api";
+import OccupancyPicker from "./OccupancyPicker";
+import { agesComplete, writeOccupancy } from "../lib/occupancy";
+import BedInfo from "./BedInfo";
 
-export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, children: kids = 0, nights, advancePercent = 100, tooSoon = false, earliest = "" }) {
+export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, children: kids = 0, ages = [], roomsWanted = 1, nights, advancePercent = 100, tooSoon = false, earliest = "" }) {
   const { t } = useLang();
   const router = useRouter();
   const pathname = usePathname();
@@ -15,9 +18,17 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
 
   const [checkIn, setCheckIn] = useState(ci);
   const [checkOut, setCheckOut] = useState(co);
-  const [children, setChildren] = useState(String(kids));
-  const [adults, setAdults] = useState(String(Math.max(1, g - kids)));
-  const [qty, setQty] = useState({});
+  const [occ, setOcc] = useState(() => ({
+    adults: Math.max(1, g - kids),
+    ages: Array.from({ length: kids }, (_, i) => (ages[i] ?? -1)),
+    rooms: roomsWanted,
+  }));
+  // Start each room type at the number of rooms asked for in the search, capped at what's free.
+  const [qty, setQty] = useState(() =>
+    Object.fromEntries(rooms.filter((r) => r.bookable).map((r) => [r.id, String(Math.max(1, Math.min(roomsWanted, r.rooms_left || 1, 5)))])),
+  );
+  const occNow = { adults: Math.max(1, g - kids), ages: Array.from({ length: kids }, (_, i) => (ages[i] ?? -1)), rooms: roomsWanted };
+  const linkFor = (inDate, outDate, o = occNow) => `${pathname}?${writeOccupancy(new URLSearchParams({ check_in: inDate, check_out: outDate }), o).toString()}`;
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [today, setToday] = useState("");
@@ -41,7 +52,7 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
   useEffect(() => setToday(todayISO()), []);
 
   const hasDates = Boolean(ci && co);
-  const here = `${pathname}?${new URLSearchParams({ check_in: ci, check_out: co, guests: String(g), children: String(kids) }).toString()}`;
+  const here = linkFor(ci, co);
 
   // With a coupon applied, ask the server what it saves on each room that can be booked, and keep that up to date
   // when the number of rooms changes. The booking itself checks the coupon again.
@@ -100,8 +111,12 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
       setError(t("room.errEarly", { d: prettyDate(checkIn), e: prettyDate(earliest) }));
       return;
     }
+    if (!agesComplete(occ.ages)) {
+      setError(t("occ.ageMissing"));
+      return;
+    }
     setError("");
-    router.replace(`${pathname}?${new URLSearchParams({ check_in: checkIn, check_out: checkOut, guests: String(Number(adults) + Number(children)), children }).toString()}`);
+    router.replace(linkFor(checkIn, checkOut, occ));
   }
 
   function goToLogin() {
@@ -110,6 +125,10 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
 
   async function book(room) {
     setError("");
+    if (!agesComplete(occNow.ages)) {
+      setError(t("occ.ageBeforeBook"));
+      return;
+    }
     if (!token) {
       goToLogin();
       return;
@@ -118,7 +137,7 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
     const res = await api("/bookings", {
       method: "POST",
       token,
-      body: { room_type_id: room.id, check_in: ci, check_out: co, rooms: Number(qty[room.id] || 1), guests: Number(g), children: Number(kids), coupon_code: applied || undefined },
+      body: { room_type_id: room.id, check_in: ci, check_out: co, rooms: Number(qty[room.id] || 1), guests: Number(g), children: Number(kids), child_ages: occNow.ages, coupon_code: applied || undefined },
     });
     setBusy("");
     if (res.status === 401) {
@@ -144,26 +163,7 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
           <span>{t("room.checkout")}</span>
           <input type="date" value={checkOut} min={checkIn || today || undefined} onChange={(e) => setCheckOut(e.target.value)} />
         </label>
-        <label className="field">
-          <span>{t("room.adults")}</span>
-          <select value={adults} onChange={(e) => setAdults(e.target.value)}>
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          <span>{t("room.children")}</span>
-          <select value={children} onChange={(e) => setChildren(e.target.value)}>
-            {[0, 1, 2, 3, 4, 5, 6].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
+        <OccupancyPicker value={occ} onChange={setOcc} />
         <button type="submit" className="btn btn-small">
           {hasDates ? t("room.update") : t("room.check")}
         </button>
@@ -178,7 +178,7 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
       {tooSoon && hasDates && (
         <p className="form-error" role="alert">
           {t("room.tooSoon", { d: prettyDate(ci), e: prettyDate(earliest) })}{" "}
-          <button type="button" className="link-btn" onClick={() => router.replace(`${pathname}?${new URLSearchParams({ check_in: earliest, check_out: co > earliest ? co : addDays(earliest, 1), guests: String(g), children: String(kids) }).toString()}`)}>
+          <button type="button" className="link-btn" onClick={() => router.replace(linkFor(earliest, co > earliest ? co : addDays(earliest, 1)))}>
             {t("room.useDate", { e: prettyDate(earliest) })}
           </button>
         </p>
@@ -228,6 +228,7 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
             )}
             <div>
               <h3 className="room-name">{room.name}</h3>
+              <BedInfo type={room.bed_type} count={room.bed_count} />
               <p className="meta">{t("room.sleeps", { n: room.max_guests })}</p>
               <p>
                 <span className="price">{money(room.base_price)}</span> <span className="meta">{t("room.aNight")}</span>
