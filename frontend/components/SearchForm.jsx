@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useLang } from "./LangProvider";
 import { addDays, nightsBetween, todayISO } from "../lib/api";
 import OccupancyPicker from "./OccupancyPicker";
+import PropertyNameSearch from "./PropertyNameSearch";
 import { agesComplete, readOccupancy, writeOccupancy } from "../lib/occupancy";
 
 // The booking slip: city, two dates, guests. Used big on the home page and compact above search results.
@@ -31,23 +32,41 @@ export default function SearchForm({ initial = {}, compact = false }) {
     if (value && (!checkOut || checkOut <= value)) setCheckOut(addDays(value, 1));
   }
 
-  function onSubmit(e) {
-    e.preventDefault();
+  // Check the dates and ages, then give the query string for them (or null after showing an error).
+  function stayParams() {
     if (!checkIn || !checkOut) {
       setError(t("form.errDates"));
-      return;
+      return null;
     }
     if (checkOut <= checkIn) {
       setError(t("form.errOrder"));
-      return;
+      return null;
     }
     if (!agesComplete(occ.ages)) {
       setError(t("occ.ageMissing"));
-      return;
+      return null;
     }
     setError("");
-    const params = writeOccupancy(new URLSearchParams({ check_in: checkIn, check_out: checkOut }), occ);
+    return writeOccupancy(new URLSearchParams({ check_in: checkIn, check_out: checkOut }), occ);
+  }
+
+  function onSubmit(e) {
+    e.preventDefault();
+    const params = stayParams();
+    if (!params) return;
     if (city.trim()) params.set("city", city.trim());
+    router.push(`/search?${params.toString()}`);
+  }
+
+  function pickProperty(p) {
+    const params = stayParams();
+    if (params) router.push(`/properties/${p.id}?${params.toString()}`);
+  }
+
+  function searchByName(name) {
+    const params = stayParams();
+    if (!params) return;
+    params.set("name", name);
     router.push(`/search?${params.toString()}`);
   }
 
@@ -84,6 +103,7 @@ export default function SearchForm({ initial = {}, compact = false }) {
           {t("form.search")}
         </button>
       </div>
+      <PropertyNameSearch initial={initial.name || ""} onPick={pickProperty} onSearch={searchByName} />
       {error ? (
         <p className="form-error" role="alert">
           {error}

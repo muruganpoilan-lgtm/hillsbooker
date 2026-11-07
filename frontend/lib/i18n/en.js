@@ -84,6 +84,10 @@ export default {
   "videos.forBoth": "For guests and hosts",
 
   "form.city": "City",
+  "pname.label": "Or search by property name",
+  "pname.placeholder": "Hotel or homestay name",
+  "pname.find": "Find",
+  "pname.none": "No property with that name yet. Try fewer letters.",
   "form.cityPlaceholder": "Goa, Ooty, Jaipur",
   "form.checkIn": "Check-in",
   "form.checkOut": "Check-out",

@@ -8,6 +8,28 @@ from ..db import get_conn
 router = APIRouter(tags=["public"])
 
 
+def _like(text: str) -> str:
+    """Wrap text for ILIKE so % and _ typed by a guest are matched literally."""
+    return "%" + text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+
+
+@router.get("/property-names")
+def property_names(q: str = Query(..., min_length=2, max_length=80)):
+    """Up to 8 approved properties whose name matches, for the 'search by property name' box. Names that start with the text come first."""
+    text = q.strip()
+    if len(text) < 2:
+        return []
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT id, name, city, type FROM properties
+               WHERE status = 'approved' AND name ILIKE %(like)s
+               ORDER BY (name ILIKE %(start)s) DESC, rating_avg DESC NULLS LAST, name
+               LIMIT 8""",
+            {"like": _like(text), "start": _like(text)[1:]},
+        )
+        return cur.fetchall()
+
+
 @router.get("/amenities")
 def amenities():
     with get_conn() as conn, conn.cursor() as cur:
@@ -36,6 +58,7 @@ def seo_properties(city: str | None = None):
 @router.get("/search")
 def search(
     city: str | None = None,
+    name: str | None = Query(None, max_length=80),
     check_in: date = Query(...),
     check_out: date = Query(...),
     guests: int = Query(1, ge=1),
@@ -79,6 +102,9 @@ def search(
     if city:
         sql += " AND p.city ILIKE %(city)s"
         params["city"] = f"%{city}%"
+    if name and name.strip():
+        sql += " AND p.name ILIKE %(pname)s"
+        params["pname"] = _like(name.strip())
     if property_type:
         sql += " AND p.type = %(ptype)s"
         params["ptype"] = property_type

@@ -24,6 +24,7 @@ export default async function SearchPage({ searchParams }) {
   const children = occ.ages.length;
   const occInitial = { guests, children, ages: occ.ages.filter((a) => a >= 0).join(","), rooms: occ.rooms };
   const city = get("city");
+  const pname = get("name").trim().slice(0, 80);
   const nearLat = Number(get("near_lat"));
   const nearLng = Number(get("near_lng"));
   const hasNear = get("near_lat") !== "" && get("near_lng") !== "" && Math.abs(nearLat) <= 90 && Math.abs(nearLng) <= 180;
@@ -38,6 +39,7 @@ export default async function SearchPage({ searchParams }) {
 
   const q = new URLSearchParams({ check_in: checkIn, check_out: checkOut, guests: String(guests), rooms: String(occ.rooms), sort });
   if (city) q.set("city", city);
+  if (pname) q.set("name", pname);
   if (type) q.set("property_type", type);
   if (maxPrice) q.set("max_price", maxPrice);
   if (minPrice) q.set("min_price", minPrice);
@@ -54,18 +56,20 @@ export default async function SearchPage({ searchParams }) {
   const activeFilters = [type, maxPrice, minPrice, minRating, picked.length ? "x" : "", sort === "near" ? "x" : ""].filter(Boolean).length;
   const clearParams = writeOccupancy(new URLSearchParams({ check_in: checkIn, check_out: checkOut }), occ);
   if (city) clearParams.set("city", city);
+  if (pname) clearParams.set("name", pname);
 
   const detailParams = writeOccupancy(new URLSearchParams({ check_in: checkIn, check_out: checkOut }), occ);
   const detailQuery = detailParams.toString();
 
   return (
     <main className="page">
-      <SearchForm compact initial={{ city, check_in: checkIn, check_out: checkOut, ...occInitial }} />
+      <SearchForm compact initial={{ city, name: pname, check_in: checkIn, check_out: checkOut, ...occInitial }} />
 
       <div className="results-layout">
         <form className="filters" method="get" action="/search">
           <h2 className="mini-title">{t("filters.title")}</h2>
           <input type="hidden" name="city" value={city} />
+          {pname && <input type="hidden" name="name" value={pname} />}
           <input type="hidden" name="check_in" value={checkIn} />
           <input type="hidden" name="check_out" value={checkOut} />
           <input type="hidden" name="guests" value={guests} />
