@@ -668,3 +668,14 @@ label.btn[aria-busy="true"] { opacity: 0.7; cursor: progress; }
 .pname-list li.on { background: var(--chalk); }
 .pname-list li span { font-size: 0.85rem; color: var(--ink-soft); }
 .pname-empty { margin: 0.4rem 0 0; font-size: 0.85rem; color: var(--ink-soft); }
+
+/* Festive holiday banner (home page) */
+.hb-festive { display: grid; gap: 0.6rem; justify-items: start; padding: 1.6rem 1.5rem; border-radius: 14px; color: #fff;
+  background: radial-gradient(circle at 85% 20%, rgba(244,176,0,0.35), transparent 45%), linear-gradient(135deg, var(--green-dark), var(--green) 60%, #2f8f78); }
+.hb-festive-lamps { font-size: 1.5rem; letter-spacing: 0.3rem; }
+.hb-festive h2 { margin: 0; font-family: var(--font-display), system-ui, sans-serif; font-size: 1.6rem; font-weight: 800; }
+.hb-festive p { margin: 0; max-width: 60ch; opacity: 0.95; }
+.hb-festive-cities { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.3rem; }
+.hb-festive-cities a { color: #fff; text-decoration: none; border: 1px solid rgba(255,255,255,0.6); border-radius: 999px; padding: 0.3rem 0.85rem; font-weight: 600; }
+.hb-festive-cities a:hover { background: rgba(255,255,255,0.15); }
+.hb-festive-cta { margin-top: 0.4rem; background: var(--marigold); color: var(--ink); font-weight: 800; text-decoration: none; padding: 0.6rem 1.1rem; border-radius: 6px; }

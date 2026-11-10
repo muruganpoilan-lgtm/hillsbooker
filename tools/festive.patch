@@ -1,0 +1,88 @@
+diff --git a/frontend/app/globals.css b/frontend/app/globals.css
+index 30600fb..e4540ce 100644
+--- a/frontend/app/globals.css
++++ b/frontend/app/globals.css
+@@ -668,3 +668,14 @@ label.btn[aria-busy="true"] { opacity: 0.7; cursor: progress; }
+ .pname-list li.on { background: var(--chalk); }
+ .pname-list li span { font-size: 0.85rem; color: var(--ink-soft); }
+ .pname-empty { margin: 0.4rem 0 0; font-size: 0.85rem; color: var(--ink-soft); }
++
++/* Festive holiday banner (home page) */
++.hb-festive { display: grid; gap: 0.6rem; justify-items: start; padding: 1.6rem 1.5rem; border-radius: 14px; color: #fff;
++  background: radial-gradient(circle at 85% 20%, rgba(244,176,0,0.35), transparent 45%), linear-gradient(135deg, var(--green-dark), var(--green) 60%, #2f8f78); }
++.hb-festive-lamps { font-size: 1.5rem; letter-spacing: 0.3rem; }
++.hb-festive h2 { margin: 0; font-family: var(--font-display), system-ui, sans-serif; font-size: 1.6rem; font-weight: 800; }
++.hb-festive p { margin: 0; max-width: 60ch; opacity: 0.95; }
++.hb-festive-cities { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.3rem; }
++.hb-festive-cities a { color: #fff; text-decoration: none; border: 1px solid rgba(255,255,255,0.6); border-radius: 999px; padding: 0.3rem 0.85rem; font-weight: 600; }
++.hb-festive-cities a:hover { background: rgba(255,255,255,0.15); }
++.hb-festive-cta { margin-top: 0.4rem; background: var(--marigold); color: var(--ink); font-weight: 800; text-decoration: none; padding: 0.6rem 1.1rem; border-radius: 6px; }
+diff --git a/frontend/app/page.jsx b/frontend/app/page.jsx
+index f069328..c2923ca 100644
+--- a/frontend/app/page.jsx
++++ b/frontend/app/page.jsx
+@@ -24,6 +24,17 @@ const MORE = [
+ ];
+ const WHY = [1, 2, 3, 4];
+ 
++// Festive holiday banner: shows from 1 Nov to 2 Jan (India time), then hides by itself until next season.
++const FESTIVE_CITIES = ["Ooty", "Munnar", "Kodaikanal", "Valparai"];
++function festiveOn() {
++  const [m, d] = new Date()
++    .toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })
++    .split("-")
++    .slice(1)
++    .map(Number);
++  return m >= 11 || (m === 1 && d <= 2);
++}
++
+ function Card({ d, className, t }) {
+   return (
+     <Link
+@@ -52,6 +63,22 @@ export default async function Home() {
+         <SearchForm />
+       </div>
+ 
++      {festiveOn() && (
++        <section className="page hb-section">
++          <div className="hb-festive">
++            <span className="hb-festive-lamps" aria-hidden="true">🪔 ✨ 🎄</span>
++            <h2>{t("home.festive.title")}</h2>
++            <p>{t("home.festive.text")}</p>
++            <div className="hb-festive-cities">
++              {FESTIVE_CITIES.map((c) => (
++                <Link key={c} href={`/stays/${slugify(c)}`}>{t(`city.${c}`)}</Link>
++              ))}
++            </div>
++            <Link href="/search" className="hb-festive-cta">{t("home.festive.cta")}</Link>
++          </div>
++        </section>
++      )}
++
+       <section className="page hb-section">
+         <h2 className="hb-title">{t("home.offers")}</h2>
+         <p className="hb-lead">{t("home.offersLead")}</p>
+diff --git a/frontend/lib/i18n/en.js b/frontend/lib/i18n/en.js
+index eb746e1..36f219a 100644
+--- a/frontend/lib/i18n/en.js
++++ b/frontend/lib/i18n/en.js
+@@ -549,4 +549,7 @@ export default {
+   "acct.planText": "Search stays, ready-made packages or a car with a driver.",
+   "acct.planStays": "Search stays",
+   "nav.hostPanel": "Host panel",
++  "home.festive.title": "Christmas and New Year in the hills",
++  "home.festive.text": "Cool mornings, misty valleys and bonfire nights. Holiday weeks fill up fast, so book your hill stay early and pay just 30% to confirm.",
++  "home.festive.cta": "Book your holiday stay",
+ };
+diff --git a/frontend/lib/i18n/ta.js b/frontend/lib/i18n/ta.js
+index d539d47..f774442 100644
+--- a/frontend/lib/i18n/ta.js
++++ b/frontend/lib/i18n/ta.js
+@@ -548,4 +548,7 @@ export default {
+   "acct.planText": "தங்குமிடங்கள், தயார் பயணத் தொகுப்புகள் அல்லது ஓட்டுநருடன் கார் தேடுங்கள்.",
+   "acct.planStays": "தங்குமிடங்களைத் தேட",
+   "nav.hostPanel": "ஹோஸ்ட் பேனல்",
++  "home.festive.title": "மலைகளில் கிறிஸ்துமஸ் மற்றும் புத்தாண்டு",
++  "home.festive.text": "குளிர்ந்த காலை, பனி படர்ந்த பள்ளத்தாக்குகள், இரவு நெருப்பு. விடுமுறை வாரங்களில் அறைகள் விரைவில் நிரம்பும், எனவே முன்கூட்டியே முன்பதிவு செய்யுங்கள். 30% செலுத்தினால் போதும்.",
++  "home.festive.cta": "விடுமுறை தங்குமிடத்தை முன்பதிவு செய்ய",
+ };

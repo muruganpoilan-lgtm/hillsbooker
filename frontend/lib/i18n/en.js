@@ -549,4 +549,7 @@ export default {
   "acct.planText": "Search stays, ready-made packages or a car with a driver.",
   "acct.planStays": "Search stays",
   "nav.hostPanel": "Host panel",
+  "home.festive.title": "Christmas and New Year in the hills",
+  "home.festive.text": "Cool mornings, misty valleys and bonfire nights. Holiday weeks fill up fast, so book your hill stay early and pay just 30% to confirm.",
+  "home.festive.cta": "Book your holiday stay",
 };

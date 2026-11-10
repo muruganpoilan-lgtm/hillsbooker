@@ -24,6 +24,17 @@ const MORE = [
 ];
 const WHY = [1, 2, 3, 4];
 
+// Festive holiday banner: shows from 1 Nov to 2 Jan (India time), then hides by itself until next season.
+const FESTIVE_CITIES = ["Ooty", "Munnar", "Kodaikanal", "Valparai"];
+function festiveOn() {
+  const [m, d] = new Date()
+    .toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })
+    .split("-")
+    .slice(1)
+    .map(Number);
+  return m >= 11 || (m === 1 && d <= 2);
+}
+
 function Card({ d, className, t }) {
   return (
     <Link
@@ -51,6 +62,22 @@ export default async function Home() {
       <div className="hb-search">
         <SearchForm />
       </div>
+
+      {festiveOn() && (
+        <section className="page hb-section">
+          <div className="hb-festive">
+            <span className="hb-festive-lamps" aria-hidden="true">🪔 ✨ 🎄</span>
+            <h2>{t("home.festive.title")}</h2>
+            <p>{t("home.festive.text")}</p>
+            <div className="hb-festive-cities">
+              {FESTIVE_CITIES.map((c) => (
+                <Link key={c} href={`/stays/${slugify(c)}`}>{t(`city.${c}`)}</Link>
+              ))}
+            </div>
+            <Link href="/search" className="hb-festive-cta">{t("home.festive.cta")}</Link>
+          </div>
+        </section>
+      )}
 
       <section className="page hb-section">
         <h2 className="hb-title">{t("home.offers")}</h2>
