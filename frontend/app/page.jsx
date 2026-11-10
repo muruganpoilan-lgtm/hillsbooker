@@ -24,7 +24,7 @@ const MORE = [
 ];
 const WHY = [1, 2, 3, 4];
 
-// Festive holiday banner: shows from 1 Nov to 2 Jan (India time), then hides by itself until next season.
+// Festive holiday banner: shows from 1 Dec to 2 Jan (India time), then hides by itself until next season.
 const FESTIVE_CITIES = ["Ooty", "Munnar", "Kodaikanal", "Valparai"];
 function festiveOn() {
   const [m, d] = new Date()
@@ -32,7 +32,7 @@ function festiveOn() {
     .split("-")
     .slice(1)
     .map(Number);
-  return m >= 11 || (m === 1 && d <= 2);
+  return m === 12 || (m === 1 && d <= 2);
 }
 
 function Card({ d, className, t }) {
