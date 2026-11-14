@@ -34,6 +34,55 @@ def _clean_nearby(v):
     return "\n".join(lines)
 
 
+_UPI_RE = re.compile(r"^[A-Za-z0-9._-]{2,64}@[A-Za-z][A-Za-z0-9]{1,31}$")
+_IFSC_RE = re.compile(r"^[A-Z]{4}0[A-Z0-9]{6}$")
+_ACCOUNT_RE = re.compile(r"^\d{9,18}$")
+_HOLDER_RE = re.compile(r"^[A-Za-z][A-Za-z .'-]{1,79}$")
+OWNER_FIELDS = ("owner_name", "owner_whatsapp", "owner_upi", "owner_bank_account", "owner_bank_ifsc", "owner_bank_holder")
+_BANK_FIELDS = ("owner_bank_account", "owner_bank_ifsc", "owner_bank_holder")
+
+
+def _clean_owner(m):
+    """Checks and tidies the property owner's details (admin only). Empty text means "not saved". None means "not sent"."""
+    v = getattr(m, "owner_name", None)
+    if v is not None:
+        m.owner_name = " ".join(v.split())[:100]
+    v = getattr(m, "owner_whatsapp", None)
+    if v is not None and v.strip():
+        digits = "".join(c for c in v if c.isdigit())
+        if len(digits) == 11 and digits.startswith("0"):
+            digits = digits[1:]
+        if len(digits) == 10:
+            digits = "91" + digits
+        if not 11 <= len(digits) <= 15:
+            raise ValueError("Enter the owner's WhatsApp number, like 98765 43210 or +91 98765 43210")
+        m.owner_whatsapp = "+" + digits
+    elif v is not None:
+        m.owner_whatsapp = ""
+    v = getattr(m, "owner_upi", None)
+    if v is not None:
+        v = v.strip()
+        if v and not _UPI_RE.match(v):
+            raise ValueError("The owner's UPI ID doesn't look right. It looks like name@bank")
+        m.owner_upi = v
+    sent = [f for f in _BANK_FIELDS if getattr(m, f, None) is not None]
+    if sent:
+        if len(sent) != len(_BANK_FIELDS):
+            raise ValueError("Send the owner's bank account number, IFSC and account holder name together")
+        acct = re.sub(r"\s+", "", m.owner_bank_account)
+        ifsc = re.sub(r"\s+", "", m.owner_bank_ifsc).upper()
+        holder = " ".join(m.owner_bank_holder.split())
+        if acct or ifsc or holder:
+            if not _ACCOUNT_RE.match(acct):
+                raise ValueError("The owner's bank account number should be 9 to 18 digits")
+            if not _IFSC_RE.match(ifsc):
+                raise ValueError("The owner's IFSC code doesn't look right. It is 11 characters, like SBIN0001234")
+            if not _HOLDER_RE.match(holder):
+                raise ValueError("Enter the account holder's name exactly as it is in the bank")
+        m.owner_bank_account, m.owner_bank_ifsc, m.owner_bank_holder = acct, ifsc, holder
+    return m
+
+
 class RegisterIn(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     email: EmailStr
@@ -62,6 +111,17 @@ class PropertyIn(BaseModel):
     amenity_ids: list[int] = []
     photo_urls: list[str] = []
     owner_id: str | None = None  # admins only: create the property on behalf of this owner
+    # The real owner's details (admins only; ignored for anyone else). Empty means not saved.
+    owner_name: str | None = Field(default=None, max_length=200)
+    owner_whatsapp: str | None = Field(default=None, max_length=30)
+    owner_upi: str | None = Field(default=None, max_length=100)
+    owner_bank_account: str | None = Field(default=None, max_length=40)
+    owner_bank_ifsc: str | None = Field(default=None, max_length=20)
+    owner_bank_holder: str | None = Field(default=None, max_length=200)
+
+    @model_validator(mode="after")
+    def _owner(self):
+        return _clean_owner(self)
 
     @field_validator("map_url")
     @classmethod
@@ -85,6 +145,17 @@ class PropertyUpdate(BaseModel):
     advance_percent: int | None = Field(default=None, ge=10, le=100)
     min_notice_days: int | None = Field(default=None, ge=0, le=14)
     amenity_ids: list[int] | None = None
+    # The real owner's details (admins only). Empty text clears a value; the three bank fields go together.
+    owner_name: str | None = Field(default=None, max_length=200)
+    owner_whatsapp: str | None = Field(default=None, max_length=30)
+    owner_upi: str | None = Field(default=None, max_length=100)
+    owner_bank_account: str | None = Field(default=None, max_length=40)
+    owner_bank_ifsc: str | None = Field(default=None, max_length=20)
+    owner_bank_holder: str | None = Field(default=None, max_length=200)
+
+    @model_validator(mode="after")
+    def _owner(self):
+        return _clean_owner(self)
 
     @field_validator("map_url")
     @classmethod

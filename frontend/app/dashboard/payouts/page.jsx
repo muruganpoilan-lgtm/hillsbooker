@@ -42,14 +42,15 @@ function Payouts() {
   }
 
   function start(host) {
-    setOpen(host.host_id);
+    setOpen(host.key);
     setRef("");
     setFormError("");
     setDone("");
   }
 
+  // Lines for one property's own owner are paid by hand; Razorpay pays only to a host account's own details.
   function canAuto(h) {
-    return Boolean(h.upi_id || h.bank);
+    return !h.property_id && Boolean(h.upi_id || h.bank);
   }
 
   async function payViaRazorpay(hosts) {
@@ -104,7 +105,11 @@ function Payouts() {
       return;
     }
     setBusy(true);
-    const res = await api("/admin/payouts", { method: "POST", token, body: { host_id: host.host_id, reference: r, expected_amount: host.amount } });
+    const res = await api("/admin/payouts", {
+      method: "POST",
+      token,
+      body: { host_id: host.host_id, property_id: host.property_id || null, reference: r, expected_amount: host.amount },
+    });
     setBusy(false);
     if (res.status === 401) return logout();
     if (!res.ok) {
@@ -184,6 +189,56 @@ function Payouts() {
           </section>
 
           <section className="prop-section">
+            <h2>Property owners</h2>
+            <p className="meta">Owners you saved on properties you listed for them (edit a property to add or change these).</p>
+            {(data.property_owners || []).length === 0 && <p className="meta">No owner details saved on any property yet.</p>}
+            {(data.property_owners || []).length > 0 && (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ textAlign: "left" }}>
+                      <th>Property</th>
+                      <th>Owner</th>
+                      <th>WhatsApp</th>
+                      <th>UPI ID</th>
+                      <th>Bank</th>
+                      <th>Due now</th>
+                      <th>Paid out</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.property_owners.map((o) => (
+                      <tr key={o.property_id}>
+                        <td>
+                          <Link href={`/dashboard/properties/${o.property_id}`}>{o.property_name}</Link>
+                          <div className="meta">{o.city}</div>
+                        </td>
+                        <td>{o.owner_name || <span className="meta">Not added</span>}</td>
+                        <td>{o.whatsapp || <span className="meta">Not added</span>}</td>
+                        <td>{o.upi_id || <span className="meta">Not added</span>}</td>
+                        <td>
+                          {o.bank ? (
+                            <>
+                              {o.bank.holder}
+                              <div className="meta">
+                                A/C {o.bank.account} · IFSC {o.bank.ifsc}
+                              </div>
+                            </>
+                          ) : (
+                            <span className="meta">Not added</span>
+                          )}
+                        </td>
+                        <td>{o.upi_id || o.bank ? money(o.due) : <span className="meta">Paid with {o.account_name}</span>}</td>
+                        <td>{money(o.paid_out)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <section className="prop-section">
             <h2>Due now</h2>
             {data.razorpayx_enabled && data.hosts.length > 0 && (
               <div style={{ margin: "0.4rem 0 0.8rem" }}>
@@ -191,7 +246,10 @@ function Payouts() {
                   Pay all hosts via Razorpay ({data.hosts.filter(canAuto).length} of {data.hosts.length})
                 </button>
                 {data.hosts.some((h) => !canAuto(h)) && (
-                  <p className="meta">Hosts with no UPI ID or bank account are skipped. Ask them to add one on their Payments page.</p>
+                  <p className="meta">
+                    Hosts with no UPI ID or bank account are skipped. Ask them to add one on their Payments page. Property owners' lines are paid by hand: use
+                    Mark as paid.
+                  </p>
                 )}
               </div>
             )}
@@ -210,24 +268,35 @@ function Payouts() {
             {data.hosts.length === 0 && <p className="meta">Nothing is due. Bookings appear here after the guest's check-in date.</p>}
             <ul className="rows">
               {data.hosts.map((h) => (
-                <li key={h.host_id} className="plain-row" style={{ display: "block" }}>
+                <li key={h.key} className="plain-row" style={{ display: "block" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
                     <div>
                       <p className="row-name">{h.host_name}</p>
-                      <p className="meta">{h.upi_id ? <>UPI ID: <b>{h.upi_id}</b></> : "This host has not saved a UPI ID yet. Ask them to add it on their Payments page."}</p>
+                      {h.property_id && <p className="meta">Owner of <b>{h.property_name}</b></p>}
+                      <p className="meta">
+                        {h.upi_id ? (
+                          <>
+                            UPI ID: <b>{h.upi_id}</b>
+                          </>
+                        ) : h.property_id ? (
+                          "No UPI ID saved for this owner."
+                        ) : (
+                          "This host has not saved a UPI ID yet. Ask them to add it on their Payments page."
+                        )}
+                      </p>
                       {h.bank && (
                         <p className="meta">
                           Bank: <b>{h.bank.holder}</b> · A/C <b>{h.bank.account}</b> · IFSC <b>{h.bank.ifsc}</b>
                         </p>
                       )}
-                      {h.phone && <p className="meta">Phone: {h.phone}</p>}
+                      {h.phone && <p className="meta">{h.property_id ? "WhatsApp" : "Phone"}: {h.phone}</p>}
                     </div>
                     <div className="right">
                       <p className="price">{money(h.amount)}</p>
                       <p className="meta">
                         {h.items.length} booking{h.items.length !== 1 ? "s" : ""}
                       </p>
-                      {open !== h.host_id && (
+                      {open !== h.key && (
                         <div className="actions">
                           {data.razorpayx_enabled && canAuto(h) && (
                             <button type="button" className="btn btn-primary btn-small" aria-busy={xBusy === h.host_id} onClick={() => payViaRazorpay([h])}>
@@ -244,14 +313,15 @@ function Payouts() {
                   <ul style={{ margin: "0.6rem 0 0", paddingLeft: "1.1rem" }}>
                     {h.items.map((i, n) => (
                       <li key={n} className="meta">
-                        {i.item} · {i.guest} · {prettyDate(i.start_date)} · {money(i.share)}
+                        {i.item}
+                        {i.owner_name ? ` (owner ${i.owner_name}, no UPI or bank saved)` : ""} · {i.guest} · {prettyDate(i.start_date)} · {money(i.share)}
                       </li>
                     ))}
                   </ul>
-                  {open === h.host_id && (
+                  {open === h.key && (
                     <div className="narrow" style={{ marginTop: "0.8rem" }}>
                       <p className="meta">
-                        After you have sent <b>{money(h.amount)}</b> to {h.upi_id || "the host"}, enter the transfer reference (UTR) from your UPI app or bank.
+                        After you have sent <b>{money(h.amount)}</b> to {h.upi_id || (h.bank ? `A/C ${h.bank.account}` : "the host")}, enter the transfer reference (UTR) from your UPI app or bank.
                       </p>
                       <label className="field">
                         <span>Transfer reference</span>

@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from ..auth import require_role
 from ..config import settings
 from ..db import get_conn
-from ..schemas import InventoryIn, PropertyIn, PropertyUpdate, RoomTypeIn, RoomTypeUpdate, coords_from_map_url
+from ..schemas import OWNER_FIELDS, InventoryIn, PropertyIn, PropertyUpdate, RoomTypeIn, RoomTypeUpdate, coords_from_map_url
 from ..storage import delete_image, save_image
 
 REMOVED_KEEP_DAYS = 30  # removed listings stay on the server this long before they are deleted
@@ -102,6 +102,11 @@ def create_property(body: PropertyIn, user: dict = Depends(owner_only)):
             (owner_id, body.name, body.type, body.description, body.city, body.address, lat, lng, body.map_url, body.nearby, status, body.advance_percent, body.min_notice_days),
         )
         pid = cur.fetchone()["id"]
+        if user["role"] == "admin":  # only admins record the real owner's contact and payout details
+            owner = {f: (getattr(body, f) or None) for f in OWNER_FIELDS}
+            if any(owner.values()):
+                sets = ", ".join(f"{col} = %s" for col in owner)
+                cur.execute(f"UPDATE properties SET {sets} WHERE id = %s", (*owner.values(), pid))
         for amenity_id in body.amenity_ids:
             cur.execute(
                 "INSERT INTO property_amenities (property_id, amenity_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
@@ -137,6 +142,9 @@ def my_property_detail(property_id: str, user: dict = Depends(owner_only)):
             (property_id,),
         )
         prop = cur.fetchone()
+        if user["role"] == "admin":  # the real owner's details are for the admin only
+            cur.execute(f"SELECT {', '.join(OWNER_FIELDS)} FROM properties WHERE id = %s", (property_id,))
+            prop["owner"] = cur.fetchone()
         cur.execute("SELECT id, url, position, status, reject_reason FROM property_photos WHERE property_id = %s ORDER BY position", (property_id,))
         prop["photos"] = cur.fetchall()
         cur.execute(
@@ -157,6 +165,10 @@ def my_property_detail(property_id: str, user: dict = Depends(owner_only)):
 def update_property(property_id: str, body: PropertyUpdate, user: dict = Depends(owner_only)):
     changes = body.model_dump(exclude_none=True)
     amenity_ids = changes.pop("amenity_ids", None)
+    owner = {f: changes.pop(f) for f in OWNER_FIELDS if f in changes}
+    if owner and user["role"] != "admin":
+        raise HTTPException(403, "Only the admin can change the owner's details")
+    changes.update({f: (v or None) for f, v in owner.items()})  # empty text clears the value
     if not changes and amenity_ids is None:
         raise HTTPException(400, "Nothing to change")
     with get_conn() as conn, conn.cursor() as cur:
@@ -475,9 +487,9 @@ def host_overview(user: dict = Depends(owner_only)):
             {"u": uid},
         )
         share = cur.fetchone()["share"]
-        cur.execute(f"SELECT COALESCE(sum(share), 0) AS due FROM ({_PAYOUT_READY}) r WHERE r.host_id = %s", (uid,))
+        cur.execute(f"SELECT COALESCE(sum(share), 0) AS due FROM ({_PAYOUT_READY}) r WHERE r.host_id = %s AND NOT r.separate", (uid,))
         due = cur.fetchone()["due"]
-        cur.execute("SELECT COALESCE(sum(amount), 0) AS paid FROM payouts WHERE host_id = %s AND status <> 'failed' AND paid_at > now() - interval '30 days'", (uid,))
+        cur.execute("SELECT COALESCE(sum(amount), 0) AS paid FROM payouts WHERE host_id = %s AND property_id IS NULL AND status <> 'failed' AND paid_at > now() - interval '30 days'", (uid,))
         paid_out = cur.fetchone()["paid"]
         cur.execute(
             mine

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "../../lib/api";
+import { useAuth } from "../AuthProvider";
 
 export const TYPES = [
   ["hotel", "Hotel"],
@@ -11,7 +12,14 @@ export const TYPES = [
 ];
 
 // Used for both "add property" and "edit property". `initial` is the saved property when editing.
+// The real owner's details. Only the admin sees and saves these (for properties listed on an owner's behalf).
+const OWNER_FIELDS = ["owner_name", "owner_whatsapp", "owner_upi", "owner_bank_account", "owner_bank_ifsc", "owner_bank_holder"];
+
 export default function PropertyForm({ initial, submitLabel, onSubmit }) {
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
+  const [owner, setOwner] = useState(() => Object.fromEntries(OWNER_FIELDS.map((f) => [f, initial?.owner?.[f] || ""])));
+  const setOwnerField = (k) => (e) => setOwner({ ...owner, [k]: e.target.value });
   const [form, setForm] = useState({
     name: initial?.name || "",
     type: initial?.type || "hotel",
@@ -54,6 +62,7 @@ export default function PropertyForm({ initial, submitLabel, onSubmit }) {
       advance_percent: Number(form.advance_percent),
       min_notice_days: Number(form.min_notice_days),
       amenity_ids: amenityIds,
+      ...(isAdmin ? Object.fromEntries(OWNER_FIELDS.map((f) => [f, owner[f].trim()])) : {}),
     });
     setBusy(false);
     if (err) setError(err);
@@ -127,6 +136,44 @@ export default function PropertyForm({ initial, submitLabel, onSubmit }) {
               <span>{a.name}</span>
             </label>
           ))}
+        </fieldset>
+      )}
+      {isAdmin && (
+        <fieldset className="stack">
+          <legend>Owner</legend>
+          <small className="meta">
+            Only you (the admin) see this. Booking and cancellation WhatsApp alerts go to the owner's number. With a UPI ID or bank account here, this
+            property's payouts show on the Host payouts page as their own line for this owner.
+          </small>
+          <div className="two">
+            <label className="field">
+              <span>Owner name</span>
+              <input type="text" value={owner.owner_name} onChange={setOwnerField("owner_name")} maxLength={100} autoComplete="off" />
+            </label>
+            <label className="field">
+              <span>Owner WhatsApp number</span>
+              <input type="tel" value={owner.owner_whatsapp} onChange={setOwnerField("owner_whatsapp")} placeholder="98765 43210" autoComplete="off" />
+            </label>
+          </div>
+          <label className="field">
+            <span>UPI ID</span>
+            <input type="text" value={owner.owner_upi} onChange={setOwnerField("owner_upi")} placeholder="name@bank" autoCapitalize="none" autoComplete="off" />
+          </label>
+          <div className="two">
+            <label className="field">
+              <span>Bank account number</span>
+              <input type="text" inputMode="numeric" value={owner.owner_bank_account} onChange={setOwnerField("owner_bank_account")} autoComplete="off" />
+            </label>
+            <label className="field">
+              <span>IFSC</span>
+              <input type="text" value={owner.owner_bank_ifsc} onChange={setOwnerField("owner_bank_ifsc")} placeholder="SBIN0001234" autoCapitalize="characters" autoComplete="off" />
+            </label>
+          </div>
+          <label className="field">
+            <span>Account holder name</span>
+            <input type="text" value={owner.owner_bank_holder} onChange={setOwnerField("owner_bank_holder")} autoComplete="off" />
+            <small>Fill in all three bank fields, or leave all three empty.</small>
+          </label>
         </fieldset>
       )}
       {error && (

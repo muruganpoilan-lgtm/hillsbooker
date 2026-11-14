@@ -131,7 +131,8 @@ def sync(payout_id: str) -> str:
 
 
 def pay_host(host_id: str, expected: Decimal, admin_id: str) -> dict:
-    """Pays one host everything that is ready for them. expected is the amount the screen showed."""
+    """Pays one host everything that is ready for them. expected is the amount the screen showed.
+    Properties whose real owner has their own payout details are left out: those are paid by hand to that owner."""
     from .routes.admin import _PAYOUT_READY  # imported here because routes.admin imports this module
 
     with get_conn() as conn, conn.cursor() as cur:
@@ -139,11 +140,11 @@ def pay_host(host_id: str, expected: Decimal, admin_id: str) -> dict:
         host = cur.fetchone()
         if not host:
             return _result(host_id, False, "Host not found")
-        cur.execute(f"SELECT payment_id, share FROM ({_PAYOUT_READY}) r WHERE r.host_id = %s", (host_id,))
+        cur.execute(f"SELECT payment_id, share FROM ({_PAYOUT_READY}) r WHERE r.host_id = %s AND NOT r.separate", (host_id,))
         ready = cur.fetchall()
         if ready:
             cur.execute("SELECT id FROM payments WHERE id = ANY(%s) FOR UPDATE", ([r["payment_id"] for r in ready],))
-            cur.execute(f"SELECT payment_id, share FROM ({_PAYOUT_READY}) r WHERE r.host_id = %s", (host_id,))
+            cur.execute(f"SELECT payment_id, share FROM ({_PAYOUT_READY}) r WHERE r.host_id = %s AND NOT r.separate", (host_id,))
             ready = cur.fetchall()
         total = sum((Decimal(r["share"]) for r in ready), Decimal(0))
         if total <= 0:

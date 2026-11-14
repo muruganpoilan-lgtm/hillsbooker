@@ -43,7 +43,8 @@ def _details(kind: str, booking_id: str):
     with get_conn() as conn, conn.cursor() as cur:
         if kind == "stay":
             cur.execute(
-                """SELECT h.id AS host_id, g.id AS guest_id, h.phone AS host_phone, h.name AS host_name, p.name AS item, g.name AS guest, g.phone AS guest_phone,
+                """SELECT h.id AS host_id, g.id AS guest_id, COALESCE(NULLIF(p.owner_whatsapp, ''), h.phone) AS host_phone,
+                          COALESCE(NULLIF(p.owner_name, ''), h.name) AS host_name, h.phone AS account_phone, p.name AS item, g.name AS guest, g.phone AS guest_phone,
                           b.check_in AS d1, b.check_out AS d2, rt.name AS what, b.rooms AS qty, b.guests AS people, b.children AS kids,
                           b.total_amount, COALESCE(b.advance_amount, b.total_amount) AS advance
                    FROM bookings b JOIN properties p ON p.id = b.property_id JOIN users h ON h.id = p.owner_id
@@ -53,7 +54,7 @@ def _details(kind: str, booking_id: str):
             )
         else:
             cur.execute(
-                """SELECT h.id AS host_id, g.id AS guest_id, h.phone AS host_phone, h.name AS host_name, v.name AS item, g.name AS guest, g.phone AS guest_phone,
+                """SELECT h.id AS host_id, g.id AS guest_id, h.phone AS host_phone, h.name AS host_name, h.phone AS account_phone, v.name AS item, g.name AS guest, g.phone AS guest_phone,
                           b.start_date AS d1, b.end_date AS d2, COALESCE(t.title, 'Hire by the day') AS what,
                           b.count AS qty, b.passengers AS people, 0 AS kids, b.total_amount, b.advance_amount AS advance
                    FROM vehicle_bookings b JOIN vehicles v ON v.id = b.vehicle_id JOIN users h ON h.id = v.operator_id
@@ -99,7 +100,9 @@ def _run(kind: str, booking_id: str, event: str) -> None:
         d = _details(kind, booking_id)
         if not d:
             return
-        to = wa_number(d["host_phone"])
+        # A UPI payment went to the listing account's own UPI ID, so that account checks it. Everything else goes to the
+        # property's owner (their own WhatsApp number when the admin saved one for the property).
+        to = wa_number(d["account_phone"] if event == "upi" else d["host_phone"])
         if not to:
             return  # the host hasn't saved a WhatsApp number yet
         when = _day(d["d1"]) if d["d1"] == d["d2"] else f"{_day(d['d1'])} to {_day(d['d2'])}"
@@ -169,7 +172,8 @@ def _host_copy(booking_id: str) -> None:
 
         with get_conn() as conn, conn.cursor() as cur:
             cur.execute(
-                """SELECT h.name AS host, h.phone AS host_phone, g.name AS guest, p.name AS property, b.check_in, b.check_out
+                """SELECT COALESCE(NULLIF(p.owner_name, ''), h.name) AS host, COALESCE(NULLIF(p.owner_whatsapp, ''), h.phone) AS host_phone,
+                          g.name AS guest, p.name AS property, b.check_in, b.check_out
                    FROM bookings b JOIN properties p ON p.id = b.property_id JOIN users h ON h.id = p.owner_id
                    JOIN users g ON g.id = b.user_id WHERE b.id = %s AND b.status = 'confirmed'""",
                 (booking_id,),

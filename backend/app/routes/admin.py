@@ -111,15 +111,18 @@ def restore_vehicle(vehicle_id: str, user: dict = Depends(admin_only)):
 
 # A payment is ready to pay out when it was paid online, is not paid out yet, its booking is confirmed and check-in has passed.
 # The host's share is what the guest paid, minus Hill Booker's commission, minus any refund.
+# "separate" marks a property whose real owner has their own UPI ID or bank account saved by the admin: its share is
+# paid to that owner on its own line, not to the account that holds the listing.
 _PAYOUT_READY = """
 SELECT pm.id AS payment_id, (pm.amount - pm.commission - pm.refunded_amount) AS share,
-       s.host_id, s.item, s.guest, s.start_date, s.end_date
+       s.host_id, s.item, s.guest, s.start_date, s.end_date, s.property_id, s.separate
 FROM payments pm
 JOIN (
-  SELECT 'stay' AS kind, b.id, b.status, p.name AS item, g.name AS guest, b.check_in AS start_date, b.check_out AS end_date, p.owner_id AS host_id
+  SELECT 'stay' AS kind, b.id, b.status, p.name AS item, g.name AS guest, b.check_in AS start_date, b.check_out AS end_date, p.owner_id AS host_id,
+         p.id AS property_id, (COALESCE(p.owner_upi, '') <> '' OR COALESCE(p.owner_bank_account, '') <> '') AS separate
   FROM bookings b JOIN properties p ON p.id = b.property_id JOIN users g ON g.id = b.user_id
   UNION ALL
-  SELECT 'vehicle', b.id, b.status, v.name, g.name, b.start_date, b.end_date, v.operator_id
+  SELECT 'vehicle', b.id, b.status, v.name, g.name, b.start_date, b.end_date, v.operator_id, NULL::uuid, false
   FROM vehicle_bookings b JOIN vehicles v ON v.id = b.vehicle_id JOIN users g ON g.id = b.user_id
 ) s ON (s.kind = 'stay' AND pm.booking_id = s.id) OR (s.kind = 'vehicle' AND pm.vehicle_booking_id = s.id)
 WHERE pm.status = 'paid' AND pm.provider IN ('razorpay', 'cashfree') AND pm.payout_id IS NULL
@@ -135,37 +138,81 @@ def _bank(r) -> dict | None:
     return {"holder": r["bank_holder"], "account": r["bank_account"], "ifsc": r["bank_ifsc"]}
 
 
+def _owner_payee(r) -> dict:
+    """The payout line for one property's real owner (details the admin saved on the property)."""
+    bank = None
+    if r.get("owner_bank_account"):
+        bank = {"holder": r["owner_bank_holder"], "account": r["owner_bank_account"], "ifsc": r["owner_bank_ifsc"]}
+    return {"host_id": str(r["host_id"]), "property_id": str(r["property_id"]), "property_name": r["item"],
+            "host_name": r["owner_name"] or f"Owner of {r['item']}", "upi_id": r["owner_upi"], "phone": r["owner_whatsapp"], "bank": bank}
+
+
 @router.get("/payouts")
 def payouts_overview(user: dict = Depends(admin_only)):
     with get_conn() as conn, conn.cursor() as cur:
-        cur.execute(f"SELECT r.*, h.name AS host_name, h.upi_id, h.phone, h.bank_holder, h.bank_account, h.bank_ifsc FROM ({_PAYOUT_READY}) r JOIN users h ON h.id = r.host_id ORDER BY h.name, r.start_date")
+        cur.execute(
+            f"""SELECT r.*, h.name AS host_name, h.upi_id, h.phone, h.bank_holder, h.bank_account, h.bank_ifsc,
+                       p.owner_name, p.owner_whatsapp, p.owner_upi, p.owner_bank_account, p.owner_bank_ifsc, p.owner_bank_holder
+                FROM ({_PAYOUT_READY}) r JOIN users h ON h.id = r.host_id LEFT JOIN properties p ON p.id = r.property_id
+                ORDER BY h.name, r.start_date"""
+        )
         rows = cur.fetchall()
         cur.execute(
-            """SELECT po.id, po.amount, po.upi_id, po.reference, po.paid_at, h.name AS host_name,
+            """SELECT po.id, po.amount, po.upi_id, po.reference, po.paid_at,
+                      CASE WHEN po.property_id IS NULL THEN h.name ELSE COALESCE(NULLIF(p.owner_name, ''), 'Owner') || ' (' || p.name || ')' END AS host_name,
                       po.method, po.status, po.failure_reason, po.destination
-               FROM payouts po JOIN users h ON h.id = po.host_id ORDER BY po.paid_at DESC LIMIT 100"""
+               FROM payouts po JOIN users h ON h.id = po.host_id LEFT JOIN properties p ON p.id = po.property_id
+               ORDER BY po.paid_at DESC LIMIT 100"""
         )
         history = cur.fetchall()
         cur.execute("SELECT COALESCE(sum(amount), 0) AS total FROM payouts WHERE status <> 'failed'")
         paid_total = cur.fetchone()["total"]
         cur.execute(
-            """SELECT u.id, u.name, u.phone, u.upi_id, u.bank_holder, u.bank_account, u.bank_ifsc, COALESCE((SELECT sum(amount) FROM payouts WHERE host_id = u.id AND status <> 'failed'), 0) AS paid_out
+            """SELECT u.id, u.name, u.phone, u.upi_id, u.bank_holder, u.bank_account, u.bank_ifsc,
+                      COALESCE((SELECT sum(amount) FROM payouts WHERE host_id = u.id AND property_id IS NULL AND status <> 'failed'), 0) AS paid_out
                FROM users u WHERE u.role IN ('owner', 'operator') ORDER BY u.name"""
         )
         everyone = cur.fetchall()
+        # Every property where the admin saved the real owner's details, so the admin can see where to pay each one.
+        cur.execute(
+            """SELECT p.id, p.name, p.city, p.status, p.owner_name, p.owner_whatsapp, p.owner_upi, p.owner_bank_account, p.owner_bank_ifsc, p.owner_bank_holder,
+                      h.name AS account_name,
+                      COALESCE((SELECT sum(amount) FROM payouts WHERE property_id = p.id AND status <> 'failed'), 0) AS paid_out
+               FROM properties p JOIN users h ON h.id = p.owner_id
+               WHERE p.status <> 'removed' AND (COALESCE(p.owner_name, '') <> '' OR COALESCE(p.owner_whatsapp, '') <> ''
+                     OR COALESCE(p.owner_upi, '') <> '' OR COALESCE(p.owner_bank_account, '') <> '')
+               ORDER BY p.name"""
+        )
+        owner_props = cur.fetchall()
     hosts: dict[str, dict] = {}
     for r in rows:
-        h = hosts.setdefault(str(r["host_id"]), {"host_id": str(r["host_id"]), "host_name": r["host_name"], "upi_id": r["upi_id"], "phone": r["phone"], "bank": _bank(r), "amount": Decimal(0), "items": []})
+        if r["separate"]:
+            key = f"p:{r['property_id']}"
+            base = _owner_payee(r)
+        else:
+            key = str(r["host_id"])
+            base = {"host_id": str(r["host_id"]), "property_id": None, "host_name": r["host_name"], "upi_id": r["upi_id"], "phone": r["phone"], "bank": _bank(r)}
+        h = hosts.setdefault(key, {**base, "key": key, "amount": Decimal(0), "items": []})
         h["amount"] += Decimal(r["share"])
-        h["items"].append({"item": r["item"], "guest": r["guest"], "start_date": r["start_date"], "end_date": r["end_date"], "share": r["share"]})
+        item = {"item": r["item"], "guest": r["guest"], "start_date": r["start_date"], "end_date": r["end_date"], "share": r["share"]}
+        if not r["separate"] and r["owner_name"]:
+            item["owner_name"] = r["owner_name"]  # owner saved, but no UPI or bank yet: paid with the account's other listings
+        h["items"].append(item)
     host_list = list(hosts.values())
     all_hosts = [
         {"host_id": str(e["id"]), "host_name": e["name"], "phone": e["phone"], "upi_id": e["upi_id"], "has_bank": bool(e["bank_account"]),
          "due": hosts[str(e["id"])]["amount"] if str(e["id"]) in hosts else Decimal(0), "paid_out": e["paid_out"]}
         for e in everyone
     ]
-    return {"all_hosts": all_hosts, "hosts": host_list, "due_total": sum((h["amount"] for h in host_list), Decimal(0)), "paid_total": paid_total, "history": history,
-            "razorpayx_enabled": razorpayx.enabled()}
+    property_owners = [
+        {"property_id": str(o["id"]), "property_name": o["name"], "city": o["city"], "status": o["status"], "account_name": o["account_name"],
+         "owner_name": o["owner_name"], "whatsapp": o["owner_whatsapp"], "upi_id": o["owner_upi"],
+         "bank": {"holder": o["owner_bank_holder"], "account": o["owner_bank_account"], "ifsc": o["owner_bank_ifsc"]} if o["owner_bank_account"] else None,
+         "due": hosts[f"p:{o['id']}"]["amount"] if f"p:{o['id']}" in hosts else Decimal(0), "paid_out": o["paid_out"]}
+        for o in owner_props
+    ]
+    return {"all_hosts": all_hosts, "property_owners": property_owners, "hosts": host_list, "due_total": sum((h["amount"] for h in host_list), Decimal(0)),
+            "paid_total": paid_total, "history": history, "razorpayx_enabled": razorpayx.enabled()}
 
 
 class XItem(BaseModel):
@@ -239,6 +286,7 @@ class PayoutIn(BaseModel):
     host_id: str
     reference: str
     expected_amount: Decimal
+    property_id: str | None = None  # set when paying one property's own owner (their UPI or bank saved on the property)
 
 
 @router.post("/payouts")
@@ -249,15 +297,23 @@ def record_payout(body: PayoutIn, user: dict = Depends(admin_only)):
     if not re.fullmatch(r"[A-Za-z0-9]{6,30}", ref):
         raise HTTPException(400, "Enter the reference of your transfer (letters and numbers only, 6 to 30 characters)")
     with get_conn() as conn, conn.cursor() as cur:
-        cur.execute("SELECT upi_id FROM users WHERE id = %s", (body.host_id,))
-        host = cur.fetchone()
-        if not host:
-            raise HTTPException(404, "Host not found")
-        cur.execute(f"SELECT payment_id, share FROM ({_PAYOUT_READY}) r WHERE r.host_id = %s", (body.host_id,))
+        if body.property_id:
+            cur.execute("SELECT owner_id AS host_id, owner_upi AS upi_id FROM properties WHERE id = %s", (body.property_id,))
+            host = cur.fetchone()
+            if not host or str(host["host_id"]) != body.host_id:
+                raise HTTPException(404, "Property not found")
+            where, args = "r.property_id = %s AND r.separate", (body.property_id,)
+        else:
+            cur.execute("SELECT upi_id FROM users WHERE id = %s", (body.host_id,))
+            host = cur.fetchone()
+            if not host:
+                raise HTTPException(404, "Host not found")
+            where, args = "r.host_id = %s AND NOT r.separate", (body.host_id,)
+        cur.execute(f"SELECT payment_id, share FROM ({_PAYOUT_READY}) r WHERE {where}", args)
         ready = cur.fetchall()
         if ready:
             cur.execute("SELECT id FROM payments WHERE id = ANY(%s) FOR UPDATE", ([r["payment_id"] for r in ready],))
-            cur.execute(f"SELECT payment_id, share FROM ({_PAYOUT_READY}) r WHERE r.host_id = %s", (body.host_id,))
+            cur.execute(f"SELECT payment_id, share FROM ({_PAYOUT_READY}) r WHERE {where}", args)
             ready = cur.fetchall()
         total = sum((Decimal(r["share"]) for r in ready), Decimal(0))
         if total <= 0:
@@ -265,8 +321,8 @@ def record_payout(body: PayoutIn, user: dict = Depends(admin_only)):
         if total != body.expected_amount:
             raise HTTPException(409, f"The amount due changed to Rs {total:,.2f} since you opened this page. Refresh and check before paying")
         cur.execute(
-            "INSERT INTO payouts (host_id, amount, upi_id, reference, created_by) VALUES (%s, %s, %s, %s, %s) RETURNING id, paid_at",
-            (body.host_id, total, host["upi_id"], ref, user["id"]),
+            "INSERT INTO payouts (host_id, amount, upi_id, reference, created_by, property_id) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id, paid_at",
+            (body.host_id, total, host["upi_id"], ref, user["id"], body.property_id),
         )
         po = cur.fetchone()
         cur.execute("UPDATE payments SET payout_id = %s WHERE id = ANY(%s)", (po["id"], [r["payment_id"] for r in ready]))
