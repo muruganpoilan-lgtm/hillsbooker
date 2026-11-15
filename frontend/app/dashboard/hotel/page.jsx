@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../../../components/AuthProvider";
 import Guard from "../../../components/dashboard/Guard";
-import HotelHead, { IdFields, listDays, num, useHotel } from "../../../components/dashboard/HotelHead";
+import HotelHead, { IdFields, IdPhotoPicker, listDays, num, sendPickedPhotos, useHotel } from "../../../components/dashboard/HotelHead";
 import { addDays, api, money, nightsBetween, plural, prettyDate } from "../../../lib/api";
 
 const STATUS = { free: "Free", occupied: "Occupied", cleaning: "Cleaning", repair: "Under repair" };
@@ -130,7 +130,7 @@ function Rooms() {
     setMsg({ text: "", bad: false });
     setCin({
       room: r, who: "new", name: "", phone: "", people: "1", check_out: out,
-      total_amount: r.base_price ? String(Number(r.base_price)) : "", touched: false, paid_amount: "", note: "", address: "", id_type: "", id_number: "",
+      total_amount: r.base_price ? String(Number(r.base_price)) : "", touched: false, paid_amount: "", note: "", address: "", id_type: "", id_number: "", photos: { front: null, back: null },
     });
     setTimeout(() => document.getElementById("checkin-form")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   }
@@ -167,7 +167,16 @@ function Rooms() {
         ? { text: `${cin.name.trim()} checked in to ${r.label}. Careful: Hill Booker had no free ${r.room_type} room left on ${listDays(d.full_nights)}. Check your online bookings for those nights.`, bad: true }
         : `${cin.name.trim()} checked in to ${r.label}.${r.room_type_id ? " Those nights are now closed on Hill Booker for this room." : ""}`
     );
-    if (res) setCin(null);
+    if (res) {
+      const photos = cin.photos;
+      setCin(null);
+      if (photos.front || photos.back) {
+        setBusy(true);
+        const err = await sendPickedPhotos(`/hotel/guests/${res.data.id}`, photos, token);
+        setBusy(false);
+        if (err) setMsg({ text: err, bad: true });
+      }
+    }
   }
 
   const rooms = data ? data.rooms : [];
@@ -301,6 +310,7 @@ function Rooms() {
                           <input type="number" min="0" step="1" inputMode="decimal" value={cin.paid_amount} onChange={(e) => setCin({ ...cin, paid_amount: e.target.value })} placeholder="0" />
                         </label>
                         <IdFields value={cin} onChange={setCin} />
+                        <IdPhotoPicker files={cin.photos} onChange={(photos) => setCin({ ...cin, photos })} idType={cin.id_type} />
                         <label className="field mh-wide">
                           <span>Note (optional)</span>
                           <input value={cin.note} maxLength={300} onChange={(e) => setCin({ ...cin, note: e.target.value })} />

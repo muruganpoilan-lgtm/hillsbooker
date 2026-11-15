@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "../../../../components/AuthProvider";
 import Guard from "../../../../components/dashboard/Guard";
-import HotelHead, { IdFields, downloadFile, idName, listDays, num, useHotel } from "../../../../components/dashboard/HotelHead";
+import HotelHead, { IdFields, IdPhotoPicker, IdPhotos, downloadFile, idName, listDays, num, sendPickedPhotos, useHotel } from "../../../../components/dashboard/HotelHead";
 import { addDays, api, money, plural, prettyDate, todayISO } from "../../../../lib/api";
 
 const day = (v) => String(v).slice(0, 10);
@@ -18,6 +18,7 @@ function Guests() {
   const [data, setData] = useState(null);
   const [rooms, setRooms] = useState([]);
   const [form, setForm] = useState(blank);
+  const [photos, setPhotos] = useState({ front: null, back: null }); // ID photos chosen for a guest not saved yet
   const [editId, setEditId] = useState(""); // walk-in guest being edited
   const [extra, setExtra] = useState(null); // Hill Booker booking being edited: {id, room_id, collected, note, due, address, id_type, id_number}
   const [onlyToday, setOnlyToday] = useState(false);
@@ -93,8 +94,18 @@ function Guests() {
       ? await send(`/hotel/guests/${editId}`, { method: "PATCH", body }, `${form.name.trim()} updated.`)
       : await send(`/hotel/${pid}/guests`, { method: "POST", body }, `${form.name.trim()} added to the register.`);
     if (res) {
+      const picked = photos;
+      const wasNew = !editId;
       setEditId("");
       setForm(blank());
+      setPhotos({ front: null, back: null });
+      if (wasNew && (picked.front || picked.back)) {
+        setBusy(true);
+        const err = await sendPickedPhotos(`/hotel/guests/${res.data.id}`, picked, token);
+        setBusy(false);
+        if (err) setMsg({ text: err, bad: true });
+        load();
+      }
     }
   }
 
@@ -231,6 +242,7 @@ function Guests() {
                           {g.address ? ` · ${g.address}` : ""}
                         </p>
                       )}
+                      {g.id_photos && g.id_photos.length > 0 && <p className="meta">ID photo saved: {g.id_photos.join(" and ")}</p>}
                       {g.note && <p className="meta">Note: {g.note}</p>}
                       {hb && extra && extra.id === g.id && (
                         <form className="mh-form mh-inline" onSubmit={saveExtra}>
@@ -250,6 +262,7 @@ function Guests() {
                             <input type="number" min="0" max={due} step="1" inputMode="decimal" value={extra.collected} onChange={(e) => setExtra({ ...extra, collected: e.target.value })} />
                           </label>
                           <IdFields value={extra} onChange={setExtra} />
+                          <IdPhotos base={`/hotel/bookings/${g.id}`} have={g.id_photos} token={token} onChanged={load} idType={extra.id_type} />
                           <label className="field mh-wide">
                             <span>Note (optional)</span>
                             <input value={extra.note} maxLength={300} onChange={(e) => setExtra({ ...extra, note: e.target.value })} />
@@ -352,6 +365,11 @@ function Guests() {
                 <input type="number" min="0" step="1" inputMode="decimal" value={form.paid_amount} onChange={set("paid_amount")} placeholder="0" />
               </label>
               <IdFields value={form} onChange={setForm} />
+              {editId ? (
+                <IdPhotos base={`/hotel/guests/${editId}`} have={(all.find((x) => x.source === "walkin" && x.id === editId) || {}).id_photos} token={token} onChanged={load} idType={form.id_type} />
+              ) : (
+                <IdPhotoPicker files={photos} onChange={setPhotos} idType={form.id_type} />
+              )}
               <label className="field mh-wide">
                 <span>Note (optional)</span>
                 <input value={form.note} maxLength={300} onChange={set("note")} />

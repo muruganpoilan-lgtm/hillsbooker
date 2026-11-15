@@ -11,12 +11,13 @@ from typing import Literal
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field, model_validator
 
 from ..auth import require_role
 from ..db import get_conn
+from ..storage import _real_type
 
 router = APIRouter(prefix="/hotel", tags=["manage my hotel"])
 host = require_role("owner", "operator", "admin")
@@ -32,6 +33,8 @@ IdType = Literal["aadhaar", "voter", "driving", "passport", "pan", "other"]
 ID_NAMES = {"aadhaar": "Aadhaar (last 4 digits)", "voter": "Voter ID", "driving": "Driving licence", "passport": "Passport",
             "pan": "PAN card", "other": "Other ID"}
 MAX_NIGHTS = 366
+MAX_ID_PHOTO_BYTES = 3 * 1024 * 1024  # the website shrinks photos before sending, so real ones are far smaller
+Side = Literal["front", "back"]
 AttendanceStatus = Literal["present", "absent", "half", "leave"]
 
 
@@ -481,7 +484,8 @@ def _load_guests(cur, property_id, start: date, end: date) -> list[dict]:
         """SELECT 'hillbooker' AS source, b.id, u.name, u.phone, b.check_in, b.check_out, b.guests AS people, b.rooms,
                   rt.name AS room_type, r.id AS room_id, r.label AS room, b.total_amount,
                   COALESCE(b.advance_amount, b.total_amount) AS paid_online, COALESCE(e.collected, 0) AS collected, e.note,
-                  e.address, e.id_type, e.id_number, e.checked_out_at
+                  e.address, e.id_type, e.id_number, e.checked_out_at,
+                  ARRAY(SELECT ph.side FROM hotel_id_photos ph WHERE ph.booking_id = b.id ORDER BY ph.side DESC) AS id_photos
            FROM bookings b
            JOIN users u ON u.id = b.user_id
            JOIN room_types rt ON rt.id = b.room_type_id
@@ -495,7 +499,8 @@ def _load_guests(cur, property_id, start: date, end: date) -> list[dict]:
         """SELECT 'walkin' AS source, g.id, g.name, g.phone, g.check_in, g.check_out, g.people, 1 AS rooms,
                   rt.name AS room_type, r.id AS room_id, r.label AS room, g.total_amount,
                   0::numeric AS paid_online, g.paid_amount AS collected, g.note,
-                  g.address, g.id_type, g.id_number, g.checked_out_at
+                  g.address, g.id_type, g.id_number, g.checked_out_at,
+                  ARRAY(SELECT ph.side FROM hotel_id_photos ph WHERE ph.guest_id = g.id ORDER BY ph.side DESC) AS id_photos
            FROM hotel_guests g
            LEFT JOIN hotel_rooms r ON r.id = g.room_id
            LEFT JOIN room_types rt ON rt.id = r.room_type_id
@@ -708,6 +713,85 @@ def check_out_booking(booking_id: UUID, user: dict = Depends(host)):
         if room:
             _mark_room(cur, room, "cleaning")
     return {"id": str(booking_id)}
+
+
+# ---------- ID proof photos ----------
+# Stored in the database and sent only to the logged-in owner of the property. Never written to the public uploads folder.
+
+def _photo_owner(cur, kind: str, record_id, user: dict) -> str:
+    """Checks the guest or booking belongs to this host. Returns the column the photo hangs on."""
+    if kind == "guests":
+        _my_guest(cur, record_id, user)
+        return "guest_id"
+    cur.execute("SELECT property_id FROM bookings WHERE id = %s", (str(record_id),))
+    b = cur.fetchone()
+    if not b:
+        raise HTTPException(404, "Booking not found")
+    _mine(cur, b["property_id"], user)
+    return "booking_id"
+
+
+def _save_id_photo(kind: str, record_id, side: str, file: UploadFile, user: dict) -> dict:
+    data = file.file.read(MAX_ID_PHOTO_BYTES + 1)
+    if len(data) > MAX_ID_PHOTO_BYTES:
+        raise HTTPException(413, "That photo is too large. Take it again, or choose a smaller one")
+    if not data:
+        raise HTTPException(400, "That file is empty")
+    mime = _real_type(data[:16])  # trust the file's content, not its name
+    if mime is None:
+        raise HTTPException(400, "That file isn't a JPG, PNG or WebP photo")
+    with get_conn() as conn, conn.cursor() as cur:
+        col = _photo_owner(cur, kind, record_id, user)
+        cur.execute(f"DELETE FROM hotel_id_photos WHERE {col} = %s AND side = %s", (str(record_id), side))
+        cur.execute(f"INSERT INTO hotel_id_photos ({col}, side, mime, data) VALUES (%s, %s, %s, %s)", (str(record_id), side, mime, data))
+    return {"side": side, "saved": True}
+
+
+def _get_id_photo(kind: str, record_id, side: str, user: dict) -> Response:
+    with get_conn() as conn, conn.cursor() as cur:
+        col = _photo_owner(cur, kind, record_id, user)
+        cur.execute(f"SELECT mime, data FROM hotel_id_photos WHERE {col} = %s AND side = %s", (str(record_id), side))
+        row = cur.fetchone()
+    if not row:
+        raise HTTPException(404, "No photo saved")
+    return Response(bytes(row["data"]), media_type=row["mime"], headers={"Cache-Control": "private, no-store"})
+
+
+def _delete_id_photo(kind: str, record_id, side: str, user: dict) -> dict:
+    with get_conn() as conn, conn.cursor() as cur:
+        col = _photo_owner(cur, kind, record_id, user)
+        cur.execute(f"DELETE FROM hotel_id_photos WHERE {col} = %s AND side = %s", (str(record_id), side))
+    return {"side": side, "deleted": True}
+
+
+@router.put("/guests/{guest_id}/id-photo/{side}")
+def save_guest_id_photo(guest_id: UUID, side: Side, file: UploadFile = File(...), user: dict = Depends(host)):
+    return _save_id_photo("guests", guest_id, side, file, user)
+
+
+@router.get("/guests/{guest_id}/id-photo/{side}")
+def get_guest_id_photo(guest_id: UUID, side: Side, user: dict = Depends(host)):
+    return _get_id_photo("guests", guest_id, side, user)
+
+
+@router.delete("/guests/{guest_id}/id-photo/{side}")
+def delete_guest_id_photo(guest_id: UUID, side: Side, user: dict = Depends(host)):
+    return _delete_id_photo("guests", guest_id, side, user)
+
+
+@router.put("/bookings/{booking_id}/id-photo/{side}")
+def save_booking_id_photo(booking_id: UUID, side: Side, file: UploadFile = File(...), user: dict = Depends(host)):
+    return _save_id_photo("bookings", booking_id, side, file, user)
+
+
+@router.get("/bookings/{booking_id}/id-photo/{side}")
+def get_booking_id_photo(booking_id: UUID, side: Side, user: dict = Depends(host)):
+    return _get_id_photo("bookings", booking_id, side, user)
+
+
+@router.delete("/bookings/{booking_id}/id-photo/{side}")
+def delete_booking_id_photo(booking_id: UUID, side: Side, user: dict = Depends(host)):
+    return _delete_id_photo("bookings", booking_id, side, user)
 
 
 # ---------- staff ----------
@@ -1038,18 +1122,19 @@ def guests_xlsx(property_id: UUID, date_from: str | None = Query(None, alias="fr
     data = [
         [r["check_in"], r["check_out"], _text(r["name"]), _text(r["phone"]), "Hill Booker" if r["source"] == "hillbooker" else "Direct",
          _text(r["room"] or r["room_type"]), r["people"], float(r["total_amount"]), float(r["paid_online"]), float(r["collected"]),
-         float(r["balance"]), _text(r["address"]), ID_NAMES.get(r["id_type"], ""), _text(r["id_number"]), _text(r["note"])]
+         float(r["balance"]), _text(r["address"]), ID_NAMES.get(r["id_type"], ""), _text(r["id_number"]),
+         " and ".join(r["id_photos"]) if r["id_photos"] else "", _text(r["note"])]
         for r in rows
     ]
     t = _guest_totals(rows)
     data.append(["", "", "Total", "", "", "", "", float(t["total"]), float(sum((Decimal(r["paid_online"]) for r in rows), ZERO)),
-                 float(sum((Decimal(r["collected"]) for r in rows), ZERO)), float(t["balance"]), "", "", "", ""])
+                 float(sum((Decimal(r["collected"]) for r in rows), ZERO)), float(t["balance"]), "", "", "", "", ""])
     return _xlsx(
         f"{prop['name']}: guest register",
         f"Stays between {start:%d %b %Y} and {end:%d %b %Y}. Amounts in rupees.",
         [{"name": "Guests", "headers": ["Check-in", "Check-out", "Guest", "Phone", "Booked through", "Room", "People", "Total", "Paid online",
-                                        "Paid at property", "Balance", "Address", "ID proof", "ID number", "Note"],
-          "rows": data, "money": (8, 9, 10, 11), "dates": (1, 2), "widths": {3: 26, 4: 16, 6: 20, 12: 36, 13: 24, 14: 18, 15: 34},
+                                        "Paid at property", "Balance", "Address", "ID proof", "ID number", "ID photo saved", "Note"],
+          "rows": data, "money": (8, 9, 10, 11), "dates": (1, 2), "widths": {3: 26, 4: 16, 6: 20, 12: 36, 13: 24, 14: 18, 15: 16, 16: 34},
           "total_row": True}],
         f"guest-register-{start:%Y%m%d}-{end:%Y%m%d}.xlsx",
     )

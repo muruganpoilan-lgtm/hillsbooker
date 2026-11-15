@@ -193,3 +193,197 @@ export function listDays(days) {
   });
   return names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names[0] || "";
 }
+
+// ---------- photos of the guest's ID proof ----------
+const SIDES = [
+  ["front", "Front"],
+  ["back", "Back"],
+];
+
+// Shrinks a photo in the browser before it is sent: longest side 1600 px, saved as JPEG. Phone photos drop from several MB to well under 1 MB.
+export async function shrinkPhoto(file) {
+  try {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(bmp.width * scale));
+    c.height = Math.max(1, Math.round(bmp.height * scale));
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise((done) => c.toBlob(done, "image/jpeg", 0.82));
+    return blob || file;
+  } catch {
+    return file;
+  }
+}
+
+// Sends one ID photo. base is "/hotel/guests/<id>" or "/hotel/bookings/<id>". Returns an error message, or "" when saved.
+export async function uploadIdPhoto(base, side, file, token) {
+  const form = new FormData();
+  form.append("file", await shrinkPhoto(file), "id.jpg");
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${base}/id-photo/${side}`, { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: form });
+  } catch {
+    return "Can't reach the Hill Booker server. Try the photo again.";
+  }
+  if (res.ok) return "";
+  const body = await res.json().catch(() => ({}));
+  return typeof body.detail === "string" ? body.detail : "The photo could not be saved. Try again.";
+}
+
+function PhotoButton({ label, onPick, disabled }) {
+  // On a phone this opens the camera; on a computer it opens the file chooser.
+  return (
+    <label className={`btn btn-small mh-photo-btn${disabled ? " off" : ""}`}>
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="sr-only"
+        disabled={disabled}
+        onChange={(e) => {
+          const f = e.target.files && e.target.files[0];
+          e.target.value = "";
+          if (f) onPick(f);
+        }}
+      />
+      {label}
+    </label>
+  );
+}
+
+function AadhaarNote({ idType }) {
+  return idType === "aadhaar" ? <p className="meta">For Aadhaar, photograph only a masked Aadhaar (the copy with the first 8 digits hidden).</p> : null;
+}
+
+// For a guest who is not saved yet (check-in and "add guest" forms): keeps the chosen photos until the guest is saved.
+// files = {front: File|null, back: File|null}
+export function IdPhotoPicker({ files, onChange, idType }) {
+  const [urls, setUrls] = useState({});
+  useEffect(() => {
+    const next = {};
+    for (const [k] of SIDES) if (files[k]) next[k] = URL.createObjectURL(files[k]);
+    setUrls(next);
+    return () => Object.values(next).forEach((u) => URL.revokeObjectURL(u));
+  }, [files]);
+  return (
+    <div className="mh-wide mh-photos">
+      <span className="field-label">Photo of the ID proof (optional)</span>
+      <div className="mh-photo-row">
+        {SIDES.map(([k, name]) => (
+          <div key={k} className="mh-photo">
+            {urls[k] ? <img src={urls[k]} alt={`${name} of the ID proof`} /> : <div className="mh-photo-empty">{name}</div>}
+            <div className="actions">
+              <PhotoButton label={files[k] ? `Retake ${name.toLowerCase()}` : `Add ${name.toLowerCase()} photo`} onPick={(f) => onChange({ ...files, [k]: f })} />
+              {files[k] && (
+                <button type="button" className="link-btn mh-del" onClick={() => onChange({ ...files, [k]: null })}>
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      <AadhaarNote idType={idType} />
+      <p className="meta">Only you can open these photos. They are not shown to guests, other hosts or the public.</p>
+    </div>
+  );
+}
+
+// For a saved guest or booking: shows, adds, replaces and removes the ID photos. have = ["front", "back"] sides already saved.
+export function IdPhotos({ base, have, token, onChanged, idType }) {
+  const [urls, setUrls] = useState({});
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  const key = (have || []).join(",");
+
+  useEffect(() => {
+    let off = false;
+    const made = [];
+    setUrls({});
+    (async () => {
+      for (const side of key ? key.split(",") : []) {
+        try {
+          const res = await fetch(`${API_BASE}${base}/id-photo/${side}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+          if (!res.ok) continue;
+          const u = URL.createObjectURL(await res.blob());
+          made.push(u);
+          if (!off) setUrls((cur) => ({ ...cur, [side]: u }));
+        } catch {}
+      }
+    })();
+    return () => {
+      off = true;
+      made.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, [base, key, token]);
+
+  async function pick(side, file) {
+    setBusy(side);
+    setError("");
+    const err = await uploadIdPhoto(base, side, file, token);
+    setBusy("");
+    if (err) return setError(err);
+    onChanged();
+  }
+
+  async function remove(side) {
+    if (!window.confirm("Delete this ID photo? This cannot be undone.")) return;
+    setBusy(side);
+    const res = await api(`${base}/id-photo/${side}`, { method: "DELETE", token });
+    setBusy("");
+    if (!res.ok) return setError(res.error);
+    onChanged();
+  }
+
+  return (
+    <div className="mh-wide mh-photos">
+      <span className="field-label">Photo of the ID proof</span>
+      <div className="mh-photo-row">
+        {SIDES.map(([k, name]) => {
+          const saved = (have || []).includes(k);
+          return (
+            <div key={k} className="mh-photo">
+              {saved ? (
+                urls[k] ? (
+                  <a href={urls[k]} target="_blank" rel="noreferrer" title="Open the photo">
+                    <img src={urls[k]} alt={`${name} of the ID proof`} />
+                  </a>
+                ) : (
+                  <div className="mh-photo-empty">Loading…</div>
+                )
+              ) : (
+                <div className="mh-photo-empty">{name}</div>
+              )}
+              <div className="actions">
+                <PhotoButton label={busy === k ? "Saving…" : saved ? `Replace ${name.toLowerCase()}` : `Add ${name.toLowerCase()} photo`} onPick={(f) => pick(k, f)} disabled={!!busy} />
+                {saved && (
+                  <button type="button" className="link-btn mh-del" onClick={() => remove(k)} disabled={!!busy}>
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+      <AadhaarNote idType={idType} />
+      <p className="meta">Only you can open these photos. They are not shown to guests, other hosts or the public.</p>
+    </div>
+  );
+}
+
+// After a new guest is saved: send the photos chosen in the form. Returns an error message, or "".
+export async function sendPickedPhotos(base, files, token) {
+  for (const [k] of SIDES) {
+    if (!files[k]) continue;
+    const err = await uploadIdPhoto(base, k, files[k], token);
+    if (err) return `The guest is saved, but the ${k} ID photo was not: ${err} Add it again from the Guest register.`;
+  }
+  return "";
+}

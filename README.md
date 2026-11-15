@@ -126,6 +126,9 @@ and a monthly salary sheet. Records belong to one property and only the account 
 - Check-in and check-out are done from the room board. A walk-in guest checked in to a room takes one room of that type off sale
   on Hill Booker for each night (`hotel_guest_nights`, the same idea as `external_nights`); check-out, a shorter stay or deleting
   the guest gives the nights back. If no room was open online that night, the host is warned about a possible double booking.
-- Guest address and ID proof can be noted. For Aadhaar only the last 4 digits are accepted and stored; ID photos are not stored.
+- Guest address and ID proof can be noted. For Aadhaar only the last 4 digits are accepted and stored.
+- ID proof photos (front and back) are kept in the database table `hotel_id_photos`, never in the public uploads folder, and are
+  sent only to the logged-in account that holds the property. The website shrinks each photo to 1600 px before sending.
+  Existing database: also run `db/migrations/034_hotel_id_photos.sql`.
 - Existing database: run `db/migrations/032_hotel_manager.sql`, then `db/migrations/033_hotel_checkin.sql`, e.g.
   `docker compose -f docker-compose.prod.yml exec -T db psql -U roomly -d roomly < db/migrations/033_hotel_checkin.sql`

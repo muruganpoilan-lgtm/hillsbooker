@@ -785,3 +785,14 @@ label.btn[aria-busy="true"] { opacity: 0.7; cursor: progress; }
 .mh-roomtable td.n .mh-links { justify-content: flex-end; }
 .mh-tag { display: inline-block; margin-left: 0.6rem; vertical-align: middle; font-family: var(--font-body), system-ui, sans-serif; font-size: 0.78rem; font-weight: 700; padding: 0.05rem 0.55rem; border-radius: 99px; background: var(--line); color: var(--ink-soft); }
 .mh-tag-in { background: #dff1e4; color: var(--green-dark); }
+
+/* Manage my hotel: ID proof photos */
+.mh-photos { display: grid; gap: 0.45rem; }
+.mh-photo-row { display: grid; gap: 0.8rem; grid-template-columns: repeat(auto-fit, minmax(11rem, 15rem)); }
+.mh-photo { display: grid; gap: 0.45rem; align-content: start; }
+.mh-photo img, .mh-photo-empty { width: 100%; aspect-ratio: 8 / 5; border-radius: var(--radius); border: 1px solid var(--line); background: var(--chalk); object-fit: cover; display: block; }
+.mh-photo-empty { display: grid; place-items: center; color: var(--ink-soft); font-weight: 600; border-style: dashed; }
+.mh-photo .actions { align-items: center; }
+.mh-photo-btn { cursor: pointer; }
+.mh-photo-btn.off { opacity: 0.6; cursor: progress; }
+.mh-photo-btn:focus-within { outline: 3px solid var(--indigo); outline-offset: 2px; }
