@@ -28,6 +28,10 @@ MAX_MONEY = Decimal("10000000")
 ZERO = Decimal(0)
 
 RoomStatus = Literal["free", "occupied", "cleaning", "repair"]
+IdType = Literal["aadhaar", "voter", "driving", "passport", "pan", "other"]
+ID_NAMES = {"aadhaar": "Aadhaar (last 4 digits)", "voter": "Voter ID", "driving": "Driving licence", "passport": "Passport",
+            "pan": "PAN card", "other": "Other ID"}
+MAX_NIGHTS = 366
 AttendanceStatus = Literal["present", "absent", "half", "leave"]
 
 
@@ -41,6 +45,135 @@ def _clean(v: str | None) -> str | None:
         return None
     v = v.strip()
     return v or None
+
+
+def _check_id(id_type: str | None, id_number: str | None) -> None:
+    """Hotels are not allowed to keep full Aadhaar numbers, so only the last 4 digits (masked Aadhaar) are accepted."""
+    if id_number and not id_type:
+        raise HTTPException(400, "Choose the type of ID proof")
+    if id_type == "aadhaar" and id_number and not (len(id_number) == 4 and id_number.isdigit()):
+        raise HTTPException(400, "For Aadhaar, enter only the last 4 digits")
+
+
+# ---------- walk-in guests and the rooms on sale online ----------
+# A walk-in guest in a room takes one room of that room type out of room_inventory for each night of the stay,
+# so Hill Booker cannot sell it again. hotel_guest_nights remembers which nights, so they can be given back.
+
+def _release_nights(cur, guest_id, from_day: date | None = None) -> None:
+    """Give a walk-in guest's nights (today onwards, or from_day onwards) back to the rooms on sale."""
+    start = max(from_day or _today(), _today())
+    cur.execute(
+        """SELECT n.day, n.room_type_id, n.applied, rt.total_rooms FROM hotel_guest_nights n
+           JOIN room_types rt ON rt.id = n.room_type_id WHERE n.guest_id = %s AND n.day >= %s ORDER BY n.day""",
+        (str(guest_id), start),
+    )
+    rows = cur.fetchall()
+    applied = [r["day"] for r in rows if r["applied"]]
+    if applied:
+        rt, total = str(rows[0]["room_type_id"]), rows[0]["total_rooms"]
+        cur.execute("SELECT day FROM room_inventory WHERE room_type_id = %s AND day = ANY(%s::date[]) ORDER BY day FOR UPDATE", (rt, applied))
+        cur.fetchall()
+        # Never open more than is really free: all rooms, minus bookings, other sites' nights and other walk-in guests.
+        cur.execute(
+            """UPDATE room_inventory ri SET available = LEAST(ri.available + 1, GREATEST(%(total)s
+                   - (SELECT COALESCE(SUM(b.rooms), 0) FROM bookings b WHERE b.room_type_id = ri.room_type_id
+                        AND b.status IN ('held', 'confirmed') AND b.check_in <= ri.day AND b.check_out > ri.day)
+                   - (SELECT COALESCE(SUM(x.wanted), 0) FROM external_nights x WHERE x.room_type_id = ri.room_type_id AND x.day = ri.day)
+                   - (SELECT count(*) FROM hotel_guest_nights n WHERE n.room_type_id = ri.room_type_id AND n.day = ri.day
+                        AND n.guest_id <> %(g)s), 0))
+               WHERE ri.room_type_id = %(rt)s AND ri.day = ANY(%(days)s::date[]) AND NOT ri.blocked""",
+            {"total": total, "g": str(guest_id), "rt": rt, "days": applied},
+        )
+    cur.execute("DELETE FROM hotel_guest_nights WHERE guest_id = %s AND day >= %s", (str(guest_id), start))
+
+
+def _hold_nights(cur, guest_id, room_id, check_in: date, check_out: date) -> list[date]:
+    """Take the guest's nights (today onwards) out of the rooms on sale. Returns the nights on which no room of
+    that type was open any more: on those, an online guest may already have the room."""
+    if not room_id:
+        return []
+    cur.execute("SELECT room_type_id FROM hotel_rooms WHERE id = %s", (str(room_id),))
+    row = cur.fetchone()
+    if not row or not row["room_type_id"]:
+        return []
+    rt = str(row["room_type_id"])
+    day, days = max(check_in, _today()), []
+    while day < check_out:
+        days.append(day)
+        day += timedelta(days=1)
+    if not days:
+        return []
+    cur.execute(
+        "SELECT day, available, blocked FROM room_inventory WHERE room_type_id = %s AND day = ANY(%s::date[]) ORDER BY day FOR UPDATE",
+        (rt, days),
+    )
+    inv = {r["day"]: r for r in cur.fetchall()}
+    full = []
+    for d in days:
+        r = inv.get(d)
+        took = bool(r and r["available"] > 0)
+        if took:
+            cur.execute("UPDATE room_inventory SET available = available - 1 WHERE room_type_id = %s AND day = %s", (rt, d))
+        elif r and not r["blocked"]:
+            full.append(d)  # the night was on sale and every room is already taken
+        cur.execute(
+            """INSERT INTO hotel_guest_nights (guest_id, room_type_id, day, applied) VALUES (%s, %s, %s, %s)
+               ON CONFLICT (guest_id, day) DO UPDATE SET room_type_id = EXCLUDED.room_type_id, applied = EXCLUDED.applied""",
+            (str(guest_id), rt, d, took),
+        )
+    return full
+
+
+def apply_waiting_holds(cur, room_type_id, start: date, end: date) -> None:
+    """Called when rooms come back on sale (a cancelled or expired booking). A walk-in guest who could not take a
+    night out of the rooms on sale, because none was open then, takes it now."""
+    cur.execute(
+        """SELECT n.guest_id, n.day FROM hotel_guest_nights n
+           JOIN room_inventory ri ON ri.room_type_id = n.room_type_id AND ri.day = n.day
+           WHERE n.room_type_id = %s AND n.day >= %s AND n.day < %s AND NOT n.applied AND ri.available > 0 AND NOT ri.blocked
+           ORDER BY n.day FOR UPDATE OF ri""",
+        (str(room_type_id), start, end),
+    )
+    for n in cur.fetchall():
+        cur.execute(
+            "UPDATE room_inventory SET available = available - 1 WHERE room_type_id = %s AND day = %s AND available > 0 RETURNING day",
+            (str(room_type_id), n["day"]),
+        )
+        if cur.fetchone():
+            cur.execute("UPDATE hotel_guest_nights SET applied = true WHERE guest_id = %s AND day = %s", (str(n["guest_id"]), n["day"]))
+
+
+def _room_is_taken(cur, room_id, check_in: date, check_out: date, skip_guest=None, skip_booking=None) -> str | None:
+    """The name of a guest already in this room for overlapping dates, if any."""
+    args = {"r": str(room_id), "in": check_in, "out": check_out}
+    not_me = ""
+    if skip_guest:
+        not_me, args["sg"] = " AND g.id <> %(sg)s", str(skip_guest)
+    cur.execute(
+        f"""SELECT g.name FROM hotel_guests g
+            WHERE g.room_id = %(r)s AND g.checked_out_at IS NULL AND g.check_in < %(out)s AND g.check_out > %(in)s{not_me} LIMIT 1""",
+        args,
+    )
+    row = cur.fetchone()
+    if row:
+        return row["name"]
+    args.pop("sg", None)
+    not_me = ""
+    if skip_booking:
+        not_me, args["sb"] = " AND b.id <> %(sb)s", str(skip_booking)
+    cur.execute(
+        f"""SELECT u.name FROM hotel_booking_extras e
+            JOIN bookings b ON b.id = e.booking_id JOIN users u ON u.id = b.user_id
+            WHERE e.room_id = %(r)s AND e.checked_out_at IS NULL AND b.status = 'confirmed'
+              AND b.check_in < %(out)s AND b.check_out > %(in)s{not_me} LIMIT 1""",
+        args,
+    )
+    row = cur.fetchone()
+    return row["name"] if row else None
+
+
+def _mark_room(cur, room_id, status: str) -> None:
+    cur.execute("UPDATE hotel_rooms SET status = %s WHERE id = %s", (status, str(room_id)))
 
 
 # ---------- who may see what ----------
@@ -128,21 +261,29 @@ def list_rooms(property_id: UUID, user: dict = Depends(host)):
         _mine(cur, property_id, user)
         cur.execute(
             """SELECT r.id, r.label, r.status, r.note, r.room_type_id, rt.name AS room_type,
-                      g.name AS guest_name, g.check_out AS guest_until
+                      rt.base_price, rt.max_guests, rt.bed_type, rt.bed_count,
+                      g.kind AS guest_kind, g.id AS guest_id, g.name AS guest_name, g.phone AS guest_phone,
+                      g.check_out AS guest_until, g.balance AS guest_balance
                FROM hotel_rooms r
                LEFT JOIN room_types rt ON rt.id = r.room_type_id
                LEFT JOIN LATERAL (
-                 SELECT x.name, x.check_out FROM (
-                   SELECT hg.name, hg.check_out FROM hotel_guests hg
-                    WHERE hg.room_id = r.id AND hg.check_in <= %(today)s AND hg.check_out > %(today)s
+                 -- Who is in the room now. A guest leaving today stays on the card until "Check out" is pressed.
+                 SELECT x.* FROM (
+                   SELECT 'walkin' AS kind, hg.id, hg.name, hg.phone, hg.check_out, hg.total_amount - hg.paid_amount AS balance
+                     FROM hotel_guests hg
+                    WHERE hg.room_id = r.id AND hg.checked_out_at IS NULL AND hg.check_in <= %(today)s AND hg.check_out >= %(today)s
                    UNION ALL
-                   SELECT u.name, b.check_out FROM hotel_booking_extras e
+                   SELECT 'hillbooker', b.id, u.name, u.phone, b.check_out,
+                          b.total_amount - COALESCE(b.advance_amount, b.total_amount) - e.collected
+                     FROM hotel_booking_extras e
                      JOIN bookings b ON b.id = e.booking_id JOIN users u ON u.id = b.user_id
-                    WHERE e.room_id = r.id AND b.status = 'confirmed' AND b.check_in <= %(today)s AND b.check_out > %(today)s
+                    WHERE e.room_id = r.id AND e.checked_out_at IS NULL AND b.status = 'confirmed'
+                      AND b.check_in <= %(today)s AND b.check_out >= %(today)s
                  ) x ORDER BY x.check_out LIMIT 1
                ) g ON true
                WHERE r.property_id = %(p)s
-               ORDER BY NULLIF(regexp_replace(r.label, '\\D', '', 'g'), '')::numeric NULLS LAST, lower(r.label)""",
+               ORDER BY lower(regexp_replace(r.label, '\\d+', '', 'g')),
+                        NULLIF(regexp_replace(r.label, '\\D', '', 'g'), '')::numeric NULLS LAST, lower(r.label)""",
             {"p": str(property_id), "today": today},
         )
         rooms = cur.fetchall()
@@ -156,7 +297,19 @@ def list_rooms(property_id: UUID, user: dict = Depends(host)):
             {"p": str(property_id), "today": today},
         )
         types = cur.fetchall()
-    return {"today": today, "rooms": rooms, "room_types": types}
+        # Hill Booker guests who are due in (or already staying) and have not been given a room yet.
+        cur.execute(
+            """SELECT b.id, u.name, u.phone, b.check_in, b.check_out, b.guests AS people, b.rooms, b.room_type_id, rt.name AS room_type,
+                      b.total_amount - COALESCE(b.advance_amount, b.total_amount) - COALESCE(e.collected, 0) AS balance
+               FROM bookings b JOIN users u ON u.id = b.user_id JOIN room_types rt ON rt.id = b.room_type_id
+               LEFT JOIN hotel_booking_extras e ON e.booking_id = b.id
+               WHERE b.property_id = %(p)s AND b.status = 'confirmed' AND b.check_in <= %(today)s AND b.check_out > %(today)s
+                 AND e.room_id IS NULL AND e.checked_out_at IS NULL
+               ORDER BY b.check_in, u.name""",
+            {"p": str(property_id), "today": today},
+        )
+        arrivals = cur.fetchall()
+    return {"today": today, "rooms": rooms, "room_types": types, "arrivals": arrivals}
 
 
 @router.post("/{property_id}/rooms", status_code=201)
@@ -264,11 +417,16 @@ class GuestIn(BaseModel):
     total_amount: Decimal = Field(default=ZERO, ge=0, le=MAX_MONEY, decimal_places=2)
     paid_amount: Decimal = Field(default=ZERO, ge=0, le=MAX_MONEY, decimal_places=2)
     note: str | None = Field(default=None, max_length=300)
+    address: str | None = Field(default=None, max_length=300)
+    id_type: IdType | None = None
+    id_number: str | None = Field(default=None, max_length=30)
 
     @model_validator(mode="after")
     def _check(self):
         if self.check_out <= self.check_in:
             raise ValueError("Check-out must be after check-in")
+        if (self.check_out - self.check_in).days > MAX_NIGHTS:
+            raise ValueError("A stay can be up to one year long")
         if self.paid_amount > self.total_amount:
             raise ValueError("The amount paid is more than the total")
         return self
@@ -284,12 +442,22 @@ class GuestUpdate(BaseModel):
     total_amount: Decimal | None = Field(default=None, ge=0, le=MAX_MONEY, decimal_places=2)
     paid_amount: Decimal | None = Field(default=None, ge=0, le=MAX_MONEY, decimal_places=2)
     note: str | None = Field(default=None, max_length=300)
+    address: str | None = Field(default=None, max_length=300)
+    id_type: IdType | None = None
+    id_number: str | None = Field(default=None, max_length=30)
 
 
 class BookingExtraIn(BaseModel):
     room_id: UUID | None = None
     collected: Decimal = Field(default=ZERO, ge=0, le=MAX_MONEY, decimal_places=2)
     note: str | None = Field(default=None, max_length=300)
+    address: str | None = Field(default=None, max_length=300)
+    id_type: IdType | None = None
+    id_number: str | None = Field(default=None, max_length=30)
+
+
+class BookingRoomIn(BaseModel):
+    room_id: UUID
 
 
 def _range(date_from: str | None, date_to: str | None) -> tuple[date, date]:
@@ -312,7 +480,8 @@ def _load_guests(cur, property_id, start: date, end: date) -> list[dict]:
     cur.execute(
         """SELECT 'hillbooker' AS source, b.id, u.name, u.phone, b.check_in, b.check_out, b.guests AS people, b.rooms,
                   rt.name AS room_type, r.id AS room_id, r.label AS room, b.total_amount,
-                  COALESCE(b.advance_amount, b.total_amount) AS paid_online, COALESCE(e.collected, 0) AS collected, e.note
+                  COALESCE(b.advance_amount, b.total_amount) AS paid_online, COALESCE(e.collected, 0) AS collected, e.note,
+                  e.address, e.id_type, e.id_number, e.checked_out_at
            FROM bookings b
            JOIN users u ON u.id = b.user_id
            JOIN room_types rt ON rt.id = b.room_type_id
@@ -325,7 +494,8 @@ def _load_guests(cur, property_id, start: date, end: date) -> list[dict]:
     cur.execute(
         """SELECT 'walkin' AS source, g.id, g.name, g.phone, g.check_in, g.check_out, g.people, 1 AS rooms,
                   rt.name AS room_type, r.id AS room_id, r.label AS room, g.total_amount,
-                  0::numeric AS paid_online, g.paid_amount AS collected, g.note
+                  0::numeric AS paid_online, g.paid_amount AS collected, g.note,
+                  g.address, g.id_type, g.id_number, g.checked_out_at
            FROM hotel_guests g
            LEFT JOIN hotel_rooms r ON r.id = g.room_id
            LEFT JOIN room_types rt ON rt.id = r.room_type_id
@@ -367,15 +537,26 @@ def add_guest(property_id: UUID, body: GuestIn, user: dict = Depends(host)):
         raise HTTPException(400, "Give the guest's name")
     with get_conn() as conn, conn.cursor() as cur:
         _mine(cur, property_id, user)
+        id_number = _clean(body.id_number)
+        _check_id(body.id_type, id_number)
         if body.room_id:
             _room_in_property(cur, body.room_id, property_id)
+            cur.execute("SELECT id FROM hotel_rooms WHERE id = %s FOR UPDATE", (str(body.room_id),))  # one check-in to a room at a time
+            other = _room_is_taken(cur, body.room_id, body.check_in, body.check_out)
+            if other:
+                raise HTTPException(409, f"{other} already has this room for those dates. Check them out first, or choose another room")
         cur.execute(
-            """INSERT INTO hotel_guests (property_id, room_id, name, phone, check_in, check_out, people, total_amount, paid_amount, note)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+            """INSERT INTO hotel_guests (property_id, room_id, name, phone, check_in, check_out, people, total_amount, paid_amount, note,
+                                         address, id_type, id_number)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
             (str(property_id), str(body.room_id) if body.room_id else None, name, _clean(body.phone), body.check_in, body.check_out,
-             body.people, body.total_amount, body.paid_amount, _clean(body.note)),
+             body.people, body.total_amount, body.paid_amount, _clean(body.note), _clean(body.address), body.id_type, id_number),
         )
-        return {"id": cur.fetchone()["id"]}
+        gid = cur.fetchone()["id"]
+        full = _hold_nights(cur, gid, body.room_id, body.check_in, body.check_out)
+        if body.room_id and body.check_in <= _today() < body.check_out:
+            _mark_room(cur, body.room_id, "occupied")
+        return {"id": gid, "full_nights": full}
 
 
 @router.patch("/guests/{guest_id}")
@@ -392,7 +573,7 @@ def update_guest(guest_id: UUID, body: GuestUpdate, user: dict = Depends(host)):
             changes["name"] = _clean(changes["name"])
             if not changes["name"]:
                 raise HTTPException(400, "Give the guest's name")
-        for col in ("phone", "note"):
+        for col in ("phone", "note", "address", "id_number"):
             if col in changes:
                 changes[col] = _clean(changes[col])
         if changes.get("room_id") is not None:
@@ -401,47 +582,132 @@ def update_guest(guest_id: UUID, body: GuestUpdate, user: dict = Depends(host)):
         new = {**old, **changes}
         if new["check_out"] <= new["check_in"]:
             raise HTTPException(400, "Check-out must be after check-in")
+        if (new["check_out"] - new["check_in"]).days > MAX_NIGHTS:
+            raise HTTPException(400, "A stay can be up to one year long")
         if Decimal(new["paid_amount"]) > Decimal(new["total_amount"]):
             raise HTTPException(400, "The amount paid is more than the total")
+        _check_id(new["id_type"], new["id_number"])
+        moved = any(col in changes for col in ("room_id", "check_in", "check_out"))
+        if moved and new["room_id"] and not old["checked_out_at"]:
+            cur.execute("SELECT id FROM hotel_rooms WHERE id = %s FOR UPDATE", (str(new["room_id"]),))
+            other = _room_is_taken(cur, new["room_id"], new["check_in"], new["check_out"], skip_guest=guest_id)
+            if other:
+                raise HTTPException(409, f"{other} already has this room for those dates. Choose another room or other dates")
         sets = ", ".join(f"{col} = %s" for col in changes)  # column names come from the model, never from the request
         cur.execute(f"UPDATE hotel_guests SET {sets} WHERE id = %s", (*changes.values(), str(guest_id)))
-    return {"id": str(guest_id), "updated": list(changes)}
+        full = []
+        if moved and not old["checked_out_at"]:  # the nights kept off Hill Booker follow the new room and dates
+            _release_nights(cur, guest_id)
+            full = _hold_nights(cur, guest_id, new["room_id"], new["check_in"], new["check_out"])
+    return {"id": str(guest_id), "updated": list(changes), "full_nights": full}
+
+
+@router.post("/guests/{guest_id}/checkout")
+def check_out_guest(guest_id: UUID, user: dict = Depends(host)):
+    """The guest has left. The room goes to cleaning, and any nights left of the stay go back on sale."""
+    today = _today()
+    with get_conn() as conn, conn.cursor() as cur:
+        g = _my_guest(cur, guest_id, user)
+        if g["checked_out_at"]:
+            raise HTTPException(409, "This guest is already checked out")
+        if g["check_in"] > today:
+            raise HTTPException(409, "This guest has not arrived yet. Delete the entry if they are not coming")
+        _release_nights(cur, guest_id)
+        left = min(g["check_out"], max(today, g["check_in"] + timedelta(days=1)))  # leaving early shortens the stay
+        cur.execute("UPDATE hotel_guests SET checked_out_at = now(), check_out = %s WHERE id = %s", (left, str(guest_id)))
+        if g["room_id"]:
+            _mark_room(cur, g["room_id"], "cleaning")
+    return {"id": str(guest_id), "check_out": left}
 
 
 @router.delete("/guests/{guest_id}")
 def delete_guest(guest_id: UUID, user: dict = Depends(host)):
     with get_conn() as conn, conn.cursor() as cur:
         _my_guest(cur, guest_id, user)
+        _release_nights(cur, guest_id)
         cur.execute("DELETE FROM hotel_guests WHERE id = %s", (str(guest_id),))
     return {"deleted": str(guest_id)}
 
 
 @router.put("/bookings/{booking_id}/extra")
 def set_booking_extra(booking_id: UUID, body: BookingExtraIn, user: dict = Depends(host)):
-    """For a Hill Booker booking: which room the guest got and how much of the balance was collected at the property."""
+    """For a Hill Booker booking: the room given, the balance collected at the property, and the guest's address and ID proof."""
+    id_number = _clean(body.id_number)
+    _check_id(body.id_type, id_number)
     with get_conn() as conn, conn.cursor() as cur:
-        cur.execute(
-            """SELECT b.property_id, b.status, b.total_amount - COALESCE(b.advance_amount, b.total_amount) AS balance_due
-               FROM bookings b WHERE b.id = %s""",
-            (str(booking_id),),
-        )
-        b = cur.fetchone()
-        if not b:
-            raise HTTPException(404, "Booking not found")
-        _mine(cur, b["property_id"], user)
-        if b["status"] != "confirmed":
-            raise HTTPException(409, "Only confirmed bookings can be changed here")
+        b = _my_booking(cur, booking_id, user)
         if body.collected > Decimal(b["balance_due"]):
             raise HTTPException(400, f"The balance to collect for this booking is Rs {Decimal(b['balance_due']):,.2f}")
         if body.room_id:
-            _room_in_property(cur, body.room_id, b["property_id"])
+            _booking_room_free(cur, b, booking_id, body.room_id)
         cur.execute(
-            """INSERT INTO hotel_booking_extras (booking_id, room_id, collected, note) VALUES (%s, %s, %s, %s)
-               ON CONFLICT (booking_id) DO UPDATE SET room_id = EXCLUDED.room_id, collected = EXCLUDED.collected,
-                                                      note = EXCLUDED.note, updated_at = now()""",
-            (str(booking_id), str(body.room_id) if body.room_id else None, body.collected, _clean(body.note)),
+            """INSERT INTO hotel_booking_extras (booking_id, room_id, collected, note, address, id_type, id_number)
+               VALUES (%s, %s, %s, %s, %s, %s, %s)
+               ON CONFLICT (booking_id) DO UPDATE SET room_id = EXCLUDED.room_id, collected = EXCLUDED.collected, note = EXCLUDED.note,
+                 address = EXCLUDED.address, id_type = EXCLUDED.id_type, id_number = EXCLUDED.id_number, updated_at = now()""",
+            (str(booking_id), str(body.room_id) if body.room_id else None, body.collected, _clean(body.note), _clean(body.address),
+             body.id_type, id_number),
         )
     return {"id": str(booking_id), "collected": body.collected}
+
+
+def _my_booking(cur, booking_id, user: dict) -> dict:
+    cur.execute(
+        """SELECT b.property_id, b.status, b.check_in, b.check_out,
+                  b.total_amount - COALESCE(b.advance_amount, b.total_amount) AS balance_due
+           FROM bookings b WHERE b.id = %s""",
+        (str(booking_id),),
+    )
+    b = cur.fetchone()
+    if not b:
+        raise HTTPException(404, "Booking not found")
+    _mine(cur, b["property_id"], user)
+    if b["status"] != "confirmed":
+        raise HTTPException(409, "Only confirmed bookings can be changed here")
+    return b
+
+
+def _booking_room_free(cur, b: dict, booking_id, room_id) -> None:
+    _room_in_property(cur, room_id, b["property_id"])
+    cur.execute("SELECT id FROM hotel_rooms WHERE id = %s FOR UPDATE", (str(room_id),))
+    other = _room_is_taken(cur, room_id, b["check_in"], b["check_out"], skip_booking=booking_id)
+    if other:
+        raise HTTPException(409, f"{other} already has this room for those dates. Check them out first, or choose another room")
+
+
+@router.post("/bookings/{booking_id}/room")
+def give_booking_a_room(booking_id: UUID, body: BookingRoomIn, user: dict = Depends(host)):
+    """Check a Hill Booker guest in to a room from the room board. Nothing else about the booking changes."""
+    today = _today()
+    with get_conn() as conn, conn.cursor() as cur:
+        b = _my_booking(cur, booking_id, user)
+        _booking_room_free(cur, b, booking_id, body.room_id)
+        cur.execute(
+            """INSERT INTO hotel_booking_extras (booking_id, room_id) VALUES (%s, %s)
+               ON CONFLICT (booking_id) DO UPDATE SET room_id = EXCLUDED.room_id, checked_out_at = NULL, updated_at = now()""",
+            (str(booking_id), str(body.room_id)),
+        )
+        if b["check_in"] <= today <= b["check_out"]:
+            _mark_room(cur, body.room_id, "occupied")
+    return {"id": str(booking_id), "room_id": str(body.room_id)}
+
+
+@router.post("/bookings/{booking_id}/checkout")
+def check_out_booking(booking_id: UUID, user: dict = Depends(host)):
+    """A Hill Booker guest has left: the room goes to cleaning. The booking and its payments are not changed."""
+    with get_conn() as conn, conn.cursor() as cur:
+        b = _my_booking(cur, booking_id, user)
+        if b["check_in"] > _today():
+            raise HTTPException(409, "This guest has not arrived yet")
+        cur.execute(
+            """INSERT INTO hotel_booking_extras (booking_id, checked_out_at) VALUES (%s, now())
+               ON CONFLICT (booking_id) DO UPDATE SET checked_out_at = now(), updated_at = now() RETURNING room_id""",
+            (str(booking_id),),
+        )
+        room = cur.fetchone()["room_id"]
+        if room:
+            _mark_room(cur, room, "cleaning")
+    return {"id": str(booking_id)}
 
 
 # ---------- staff ----------
@@ -772,18 +1038,19 @@ def guests_xlsx(property_id: UUID, date_from: str | None = Query(None, alias="fr
     data = [
         [r["check_in"], r["check_out"], _text(r["name"]), _text(r["phone"]), "Hill Booker" if r["source"] == "hillbooker" else "Direct",
          _text(r["room"] or r["room_type"]), r["people"], float(r["total_amount"]), float(r["paid_online"]), float(r["collected"]),
-         float(r["balance"]), _text(r["note"])]
+         float(r["balance"]), _text(r["address"]), ID_NAMES.get(r["id_type"], ""), _text(r["id_number"]), _text(r["note"])]
         for r in rows
     ]
     t = _guest_totals(rows)
     data.append(["", "", "Total", "", "", "", "", float(t["total"]), float(sum((Decimal(r["paid_online"]) for r in rows), ZERO)),
-                 float(sum((Decimal(r["collected"]) for r in rows), ZERO)), float(t["balance"]), ""])
+                 float(sum((Decimal(r["collected"]) for r in rows), ZERO)), float(t["balance"]), "", "", "", ""])
     return _xlsx(
         f"{prop['name']}: guest register",
         f"Stays between {start:%d %b %Y} and {end:%d %b %Y}. Amounts in rupees.",
         [{"name": "Guests", "headers": ["Check-in", "Check-out", "Guest", "Phone", "Booked through", "Room", "People", "Total", "Paid online",
-                                        "Paid at property", "Balance", "Note"],
-          "rows": data, "money": (8, 9, 10, 11), "dates": (1, 2), "widths": {3: 26, 4: 16, 6: 20, 12: 34}, "total_row": True}],
+                                        "Paid at property", "Balance", "Address", "ID proof", "ID number", "Note"],
+          "rows": data, "money": (8, 9, 10, 11), "dates": (1, 2), "widths": {3: 26, 4: 16, 6: 20, 12: 36, 13: 24, 14: 18, 15: 34},
+          "total_row": True}],
         f"guest-register-{start:%Y%m%d}-{end:%Y%m%d}.xlsx",
     )
 

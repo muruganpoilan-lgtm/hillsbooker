@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "../../../../components/AuthProvider";
 import Guard from "../../../../components/dashboard/Guard";
-import HotelHead, { downloadFile, num, useHotel } from "../../../../components/dashboard/HotelHead";
+import HotelHead, { IdFields, downloadFile, idName, listDays, num, useHotel } from "../../../../components/dashboard/HotelHead";
 import { addDays, api, money, plural, prettyDate, todayISO } from "../../../../lib/api";
 
 const day = (v) => String(v).slice(0, 10);
-const blank = () => ({ name: "", phone: "", check_in: todayISO(), check_out: addDays(todayISO(), 1), room_id: "", people: "1", total_amount: "", paid_amount: "", note: "" });
+const blank = () => ({ name: "", phone: "", check_in: todayISO(), check_out: addDays(todayISO(), 1), room_id: "", people: "1", total_amount: "", paid_amount: "", note: "", address: "", id_type: "", id_number: "" });
 
 function Guests() {
   const { token, logout } = useAuth();
@@ -19,7 +19,7 @@ function Guests() {
   const [rooms, setRooms] = useState([]);
   const [form, setForm] = useState(blank);
   const [editId, setEditId] = useState(""); // walk-in guest being edited
-  const [extra, setExtra] = useState(null); // Hill Booker booking being edited: {id, room_id, collected, note, due}
+  const [extra, setExtra] = useState(null); // Hill Booker booking being edited: {id, room_id, collected, note, due, address, id_type, id_number}
   const [onlyToday, setOnlyToday] = useState(false);
   const [msg, setMsg] = useState({ text: "", bad: false });
   const [busy, setBusy] = useState(false);
@@ -59,7 +59,9 @@ function Guests() {
     setBusy(false);
     if (res.status === 401) return logout();
     if (!res.ok) return setMsg({ text: res.error, bad: true });
-    setMsg({ text: done, bad: false });
+    const full = res.data && res.data.full_nights;
+    if (full && full.length) setMsg({ text: `${done} Careful: Hill Booker had no free room of that type left on ${listDays(full)}. Check your online bookings for those nights.`, bad: true });
+    else setMsg({ text: done, bad: false });
     load();
     return res;
   }
@@ -72,6 +74,7 @@ function Guests() {
     if (!form.check_in || !form.check_out || form.check_out <= form.check_in) return setMsg({ text: "Check-out must be after check-in.", bad: true });
     if (total < 0 || paid < 0) return setMsg({ text: "Amounts can't be less than zero.", bad: true });
     if (paid > total) return setMsg({ text: "The amount paid is more than the total.", bad: true });
+    if (form.id_type === "aadhaar" && form.id_number && form.id_number.length !== 4) return setMsg({ text: "For Aadhaar, enter only the last 4 digits.", bad: true });
     const body = {
       name: form.name,
       phone: form.phone || null,
@@ -82,6 +85,9 @@ function Guests() {
       total_amount: total,
       paid_amount: paid,
       note: form.note || null,
+      address: form.address || null,
+      id_type: form.id_type || null,
+      id_number: form.id_number || null,
     };
     const res = editId
       ? await send(`/hotel/guests/${editId}`, { method: "PATCH", body }, `${form.name.trim()} updated.`)
@@ -105,6 +111,9 @@ function Guests() {
       total_amount: String(Number(g.total_amount)),
       paid_amount: String(Number(g.collected)),
       note: g.note || "",
+      address: g.address || "",
+      id_type: g.id_type || "",
+      id_number: g.id_number || "",
     });
     document.getElementById("guest-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -122,8 +131,16 @@ function Guests() {
     e.preventDefault();
     const collected = num(extra.collected) ?? 0;
     if (collected < 0 || collected > extra.due) return setMsg({ text: `The balance to collect for this booking is ${money(extra.due)}.`, bad: true });
-    const res = await send(`/hotel/bookings/${extra.id}/extra`, { method: "PUT", body: { room_id: extra.room_id || null, collected, note: extra.note || null } }, "Booking updated.");
+    if (extra.id_type === "aadhaar" && extra.id_number && extra.id_number.length !== 4) return setMsg({ text: "For Aadhaar, enter only the last 4 digits.", bad: true });
+    const body = { room_id: extra.room_id || null, collected, note: extra.note || null, address: extra.address || null, id_type: extra.id_type || null, id_number: extra.id_number || null };
+    const res = await send(`/hotel/bookings/${extra.id}/extra`, { method: "PUT", body }, "Booking updated.");
     if (res) setExtra(null);
+  }
+
+  function checkOut(g) {
+    const due = Number(g.balance) > 0 ? ` They still have ${money(g.balance)} to pay.` : "";
+    if (!window.confirm(`Check out ${g.name}?${due}${g.room ? " The room will be marked for cleaning." : ""}`)) return;
+    send(g.source === "walkin" ? `/hotel/guests/${g.id}/checkout` : `/hotel/bookings/${g.id}/checkout`, { method: "POST" }, `${g.name} checked out.`);
   }
 
   async function download() {
@@ -135,7 +152,7 @@ function Guests() {
 
   const today = data ? day(data.today) : todayISO();
   const all = data ? data.guests : [];
-  const list = onlyToday ? all.filter((g) => day(g.check_in) <= today && day(g.check_out) > today) : all;
+  const list = onlyToday ? all.filter((g) => !g.checked_out_at && day(g.check_in) <= today && day(g.check_out) >= today) : all;
   const t = data && data.totals;
 
   return (
@@ -193,10 +210,14 @@ function Guests() {
               {list.map((g) => {
                 const hb = g.source === "hillbooker";
                 const due = Number(g.total_amount) - Number(g.paid_online);
+                const here = !g.checked_out_at && day(g.check_in) <= today && day(g.check_out) >= today;
                 return (
                   <li key={`${g.source}-${g.id}`} className="plain-row mh-guest">
                     <div>
-                      <p className="row-name">{g.name}</p>
+                      <p className="row-name">
+                        {g.name}
+                        {g.checked_out_at ? <span className="mh-tag">Checked out</span> : here ? <span className="mh-tag mh-tag-in">Staying now</span> : null}
+                      </p>
                       <p className="meta">
                         {g.phone ? <a href={`tel:${g.phone}`}>{g.phone}</a> : "No phone"} · {hb ? "Hill Booker" : "Direct"} · {plural(g.people, "guest")}
                         {hb && g.rooms > 1 ? `, ${g.rooms} rooms` : ""}
@@ -204,6 +225,12 @@ function Guests() {
                       <p className="meta">
                         {prettyDate(day(g.check_in))} to {prettyDate(day(g.check_out))} · {g.room || g.room_type || "Room not set"}
                       </p>
+                      {(g.address || g.id_type) && (
+                        <p className="meta">
+                          {g.id_type ? `${idName(g.id_type)}${g.id_number ? `: ${g.id_type === "aadhaar" ? "XXXX XXXX " : ""}${g.id_number}` : ""}` : "No ID proof"}
+                          {g.address ? ` · ${g.address}` : ""}
+                        </p>
+                      )}
                       {g.note && <p className="meta">Note: {g.note}</p>}
                       {hb && extra && extra.id === g.id && (
                         <form className="mh-form mh-inline" onSubmit={saveExtra}>
@@ -222,7 +249,8 @@ function Guests() {
                             <span>Collected at property (of {money(due)})</span>
                             <input type="number" min="0" max={due} step="1" inputMode="decimal" value={extra.collected} onChange={(e) => setExtra({ ...extra, collected: e.target.value })} />
                           </label>
-                          <label className="field">
+                          <IdFields value={extra} onChange={setExtra} />
+                          <label className="field mh-wide">
                             <span>Note (optional)</span>
                             <input value={extra.note} maxLength={300} onChange={(e) => setExtra({ ...extra, note: e.target.value })} />
                           </label>
@@ -252,10 +280,10 @@ function Guests() {
                             onClick={() => {
                               setEditId("");
                               setForm(blank());
-                              setExtra({ id: g.id, room_id: g.room_id || "", collected: String(Number(g.collected)), note: g.note || "", due });
+                              setExtra({ id: g.id, room_id: g.room_id || "", collected: String(Number(g.collected)), note: g.note || "", due, address: g.address || "", id_type: g.id_type || "", id_number: g.id_number || "" });
                             }}
                           >
-                            Room and balance
+                            Room, balance and ID
                           </button>
                         ) : (
                           <>
@@ -267,6 +295,11 @@ function Guests() {
                             </button>
                           </>
                         )}
+                        {here && (
+                          <button type="button" className="link-btn" onClick={() => checkOut(g)}>
+                            Check out
+                          </button>
+                        )}
                       </p>
                     </div>
                   </li>
@@ -277,7 +310,7 @@ function Guests() {
 
           <section className="prop-section" id="guest-form">
             <h2>{editId ? "Edit guest" : "Add a direct guest"}</h2>
-            <p className="meta">For guests who walked in, called you or booked on another site. Adding a guest here does not block the room on Hill Booker; use the calendar for that.</p>
+            <p className="meta">For guests who walked in, called you or booked on another site. When you choose a room, its nights are closed on Hill Booker automatically so the room is not sold twice.</p>
             <form className="mh-form" onSubmit={save}>
               <label className="field">
                 <span>Guest name</span>
@@ -318,6 +351,7 @@ function Guests() {
                 <span>Amount paid (₹)</span>
                 <input type="number" min="0" step="1" inputMode="decimal" value={form.paid_amount} onChange={set("paid_amount")} placeholder="0" />
               </label>
+              <IdFields value={form} onChange={setForm} />
               <label className="field mh-wide">
                 <span>Note (optional)</span>
                 <input value={form.note} maxLength={300} onChange={set("note")} />

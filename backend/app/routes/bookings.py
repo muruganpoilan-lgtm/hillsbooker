@@ -26,6 +26,8 @@ def _give_rooms_back(cur, b: dict) -> None:
            WHERE room_type_id = %s AND day >= %s AND day < %s AND NOT blocked""",
         (b["rooms"], b["room_type_id"], b["check_in"], b["check_out"]),
     )
+    from .hotel import apply_waiting_holds  # a walk-in guest already in this room type keeps the freed night off sale
+    apply_waiting_holds(cur, b["room_type_id"], b["check_in"], b["check_out"])
 
 
 def release_expired_holds(cur) -> int:

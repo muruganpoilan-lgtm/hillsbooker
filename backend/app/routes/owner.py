@@ -318,7 +318,7 @@ def set_inventory(room_type_id: str, body: InventoryIn, user: dict = Depends(own
             raise HTTPException(400, f"This room type only has {rt['total_rooms']} rooms")
         cur.execute(
             """INSERT INTO room_inventory (room_type_id, day, available, price)
-               SELECT %(rt)s, d::date, GREATEST(%(open)s - COALESCE(b.booked, 0) - COALESCE(x.ext, 0), 0), %(price)s
+               SELECT %(rt)s, d::date, GREATEST(%(open)s - COALESCE(b.booked, 0) - COALESCE(x.ext, 0) - COALESCE(w.held, 0), 0), %(price)s
                FROM generate_series(%(start)s::date, %(end)s::date, interval '1 day') AS d
                LEFT JOIN LATERAL (
                  SELECT SUM(rooms) AS booked FROM bookings
@@ -329,6 +329,10 @@ def set_inventory(room_type_id: str, body: InventoryIn, user: dict = Depends(own
                  SELECT SUM(wanted) AS ext FROM external_nights
                  WHERE room_type_id = %(rt)s AND day = d::date
                ) x ON true
+               LEFT JOIN LATERAL (
+                 SELECT count(*) AS held FROM hotel_guest_nights
+                 WHERE room_type_id = %(rt)s AND day = d::date
+               ) w ON true
                ON CONFLICT (room_type_id, day)
                DO UPDATE SET available = EXCLUDED.available, price = COALESCE(EXCLUDED.price, room_inventory.price), blocked = false""",
             {"rt": room_type_id, "open": body.rooms_open, "price": body.price, "start": body.start, "end": body.end},
@@ -336,6 +340,11 @@ def set_inventory(room_type_id: str, body: InventoryIn, user: dict = Depends(own
         # Nights taken on other sites are subtracted above, so they count as fully applied now.
         cur.execute(
             "UPDATE external_nights SET applied = wanted WHERE room_type_id = %s AND day BETWEEN %s AND %s",
+            (room_type_id, body.start, body.end),
+        )
+        # The same for nights kept by the host's own walk-in guests (Manage my hotel).
+        cur.execute(
+            "UPDATE hotel_guest_nights SET applied = true WHERE room_type_id = %s AND day BETWEEN %s AND %s",
             (room_type_id, body.start, body.end),
         )
         return {"nights_updated": (body.end - body.start).days + 1}
@@ -366,7 +375,7 @@ def block_dates(room_type_id: str, body: BlockIn, user: dict = Depends(owner_onl
         else:
             cur.execute(
                 """INSERT INTO room_inventory (room_type_id, day, available, price, blocked)
-                   SELECT %(rt)s, d, GREATEST(%(total)s - COALESCE(b.booked, 0) - COALESCE(x.ext, 0), 0), NULL, false
+                   SELECT %(rt)s, d, GREATEST(%(total)s - COALESCE(b.booked, 0) - COALESCE(x.ext, 0) - COALESCE(w.held, 0), 0), NULL, false
                    FROM unnest(%(days)s::date[]) AS d
                    LEFT JOIN LATERAL (
                      SELECT SUM(rooms) AS booked FROM bookings
@@ -375,10 +384,20 @@ def block_dates(room_type_id: str, body: BlockIn, user: dict = Depends(owner_onl
                    LEFT JOIN LATERAL (
                      SELECT SUM(wanted) AS ext FROM external_nights WHERE room_type_id = %(rt)s AND day = d
                    ) x ON true
+                   LEFT JOIN LATERAL (
+                     SELECT count(*) AS held FROM hotel_guest_nights WHERE room_type_id = %(rt)s AND day = d
+                   ) w ON true
                    ON CONFLICT (room_type_id, day) DO UPDATE SET available = EXCLUDED.available, blocked = false
-                   WHERE room_inventory.blocked OR room_inventory.available = 0""",
+                   WHERE room_inventory.blocked OR room_inventory.available = 0
+                   RETURNING day""",
                 {"rt": room_type_id, "total": rt["total_rooms"], "days": days},
             )
+            reopened = [r["day"] for r in cur.fetchall()]
+            if reopened:  # walk-in guests' nights were subtracted on the nights just recalculated
+                cur.execute(
+                    "UPDATE hotel_guest_nights SET applied = true WHERE room_type_id = %s AND day = ANY(%s::date[])",
+                    (room_type_id, reopened),
+                )
         return {"changed": len(days), "blocked": body.blocked}
 
 

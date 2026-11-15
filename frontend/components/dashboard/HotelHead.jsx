@@ -129,3 +129,67 @@ export function num(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
+
+// ID proofs a hotel can note for a guest. For Aadhaar only the last 4 digits are kept (masked Aadhaar).
+export const ID_TYPES = [
+  ["aadhaar", "Aadhaar card"],
+  ["voter", "Voter ID"],
+  ["driving", "Driving licence"],
+  ["passport", "Passport"],
+  ["pan", "PAN card"],
+  ["other", "Other ID"],
+];
+export const idName = (t) => (ID_TYPES.find(([k]) => k === t) || ["", ""])[1];
+
+// Address and ID proof boxes, used wherever a guest is added or edited. value = {address, id_type, id_number}.
+export function IdFields({ value, onChange }) {
+  const aadhaar = value.id_type === "aadhaar";
+  const set = (k) => (e) => {
+    let v = e.target.value;
+    if (k === "id_number" && aadhaar) v = v.replace(/\D/g, "").slice(0, 4);
+    const next = { ...value, [k]: v };
+    if (k === "id_type" && v === "aadhaar") next.id_number = (value.id_number || "").replace(/\D/g, "").slice(-4);
+    if (k === "id_type" && !v) next.id_number = "";
+    onChange(next);
+  };
+  return (
+    <>
+      <label className="field mh-wide">
+        <span>Guest's address</span>
+        <input value={value.address} maxLength={300} onChange={set("address")} placeholder="Door number, street, town, PIN code" autoComplete="off" />
+      </label>
+      <label className="field">
+        <span>ID proof</span>
+        <select value={value.id_type} onChange={set("id_type")}>
+          <option value="">Not taken</option>
+          {ID_TYPES.map(([k, label]) => (
+            <option key={k} value={k}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="field">
+        <span>{aadhaar ? "Aadhaar: last 4 digits only" : "ID number"}</span>
+        <input
+          value={value.id_number}
+          maxLength={aadhaar ? 4 : 30}
+          inputMode={aadhaar ? "numeric" : undefined}
+          onChange={set("id_number")}
+          disabled={!value.id_type}
+          placeholder={aadhaar ? "1234" : ""}
+          autoComplete="off"
+        />
+      </label>
+    </>
+  );
+}
+
+// "16 Nov, 17 Nov and 18 Nov" for a warning about nights.
+export function listDays(days) {
+  const names = days.map((d) => {
+    const [y, m, dd] = String(d).slice(0, 10).split("-").map(Number);
+    return new Date(y, m - 1, dd).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  });
+  return names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names[0] || "";
+}

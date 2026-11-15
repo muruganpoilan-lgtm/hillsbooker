@@ -119,3 +119,13 @@ nothing else needs to change.
 Vehicle operators (cars, vans, tempo travellers, mini buses, buses) sign up in the app with "Rent out vehicles", add vehicles with photos, a day price and fixed-price trips, and an admin approves them. Guests hire by the day or book a trip, pay the advance online (same 10-minute hold, same refund rule as rooms) and see the operator's phone number once confirmed.
 
 Existing database: `docker compose -f docker-compose.prod.yml exec -T db psql -U roomly -d roomly < db/migrations/005_vehicles.sql`
+
+## Manage my hotel (free tool for hosts)
+Hosts get a **Manage my hotel** group in their panel (`/dashboard/hotel`): a room board, a guest register, staff with attendance,
+and a monthly salary sheet. Records belong to one property and only the account that holds it can open them.
+- Check-in and check-out are done from the room board. A walk-in guest checked in to a room takes one room of that type off sale
+  on Hill Booker for each night (`hotel_guest_nights`, the same idea as `external_nights`); check-out, a shorter stay or deleting
+  the guest gives the nights back. If no room was open online that night, the host is warned about a possible double booking.
+- Guest address and ID proof can be noted. For Aadhaar only the last 4 digits are accepted and stored; ID photos are not stored.
+- Existing database: run `db/migrations/032_hotel_manager.sql`, then `db/migrations/033_hotel_checkin.sql`, e.g.
+  `docker compose -f docker-compose.prod.yml exec -T db psql -U roomly -d roomly < db/migrations/033_hotel_checkin.sql`

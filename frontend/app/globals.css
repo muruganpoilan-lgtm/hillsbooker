@@ -736,3 +736,52 @@ label.btn[aria-busy="true"] { opacity: 0.7; cursor: progress; }
   .mh-guest .right { text-align: left; }
   .mh-guest .right .mh-links { justify-content: flex-start; }
 }
+
+/* Manage my hotel, part 2: bigger room cards, status buttons, check-in form, table view */
+.mh-tiles { display: grid; gap: 0.8rem; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); margin: 1rem 0; }
+.mh-tile { border-radius: 14px; padding: 0.9rem 1.1rem; color: #fff; display: grid; gap: 0.1rem; }
+.mh-tile b { font-family: var(--font-display), system-ui, sans-serif; font-weight: 800; font-size: 2rem; line-height: 1.1; }
+.mh-tile span { font-weight: 600; opacity: 0.95; }
+.mh-tile.mh-free { background: var(--green); }
+.mh-tile.mh-occupied { background: var(--indigo); }
+.mh-tile.mh-cleaning { background: var(--marigold); color: var(--ink); }
+.mh-tile.mh-repair { background: var(--brick); }
+.mh-viewbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1.2rem; }
+.mh-toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 99px; overflow: hidden; background: var(--paper); }
+.mh-toggle button { border: 0; background: none; font: inherit; font-weight: 600; padding: 0.4rem 1rem; min-height: 38px; cursor: pointer; color: var(--ink-soft); }
+.mh-toggle button.on { background: var(--ink); color: #fff; }
+.mh-rooms { margin-top: 0.7rem; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(18.5rem, 1fr)); }
+.mh-room { padding: 0; border-top-width: 1px; overflow: hidden; border-radius: 14px; gap: 0; box-shadow: 0 1px 2px rgba(23, 33, 59, 0.06); }
+.mh-room-top { padding: 0.7rem 1rem; color: #fff; }
+.mh-room-name { font-family: var(--font-display), system-ui, sans-serif; font-weight: 800; font-size: 1.3rem; line-height: 1.2; }
+.mh-badge { font-size: 0.8rem; font-weight: 700; white-space: nowrap; background: rgba(255, 255, 255, 0.22); border-radius: 99px; padding: 0.1rem 0.65rem; }
+.mh-room.mh-free .mh-room-top { background: var(--green); }
+.mh-room.mh-occupied .mh-room-top { background: var(--indigo); }
+.mh-room.mh-cleaning .mh-room-top { background: var(--marigold); color: var(--ink); }
+.mh-room.mh-cleaning .mh-badge { background: rgba(255, 255, 255, 0.5); }
+.mh-room.mh-repair .mh-room-top { background: var(--brick); }
+.mh-room-body { padding: 0.8rem 1rem 0.9rem; display: grid; gap: 0.55rem; align-content: start; }
+.mh-room-body .btn { justify-self: start; }
+.mh-occupant { display: grid; gap: 0.1rem; padding: 0.55rem 0.7rem; background: var(--chalk); border-radius: var(--radius); }
+.mh-occupant .meta { margin: 0; display: block; }
+.mh-setstatus { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.3rem; }
+.mh-sbtn { font: inherit; font-size: 0.82rem; font-weight: 700; min-height: 36px; padding: 0.2rem 0.3rem; border-radius: 99px; border: 1.5px solid var(--line); background: var(--paper); color: var(--ink-soft); cursor: pointer; }
+.mh-sbtn:hover:not(:disabled) { border-color: var(--ink-soft); color: var(--ink); }
+.mh-sbtn.mh-free.on { background: var(--green); border-color: var(--green); color: #fff; }
+.mh-sbtn.mh-occupied.on { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+.mh-sbtn.mh-cleaning.on { background: var(--marigold); border-color: var(--marigold); color: var(--ink); }
+.mh-sbtn.mh-repair.on { background: var(--brick); border-color: var(--brick); color: #fff; }
+.mh-out { border-color: var(--indigo); color: var(--indigo); font-weight: 700; }
+.mh-checkin { margin: 1.2rem 0; padding: 1rem 1.2rem 1.2rem; background: var(--paper); border: 2px solid var(--green); border-radius: 14px; }
+.mh-checkin h2 { font-size: 1.3rem; }
+.mh-roomtable { min-width: 46rem; }
+.mh-roomtable td:first-child { border-left: 6px solid var(--line); }
+.mh-roomtable tr.mh-free td:first-child { border-left-color: var(--green); }
+.mh-roomtable tr.mh-occupied td:first-child { border-left-color: var(--indigo); }
+.mh-roomtable tr.mh-cleaning td:first-child { border-left-color: var(--marigold); }
+.mh-roomtable tr.mh-repair td:first-child { border-left-color: var(--brick); }
+.mh-roomtable .mh-setstatus { min-width: 17rem; }
+.mh-roomtable .mh-occupant { background: none; padding: 0; }
+.mh-roomtable td.n .mh-links { justify-content: flex-end; }
+.mh-tag { display: inline-block; margin-left: 0.6rem; vertical-align: middle; font-family: var(--font-body), system-ui, sans-serif; font-size: 0.78rem; font-weight: 700; padding: 0.05rem 0.55rem; border-radius: 99px; background: var(--line); color: var(--ink-soft); }
+.mh-tag-in { background: #dff1e4; color: var(--green-dark); }
