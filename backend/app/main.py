@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import settings
 from .db import pool
 from . import notify
-from .routes import admin, auth_routes, blog, bookings, channels, coupon_routes, referral_routes, enquiries, google_auth, invoices, owner, packages, payments, public, push_routes, reports, support, upi, vehicles, wishlist
+from .routes import admin, auth_routes, blog, bookings, channels, coupon_routes, referral_routes, enquiries, google_auth, hotel, invoices, owner, packages, payments, public, push_routes, reports, support, upi, vehicles, wishlist
 from .storage import upload_root
 
 
@@ -143,6 +143,7 @@ app.include_router(blog.admin)
 app.include_router(support.public)
 app.include_router(support.admin)
 app.include_router(push_routes.router)
+app.include_router(hotel.router)
 
 
 @app.api_route("/health", methods=["GET", "HEAD"])  # uptime monitors often probe with HEAD

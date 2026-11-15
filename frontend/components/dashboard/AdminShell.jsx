@@ -29,6 +29,15 @@ const ADMIN_GROUPS = [
     ],
   },
   {
+    title: "Manage my hotel",
+    items: [
+      { href: "/dashboard/hotel", label: "Rooms" },
+      { href: "/dashboard/hotel/guests", label: "Guest register" },
+      { href: "/dashboard/hotel/staff", label: "Staff & attendance" },
+      { href: "/dashboard/hotel/salary", label: "Salary" },
+    ],
+  },
+  {
     title: "Guests",
     items: [
       { href: "/dashboard/enquiries", label: "Tour enquiries", badge: "new_enquiries" },
@@ -50,6 +59,15 @@ const HOST_GROUPS = [
     ],
   },
   {
+    title: "Manage my hotel",
+    items: [
+      { href: "/dashboard/hotel", label: "Rooms" },
+      { href: "/dashboard/hotel/guests", label: "Guest register" },
+      { href: "/dashboard/hotel/staff", label: "Staff & attendance" },
+      { href: "/dashboard/hotel/salary", label: "Salary" },
+    ],
+  },
+  {
     title: "Money",
     items: [
       { href: "/dashboard/payments", label: "Payments" },
@@ -61,6 +79,7 @@ const HOST_GROUPS = [
 
 function isActive(path, href) {
   if (href === "/dashboard") return path === "/dashboard" || path.startsWith("/dashboard/properties") || path === "/dashboard/new";
+  if (href === "/dashboard/hotel") return path === href; // its sub-pages have their own menu lines
   if (href === "/operator") return path === "/operator" || path.startsWith("/operator/vehicles") || path === "/operator/new";
   return path === href || path.startsWith(href + "/");
 }
