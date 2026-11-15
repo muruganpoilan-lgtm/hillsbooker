@@ -42,6 +42,12 @@ def _today() -> date:
     return datetime.now(IST).date()
 
 
+def _plate(v: str | None) -> str | None:
+    """A vehicle registration number, tidied: capital letters and single spaces (TN 38 AB 1234)."""
+    v = _clean(v)
+    return " ".join(v.upper().split()) if v else None
+
+
 def _clean(v: str | None) -> str | None:
     """Trim text; empty text becomes nothing."""
     if v is None:
@@ -423,6 +429,8 @@ class GuestIn(BaseModel):
     address: str | None = Field(default=None, max_length=300)
     id_type: IdType | None = None
     id_number: str | None = Field(default=None, max_length=30)
+    vehicle_model: str | None = Field(default=None, max_length=60)
+    vehicle_number: str | None = Field(default=None, max_length=20)
 
     @model_validator(mode="after")
     def _check(self):
@@ -448,6 +456,8 @@ class GuestUpdate(BaseModel):
     address: str | None = Field(default=None, max_length=300)
     id_type: IdType | None = None
     id_number: str | None = Field(default=None, max_length=30)
+    vehicle_model: str | None = Field(default=None, max_length=60)
+    vehicle_number: str | None = Field(default=None, max_length=20)
 
 
 class BookingExtraIn(BaseModel):
@@ -457,6 +467,8 @@ class BookingExtraIn(BaseModel):
     address: str | None = Field(default=None, max_length=300)
     id_type: IdType | None = None
     id_number: str | None = Field(default=None, max_length=30)
+    vehicle_model: str | None = Field(default=None, max_length=60)
+    vehicle_number: str | None = Field(default=None, max_length=20)
 
 
 class BookingRoomIn(BaseModel):
@@ -484,7 +496,7 @@ def _load_guests(cur, property_id, start: date, end: date) -> list[dict]:
         """SELECT 'hillbooker' AS source, b.id, u.name, u.phone, b.check_in, b.check_out, b.guests AS people, b.rooms,
                   rt.name AS room_type, r.id AS room_id, r.label AS room, b.total_amount,
                   COALESCE(b.advance_amount, b.total_amount) AS paid_online, COALESCE(e.collected, 0) AS collected, e.note,
-                  e.address, e.id_type, e.id_number, e.checked_out_at,
+                  e.address, e.id_type, e.id_number, e.vehicle_model, e.vehicle_number, e.checked_out_at,
                   ARRAY(SELECT ph.side FROM hotel_id_photos ph WHERE ph.booking_id = b.id ORDER BY ph.side DESC) AS id_photos
            FROM bookings b
            JOIN users u ON u.id = b.user_id
@@ -499,7 +511,7 @@ def _load_guests(cur, property_id, start: date, end: date) -> list[dict]:
         """SELECT 'walkin' AS source, g.id, g.name, g.phone, g.check_in, g.check_out, g.people, 1 AS rooms,
                   rt.name AS room_type, r.id AS room_id, r.label AS room, g.total_amount,
                   0::numeric AS paid_online, g.paid_amount AS collected, g.note,
-                  g.address, g.id_type, g.id_number, g.checked_out_at,
+                  g.address, g.id_type, g.id_number, g.vehicle_model, g.vehicle_number, g.checked_out_at,
                   ARRAY(SELECT ph.side FROM hotel_id_photos ph WHERE ph.guest_id = g.id ORDER BY ph.side DESC) AS id_photos
            FROM hotel_guests g
            LEFT JOIN hotel_rooms r ON r.id = g.room_id
@@ -552,10 +564,11 @@ def add_guest(property_id: UUID, body: GuestIn, user: dict = Depends(host)):
                 raise HTTPException(409, f"{other} already has this room for those dates. Check them out first, or choose another room")
         cur.execute(
             """INSERT INTO hotel_guests (property_id, room_id, name, phone, check_in, check_out, people, total_amount, paid_amount, note,
-                                         address, id_type, id_number)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+                                         address, id_type, id_number, vehicle_model, vehicle_number)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
             (str(property_id), str(body.room_id) if body.room_id else None, name, _clean(body.phone), body.check_in, body.check_out,
-             body.people, body.total_amount, body.paid_amount, _clean(body.note), _clean(body.address), body.id_type, id_number),
+             body.people, body.total_amount, body.paid_amount, _clean(body.note), _clean(body.address), body.id_type, id_number,
+             _clean(body.vehicle_model), _plate(body.vehicle_number)),
         )
         gid = cur.fetchone()["id"]
         full = _hold_nights(cur, gid, body.room_id, body.check_in, body.check_out)
@@ -578,9 +591,11 @@ def update_guest(guest_id: UUID, body: GuestUpdate, user: dict = Depends(host)):
             changes["name"] = _clean(changes["name"])
             if not changes["name"]:
                 raise HTTPException(400, "Give the guest's name")
-        for col in ("phone", "note", "address", "id_number"):
+        for col in ("phone", "note", "address", "id_number", "vehicle_model"):
             if col in changes:
                 changes[col] = _clean(changes[col])
+        if "vehicle_number" in changes:
+            changes["vehicle_number"] = _plate(changes["vehicle_number"])
         if changes.get("room_id") is not None:
             _room_in_property(cur, changes["room_id"], old["property_id"])
             changes["room_id"] = str(changes["room_id"])
@@ -646,12 +661,13 @@ def set_booking_extra(booking_id: UUID, body: BookingExtraIn, user: dict = Depen
         if body.room_id:
             _booking_room_free(cur, b, booking_id, body.room_id)
         cur.execute(
-            """INSERT INTO hotel_booking_extras (booking_id, room_id, collected, note, address, id_type, id_number)
-               VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """INSERT INTO hotel_booking_extras (booking_id, room_id, collected, note, address, id_type, id_number, vehicle_model, vehicle_number)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                ON CONFLICT (booking_id) DO UPDATE SET room_id = EXCLUDED.room_id, collected = EXCLUDED.collected, note = EXCLUDED.note,
-                 address = EXCLUDED.address, id_type = EXCLUDED.id_type, id_number = EXCLUDED.id_number, updated_at = now()""",
+                 address = EXCLUDED.address, id_type = EXCLUDED.id_type, id_number = EXCLUDED.id_number,
+                 vehicle_model = EXCLUDED.vehicle_model, vehicle_number = EXCLUDED.vehicle_number, updated_at = now()""",
             (str(booking_id), str(body.room_id) if body.room_id else None, body.collected, _clean(body.note), _clean(body.address),
-             body.id_type, id_number),
+             body.id_type, id_number, _clean(body.vehicle_model), _plate(body.vehicle_number)),
         )
     return {"id": str(booking_id), "collected": body.collected}
 
@@ -1123,18 +1139,19 @@ def guests_xlsx(property_id: UUID, date_from: str | None = Query(None, alias="fr
         [r["check_in"], r["check_out"], _text(r["name"]), _text(r["phone"]), "Hill Booker" if r["source"] == "hillbooker" else "Direct",
          _text(r["room"] or r["room_type"]), r["people"], float(r["total_amount"]), float(r["paid_online"]), float(r["collected"]),
          float(r["balance"]), _text(r["address"]), ID_NAMES.get(r["id_type"], ""), _text(r["id_number"]),
-         " and ".join(r["id_photos"]) if r["id_photos"] else "", _text(r["note"])]
+         " and ".join(r["id_photos"]) if r["id_photos"] else "", _text(r["vehicle_model"]), _text(r["vehicle_number"]), _text(r["note"])]
         for r in rows
     ]
     t = _guest_totals(rows)
     data.append(["", "", "Total", "", "", "", "", float(t["total"]), float(sum((Decimal(r["paid_online"]) for r in rows), ZERO)),
-                 float(sum((Decimal(r["collected"]) for r in rows), ZERO)), float(t["balance"]), "", "", "", "", ""])
+                 float(sum((Decimal(r["collected"]) for r in rows), ZERO)), float(t["balance"]), "", "", "", "", "", "", ""])
     return _xlsx(
         f"{prop['name']}: guest register",
         f"Stays between {start:%d %b %Y} and {end:%d %b %Y}. Amounts in rupees.",
         [{"name": "Guests", "headers": ["Check-in", "Check-out", "Guest", "Phone", "Booked through", "Room", "People", "Total", "Paid online",
-                                        "Paid at property", "Balance", "Address", "ID proof", "ID number", "ID photo saved", "Note"],
-          "rows": data, "money": (8, 9, 10, 11), "dates": (1, 2), "widths": {3: 26, 4: 16, 6: 20, 12: 36, 13: 24, 14: 18, 15: 16, 16: 34},
+                                        "Paid at property", "Balance", "Address", "ID proof", "ID number", "ID photo saved", "Vehicle", "Vehicle number", "Note"],
+          "rows": data, "money": (8, 9, 10, 11), "dates": (1, 2),
+          "widths": {3: 26, 4: 16, 6: 20, 12: 36, 13: 24, 14: 18, 15: 16, 16: 20, 17: 18, 18: 34},
           "total_row": True}],
         f"guest-register-{start:%Y%m%d}-{end:%Y%m%d}.xlsx",
     )

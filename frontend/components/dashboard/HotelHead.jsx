@@ -141,7 +141,8 @@ export const ID_TYPES = [
 ];
 export const idName = (t) => (ID_TYPES.find(([k]) => k === t) || ["", ""])[1];
 
-// Address and ID proof boxes, used wherever a guest is added or edited. value = {address, id_type, id_number}.
+// Address, ID proof and vehicle boxes, used wherever a guest is added or edited.
+// value = {address, id_type, id_number, vehicle_model, vehicle_number}.
 export function IdFields({ value, onChange }) {
   const aadhaar = value.id_type === "aadhaar";
   const set = (k) => (e) => {
@@ -180,6 +181,14 @@ export function IdFields({ value, onChange }) {
           placeholder={aadhaar ? "1234" : ""}
           autoComplete="off"
         />
+      </label>
+      <label className="field">
+        <span>Guest's vehicle (optional)</span>
+        <input value={value.vehicle_model || ""} maxLength={60} onChange={set("vehicle_model")} placeholder="Maruti Swift, white" autoComplete="off" />
+      </label>
+      <label className="field">
+        <span>Vehicle registration number</span>
+        <input value={value.vehicle_number || ""} maxLength={20} onChange={(e) => onChange({ ...value, vehicle_number: e.target.value.toUpperCase() })} placeholder="TN 38 AB 1234" autoCapitalize="characters" autoComplete="off" />
       </label>
     </>
   );

@@ -7,7 +7,7 @@ import HotelHead, { IdFields, IdPhotoPicker, IdPhotos, downloadFile, idName, lis
 import { addDays, api, money, plural, prettyDate, todayISO } from "../../../../lib/api";
 
 const day = (v) => String(v).slice(0, 10);
-const blank = () => ({ name: "", phone: "", check_in: todayISO(), check_out: addDays(todayISO(), 1), room_id: "", people: "1", total_amount: "", paid_amount: "", note: "", address: "", id_type: "", id_number: "" });
+const blank = () => ({ name: "", phone: "", check_in: todayISO(), check_out: addDays(todayISO(), 1), room_id: "", people: "1", total_amount: "", paid_amount: "", note: "", address: "", id_type: "", id_number: "", vehicle_model: "", vehicle_number: "" });
 
 function Guests() {
   const { token, logout } = useAuth();
@@ -89,6 +89,8 @@ function Guests() {
       address: form.address || null,
       id_type: form.id_type || null,
       id_number: form.id_number || null,
+      vehicle_model: form.vehicle_model || null,
+      vehicle_number: form.vehicle_number || null,
     };
     const res = editId
       ? await send(`/hotel/guests/${editId}`, { method: "PATCH", body }, `${form.name.trim()} updated.`)
@@ -125,6 +127,8 @@ function Guests() {
       address: g.address || "",
       id_type: g.id_type || "",
       id_number: g.id_number || "",
+      vehicle_model: g.vehicle_model || "",
+      vehicle_number: g.vehicle_number || "",
     });
     document.getElementById("guest-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -143,7 +147,7 @@ function Guests() {
     const collected = num(extra.collected) ?? 0;
     if (collected < 0 || collected > extra.due) return setMsg({ text: `The balance to collect for this booking is ${money(extra.due)}.`, bad: true });
     if (extra.id_type === "aadhaar" && extra.id_number && extra.id_number.length !== 4) return setMsg({ text: "For Aadhaar, enter only the last 4 digits.", bad: true });
-    const body = { room_id: extra.room_id || null, collected, note: extra.note || null, address: extra.address || null, id_type: extra.id_type || null, id_number: extra.id_number || null };
+    const body = { room_id: extra.room_id || null, collected, note: extra.note || null, address: extra.address || null, id_type: extra.id_type || null, id_number: extra.id_number || null, vehicle_model: extra.vehicle_model || null, vehicle_number: extra.vehicle_number || null };
     const res = await send(`/hotel/bookings/${extra.id}/extra`, { method: "PUT", body }, "Booking updated.");
     if (res) setExtra(null);
   }
@@ -243,6 +247,7 @@ function Guests() {
                         </p>
                       )}
                       {g.id_photos && g.id_photos.length > 0 && <p className="meta">ID photo saved: {g.id_photos.join(" and ")}</p>}
+                      {(g.vehicle_model || g.vehicle_number) && <p className="meta">Vehicle: {[g.vehicle_model, g.vehicle_number].filter(Boolean).join(" · ")}</p>}
                       {g.note && <p className="meta">Note: {g.note}</p>}
                       {hb && extra && extra.id === g.id && (
                         <form className="mh-form mh-inline" onSubmit={saveExtra}>
@@ -293,10 +298,10 @@ function Guests() {
                             onClick={() => {
                               setEditId("");
                               setForm(blank());
-                              setExtra({ id: g.id, room_id: g.room_id || "", collected: String(Number(g.collected)), note: g.note || "", due, address: g.address || "", id_type: g.id_type || "", id_number: g.id_number || "" });
+                              setExtra({ id: g.id, room_id: g.room_id || "", collected: String(Number(g.collected)), note: g.note || "", due, address: g.address || "", id_type: g.id_type || "", id_number: g.id_number || "", vehicle_model: g.vehicle_model || "", vehicle_number: g.vehicle_number || "" });
                             }}
                           >
-                            Room, balance and ID
+                            Room, balance, ID and vehicle
                           </button>
                         ) : (
                           <>

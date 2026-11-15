@@ -130,5 +130,6 @@ and a monthly salary sheet. Records belong to one property and only the account 
 - ID proof photos (front and back) are kept in the database table `hotel_id_photos`, never in the public uploads folder, and are
   sent only to the logged-in account that holds the property. The website shrinks each photo to 1600 px before sending.
   Existing database: also run `db/migrations/034_hotel_id_photos.sql`.
+- The guest's vehicle model and registration number can be noted (`db/migrations/035_hotel_guest_vehicle.sql`).
 - Existing database: run `db/migrations/032_hotel_manager.sql`, then `db/migrations/033_hotel_checkin.sql`, e.g.
   `docker compose -f docker-compose.prod.yml exec -T db psql -U roomly -d roomly < db/migrations/033_hotel_checkin.sql`

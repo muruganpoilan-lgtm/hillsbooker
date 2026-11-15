@@ -130,7 +130,7 @@ function Rooms() {
     setMsg({ text: "", bad: false });
     setCin({
       room: r, who: "new", name: "", phone: "", people: "1", check_out: out,
-      total_amount: r.base_price ? String(Number(r.base_price)) : "", touched: false, paid_amount: "", note: "", address: "", id_type: "", id_number: "", photos: { front: null, back: null },
+      total_amount: r.base_price ? String(Number(r.base_price)) : "", touched: false, paid_amount: "", note: "", address: "", id_type: "", id_number: "", vehicle_model: "", vehicle_number: "", photos: { front: null, back: null },
     });
     setTimeout(() => document.getElementById("checkin-form")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   }
@@ -161,6 +161,7 @@ function Rooms() {
       name: cin.name, phone: cin.phone || null, check_in: today, check_out: cin.check_out, room_id: r.id,
       people: Math.max(1, Math.round(num(cin.people) ?? 1)), total_amount: total, paid_amount: paid, note: cin.note || null,
       address: cin.address || null, id_type: cin.id_type || null, id_number: cin.id_number || null,
+      vehicle_model: cin.vehicle_model || null, vehicle_number: cin.vehicle_number || null,
     };
     const res = await call(`/hotel/${pid}/guests`, { method: "POST", body }, (d) =>
       d.full_nights && d.full_nights.length
