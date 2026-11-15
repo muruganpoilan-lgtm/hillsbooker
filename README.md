@@ -133,3 +133,7 @@ and a monthly salary sheet. Records belong to one property and only the account 
 - The guest's vehicle model and registration number can be noted (`db/migrations/035_hotel_guest_vehicle.sql`).
 - Existing database: run `db/migrations/032_hotel_manager.sql`, then `db/migrations/033_hotel_checkin.sql`, e.g.
   `docker compose -f docker-compose.prod.yml exec -T db psql -U roomly -d roomly < db/migrations/033_hotel_checkin.sql`
+- Part 3 (`backend/app/routes/hotel_ops.py`, `db/migrations/036_hotel_extras_expenses_stock.sql`):
+  **Orders & extras** posts food, laundry, travel and other charges to a guest's bill from a one-tap price list, and
+  `/dashboard/hotel/bill` prints the bill (room, extras, paid, balance; no GST lines). **Expenses** records spending by type with
+  supplier bills still owed, and **Stock** tracks linen, toiletries, kitchen and cleaning items with a "buy more" level.

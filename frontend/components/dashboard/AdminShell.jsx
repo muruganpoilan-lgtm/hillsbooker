@@ -33,6 +33,9 @@ const ADMIN_GROUPS = [
     items: [
       { href: "/dashboard/hotel", label: "Rooms" },
       { href: "/dashboard/hotel/guests", label: "Guest register" },
+      { href: "/dashboard/hotel/extras", label: "Orders & extras" },
+      { href: "/dashboard/hotel/expenses", label: "Expenses" },
+      { href: "/dashboard/hotel/stock", label: "Stock" },
       { href: "/dashboard/hotel/staff", label: "Staff & attendance" },
       { href: "/dashboard/hotel/salary", label: "Salary" },
     ],
@@ -63,6 +66,9 @@ const HOST_GROUPS = [
     items: [
       { href: "/dashboard/hotel", label: "Rooms" },
       { href: "/dashboard/hotel/guests", label: "Guest register" },
+      { href: "/dashboard/hotel/extras", label: "Orders & extras" },
+      { href: "/dashboard/hotel/expenses", label: "Expenses" },
+      { href: "/dashboard/hotel/stock", label: "Stock" },
       { href: "/dashboard/hotel/staff", label: "Staff & attendance" },
       { href: "/dashboard/hotel/salary", label: "Salary" },
     ],

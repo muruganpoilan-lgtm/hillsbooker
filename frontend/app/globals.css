@@ -796,3 +796,51 @@ label.btn[aria-busy="true"] { opacity: 0.7; cursor: progress; }
 .mh-photo-btn { cursor: pointer; }
 .mh-photo-btn.off { opacity: 0.6; cursor: progress; }
 .mh-photo-btn:focus-within { outline: 3px solid var(--indigo); outline-offset: 2px; }
+
+/* Manage my hotel, part 3: orders and extras, bill, expenses, stock */
+.mh-menu { display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); }
+.mh-item { display: grid; gap: 0.1rem; text-align: left; font: inherit; padding: 0.6rem 0.75rem; min-height: 56px; border-radius: 10px; border: 1.5px solid var(--line); border-left: 5px solid var(--green); background: var(--paper); color: var(--ink); cursor: pointer; }
+.mh-item:hover:not(:disabled) { background: var(--chalk); }
+.mh-item:disabled { opacity: 0.6; cursor: progress; }
+.mh-item span { color: var(--ink-soft); font-size: 0.9rem; }
+.mh-item.mh-k-laundry { border-left-color: var(--indigo); }
+.mh-item.mh-k-travel { border-left-color: var(--marigold); }
+.mh-item.mh-k-other { border-left-color: var(--ink-soft); }
+.mh-tag-due { background: #f8dcd8; color: var(--brick); }
+.mh-cats { margin: 1rem 0; display: grid; gap: 0.45rem; }
+.mh-cat { display: grid; grid-template-columns: 7.5rem 1fr 6.5rem; gap: 0.7rem; align-items: center; font-size: 0.95rem; }
+.mh-cat i { display: block; height: 0.8rem; background: var(--chalk); border-radius: 99px; overflow: hidden; }
+.mh-cat i b { display: block; height: 100%; background: var(--green); border-radius: 99px; }
+.mh-cat .n { text-align: right; font-weight: 700; }
+.mh-stock > div:first-child { flex: 1 1 16rem; min-width: 0; }
+.mh-stock-btns { justify-content: flex-end; margin-top: 0.4rem; }
+.mh-hist { list-style: none; margin: 0.6rem 0 0; padding: 0.6rem 0.8rem; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); display: grid; gap: 0.3rem; font-size: 0.92rem; }
+.mh-hist li { display: grid; grid-template-columns: 6.5rem 8.5rem 4rem 1fr; gap: 0.6rem; align-items: baseline; }
+.mh-hist .meta { margin: 0; }
+.mh-bill { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: clamp(1rem, 4vw, 2.2rem); max-width: 46rem; }
+.mh-bill header { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; border-bottom: 2px solid var(--ink); padding-bottom: 0.8rem; }
+.mh-bill h1 { font-size: 1.6rem; }
+.mh-bill-who { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+.mh-bill table { width: 100%; border-collapse: collapse; }
+.mh-bill th, .mh-bill td { text-align: left; padding: 0.5rem 0.4rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+.mh-bill th { font-size: 0.85rem; color: var(--ink-soft); }
+.mh-bill .n { text-align: right; white-space: nowrap; }
+.mh-bill td .meta { display: block; margin: 0; font-size: 0.85rem; }
+.mh-bill tfoot td { font-weight: 700; }
+.mh-bill tfoot tr.sub td { font-weight: 400; color: var(--ink-soft); }
+.mh-bill tfoot tr.due td { font-size: 1.15rem; border-bottom: 0; border-top: 2px solid var(--ink); }
+.mh-bill-foot { margin-top: 1.2rem; text-align: center; }
+@media (max-width: 640px) {
+  .mh-hist li { grid-template-columns: 1fr 1fr; }
+  .mh-cat { grid-template-columns: 6rem 1fr 5.5rem; }
+  .mh-stock .right { text-align: left; }
+  .mh-stock-btns, .mh-stock .right .mh-links { justify-content: flex-start; }
+}
+/* Printing a bill: only the bill, no menus or buttons. */
+@media print {
+  .site-header, .site-footer, .admin-nav, .mh-noprint, .hb-chat, .hb-chat-fab, .welcome-toast { display: none !important; }
+  .admin-shell { display: block; }
+  body { background: #fff; }
+  .page { padding: 0; max-width: none; }
+  .mh-bill { border: 0; padding: 0; max-width: none; }
+}

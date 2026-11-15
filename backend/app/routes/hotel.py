@@ -278,12 +278,15 @@ def list_rooms(property_id: UUID, user: dict = Depends(host)):
                LEFT JOIN LATERAL (
                  -- Who is in the room now. A guest leaving today stays on the card until "Check out" is pressed.
                  SELECT x.* FROM (
-                   SELECT 'walkin' AS kind, hg.id, hg.name, hg.phone, hg.check_out, hg.total_amount - hg.paid_amount AS balance
+                   SELECT 'walkin' AS kind, hg.id, hg.name, hg.phone, hg.check_out,
+                          hg.total_amount - hg.paid_amount
+                            + (SELECT COALESCE(SUM(c.amount), 0) FROM hotel_charges c WHERE c.guest_id = hg.id) AS balance
                      FROM hotel_guests hg
                     WHERE hg.room_id = r.id AND hg.checked_out_at IS NULL AND hg.check_in <= %(today)s AND hg.check_out >= %(today)s
                    UNION ALL
                    SELECT 'hillbooker', b.id, u.name, u.phone, b.check_out,
                           b.total_amount - COALESCE(b.advance_amount, b.total_amount) - e.collected
+                            + (SELECT COALESCE(SUM(c.amount), 0) FROM hotel_charges c WHERE c.booking_id = b.id)
                      FROM hotel_booking_extras e
                      JOIN bookings b ON b.id = e.booking_id JOIN users u ON u.id = b.user_id
                     WHERE e.room_id = r.id AND e.checked_out_at IS NULL AND b.status = 'confirmed'
@@ -309,7 +312,8 @@ def list_rooms(property_id: UUID, user: dict = Depends(host)):
         # Hill Booker guests who are due in (or already staying) and have not been given a room yet.
         cur.execute(
             """SELECT b.id, u.name, u.phone, b.check_in, b.check_out, b.guests AS people, b.rooms, b.room_type_id, rt.name AS room_type,
-                      b.total_amount - COALESCE(b.advance_amount, b.total_amount) - COALESCE(e.collected, 0) AS balance
+                      b.total_amount - COALESCE(b.advance_amount, b.total_amount) - COALESCE(e.collected, 0)
+                        + (SELECT COALESCE(SUM(c.amount), 0) FROM hotel_charges c WHERE c.booking_id = b.id) AS balance
                FROM bookings b JOIN users u ON u.id = b.user_id JOIN room_types rt ON rt.id = b.room_type_id
                LEFT JOIN hotel_booking_extras e ON e.booking_id = b.id
                WHERE b.property_id = %(p)s AND b.status = 'confirmed' AND b.check_in <= %(today)s AND b.check_out > %(today)s
@@ -497,7 +501,8 @@ def _load_guests(cur, property_id, start: date, end: date) -> list[dict]:
                   rt.name AS room_type, r.id AS room_id, r.label AS room, b.total_amount,
                   COALESCE(b.advance_amount, b.total_amount) AS paid_online, COALESCE(e.collected, 0) AS collected, e.note,
                   e.address, e.id_type, e.id_number, e.vehicle_model, e.vehicle_number, e.checked_out_at,
-                  ARRAY(SELECT ph.side FROM hotel_id_photos ph WHERE ph.booking_id = b.id ORDER BY ph.side DESC) AS id_photos
+                  ARRAY(SELECT ph.side FROM hotel_id_photos ph WHERE ph.booking_id = b.id ORDER BY ph.side DESC) AS id_photos,
+                  (SELECT COALESCE(SUM(c.amount), 0) FROM hotel_charges c WHERE c.booking_id = b.id) AS extras
            FROM bookings b
            JOIN users u ON u.id = b.user_id
            JOIN room_types rt ON rt.id = b.room_type_id
@@ -512,7 +517,8 @@ def _load_guests(cur, property_id, start: date, end: date) -> list[dict]:
                   rt.name AS room_type, r.id AS room_id, r.label AS room, g.total_amount,
                   0::numeric AS paid_online, g.paid_amount AS collected, g.note,
                   g.address, g.id_type, g.id_number, g.vehicle_model, g.vehicle_number, g.checked_out_at,
-                  ARRAY(SELECT ph.side FROM hotel_id_photos ph WHERE ph.guest_id = g.id ORDER BY ph.side DESC) AS id_photos
+                  ARRAY(SELECT ph.side FROM hotel_id_photos ph WHERE ph.guest_id = g.id ORDER BY ph.side DESC) AS id_photos,
+                  (SELECT COALESCE(SUM(c.amount), 0) FROM hotel_charges c WHERE c.guest_id = g.id) AS extras
            FROM hotel_guests g
            LEFT JOIN hotel_rooms r ON r.id = g.room_id
            LEFT JOIN room_types rt ON rt.id = r.room_type_id
@@ -522,7 +528,8 @@ def _load_guests(cur, property_id, start: date, end: date) -> list[dict]:
     rows += cur.fetchall()
     for r in rows:
         r["paid"] = Decimal(r["paid_online"]) + Decimal(r["collected"])
-        r["balance"] = Decimal(r["total_amount"]) - r["paid"]
+        r["bill"] = Decimal(r["total_amount"]) + Decimal(r["extras"])  # the room plus food, laundry and other extras
+        r["balance"] = r["bill"] - r["paid"]
     rows.sort(key=lambda r: (r["check_in"], r["name"].lower()), reverse=True)
     return rows
 
@@ -530,7 +537,8 @@ def _load_guests(cur, property_id, start: date, end: date) -> list[dict]:
 def _guest_totals(rows: list[dict]) -> dict:
     return {
         "guests": len(rows),
-        "total": sum((Decimal(r["total_amount"]) for r in rows), ZERO),
+        "total": sum((r["bill"] for r in rows), ZERO),
+        "extras": sum((Decimal(r["extras"]) for r in rows), ZERO),
         "paid": sum((r["paid"] for r in rows), ZERO),
         "balance": sum((r["balance"] for r in rows), ZERO),
     }
@@ -604,8 +612,9 @@ def update_guest(guest_id: UUID, body: GuestUpdate, user: dict = Depends(host)):
             raise HTTPException(400, "Check-out must be after check-in")
         if (new["check_out"] - new["check_in"]).days > MAX_NIGHTS:
             raise HTTPException(400, "A stay can be up to one year long")
-        if Decimal(new["paid_amount"]) > Decimal(new["total_amount"]):
-            raise HTTPException(400, "The amount paid is more than the total")
+        cur.execute("SELECT COALESCE(SUM(amount), 0) AS extras FROM hotel_charges WHERE guest_id = %s", (str(guest_id),))
+        if Decimal(new["paid_amount"]) > Decimal(new["total_amount"]) + Decimal(cur.fetchone()["extras"]):
+            raise HTTPException(400, "The amount paid is more than the bill (room total plus extras)")
         _check_id(new["id_type"], new["id_number"])
         moved = any(col in changes for col in ("room_id", "check_in", "check_out"))
         if moved and new["room_id"] and not old["checked_out_at"]:
@@ -656,8 +665,10 @@ def set_booking_extra(booking_id: UUID, body: BookingExtraIn, user: dict = Depen
     _check_id(body.id_type, id_number)
     with get_conn() as conn, conn.cursor() as cur:
         b = _my_booking(cur, booking_id, user)
-        if body.collected > Decimal(b["balance_due"]):
-            raise HTTPException(400, f"The balance to collect for this booking is Rs {Decimal(b['balance_due']):,.2f}")
+        cur.execute("SELECT COALESCE(SUM(amount), 0) AS extras FROM hotel_charges WHERE booking_id = %s", (str(booking_id),))
+        due = Decimal(b["balance_due"]) + Decimal(cur.fetchone()["extras"])
+        if body.collected > due:
+            raise HTTPException(400, f"The balance to collect for this booking is Rs {due:,.2f}")
         if body.room_id:
             _booking_room_free(cur, b, booking_id, body.room_id)
         cur.execute(
@@ -1137,21 +1148,22 @@ def guests_xlsx(property_id: UUID, date_from: str | None = Query(None, alias="fr
         rows = _load_guests(cur, property_id, start, end)
     data = [
         [r["check_in"], r["check_out"], _text(r["name"]), _text(r["phone"]), "Hill Booker" if r["source"] == "hillbooker" else "Direct",
-         _text(r["room"] or r["room_type"]), r["people"], float(r["total_amount"]), float(r["paid_online"]), float(r["collected"]),
-         float(r["balance"]), _text(r["address"]), ID_NAMES.get(r["id_type"], ""), _text(r["id_number"]),
+         _text(r["room"] or r["room_type"]), r["people"], float(r["total_amount"]), float(r["extras"]), float(r["paid_online"]),
+         float(r["collected"]), float(r["balance"]), _text(r["address"]), ID_NAMES.get(r["id_type"], ""), _text(r["id_number"]),
          " and ".join(r["id_photos"]) if r["id_photos"] else "", _text(r["vehicle_model"]), _text(r["vehicle_number"]), _text(r["note"])]
         for r in rows
     ]
     t = _guest_totals(rows)
-    data.append(["", "", "Total", "", "", "", "", float(t["total"]), float(sum((Decimal(r["paid_online"]) for r in rows), ZERO)),
+    data.append(["", "", "Total", "", "", "", "", float(t["total"] - t["extras"]), float(t["extras"]),
+                 float(sum((Decimal(r["paid_online"]) for r in rows), ZERO)),
                  float(sum((Decimal(r["collected"]) for r in rows), ZERO)), float(t["balance"]), "", "", "", "", "", "", ""])
     return _xlsx(
         f"{prop['name']}: guest register",
         f"Stays between {start:%d %b %Y} and {end:%d %b %Y}. Amounts in rupees.",
-        [{"name": "Guests", "headers": ["Check-in", "Check-out", "Guest", "Phone", "Booked through", "Room", "People", "Total", "Paid online",
+        [{"name": "Guests", "headers": ["Check-in", "Check-out", "Guest", "Phone", "Booked through", "Room", "People", "Room total", "Extras", "Paid online",
                                         "Paid at property", "Balance", "Address", "ID proof", "ID number", "ID photo saved", "Vehicle", "Vehicle number", "Note"],
-          "rows": data, "money": (8, 9, 10, 11), "dates": (1, 2),
-          "widths": {3: 26, 4: 16, 6: 20, 12: 36, 13: 24, 14: 18, 15: 16, 16: 20, 17: 18, 18: 34},
+          "rows": data, "money": (8, 9, 10, 11, 12), "dates": (1, 2),
+          "widths": {3: 26, 4: 16, 6: 20, 13: 36, 14: 24, 15: 18, 16: 16, 17: 20, 18: 18, 19: 34},
           "total_row": True}],
         f"guest-register-{start:%Y%m%d}-{end:%Y%m%d}.xlsx",
     )

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "../../../../components/AuthProvider";
 import Guard from "../../../../components/dashboard/Guard";
 import HotelHead, { IdFields, IdPhotoPicker, IdPhotos, downloadFile, idName, listDays, num, sendPickedPhotos, useHotel } from "../../../../components/dashboard/HotelHead";
@@ -74,7 +75,8 @@ function Guests() {
     if (!form.name.trim()) return setMsg({ text: "Give the guest's name.", bad: true });
     if (!form.check_in || !form.check_out || form.check_out <= form.check_in) return setMsg({ text: "Check-out must be after check-in.", bad: true });
     if (total < 0 || paid < 0) return setMsg({ text: "Amounts can't be less than zero.", bad: true });
-    if (paid > total) return setMsg({ text: "The amount paid is more than the total.", bad: true });
+    const extras = editId ? Number((all.find((x) => x.source === "walkin" && x.id === editId) || {}).extras || 0) : 0;
+    if (paid > total + extras) return setMsg({ text: extras ? "The amount paid is more than the bill (room total plus extras)." : "The amount paid is more than the total.", bad: true });
     if (form.id_type === "aadhaar" && form.id_number && form.id_number.length !== 4) return setMsg({ text: "For Aadhaar, enter only the last 4 digits.", bad: true });
     const body = {
       name: form.name,
@@ -206,7 +208,7 @@ function Guests() {
                 <b className="mh-big">{t.guests}</b>
               </div>
               <div className="pay-stat">
-                <span className="meta">Total</span>
+                <span className="meta">Total{Number(t.extras) > 0 ? `, with ${money(t.extras)} extras` : ""}</span>
                 <b className="mh-big">{money(t.total)}</b>
               </div>
               <div className="pay-stat">
@@ -224,7 +226,7 @@ function Guests() {
             <ul className="rows">
               {list.map((g) => {
                 const hb = g.source === "hillbooker";
-                const due = Number(g.total_amount) - Number(g.paid_online);
+                const due = Number(g.total_amount) + Number(g.extras) - Number(g.paid_online); // what can be collected at the property
                 const here = !g.checked_out_at && day(g.check_in) <= today && day(g.check_out) >= today;
                 return (
                   <li key={`${g.source}-${g.id}`} className="plain-row mh-guest">
@@ -284,13 +286,21 @@ function Guests() {
                       )}
                     </div>
                     <div className="right">
-                      <span className="price">{money(g.total_amount)}</span>
+                      <span className="price">{money(g.bill)}</span>
+                      {Number(g.extras) > 0 && (
+                        <p className="meta">
+                          Room {money(g.total_amount)} + extras {money(g.extras)}
+                        </p>
+                      )}
                       <p className="meta">
                         Paid {money(g.paid)}
                         {hb ? ` (${money(g.paid_online)} online)` : ""}
                       </p>
-                      <p className={Number(g.balance) > 0 ? "mh-due" : "mh-clear"}>{Number(g.balance) > 0 ? `Balance ${money(g.balance)}` : "Fully paid"}</p>
+                      <p className={Number(g.balance) > 0 ? "mh-due" : "mh-clear"}>
+                        {Number(g.balance) > 0 ? `Balance ${money(g.balance)}` : Number(g.balance) < 0 ? `Paid ${money(-Number(g.balance))} extra` : "Fully paid"}
+                      </p>
                       <p className="mh-links">
+                        <Link href={`/dashboard/hotel/bill?kind=${g.source}&id=${g.id}`}>Bill</Link>
                         {hb ? (
                           <button
                             type="button"
@@ -362,7 +372,7 @@ function Guests() {
                 <input type="number" min="1" max="50" step="1" inputMode="numeric" value={form.people} onChange={set("people")} />
               </label>
               <label className="field">
-                <span>Total amount (₹)</span>
+                <span>Room total (₹)</span>
                 <input type="number" min="0" step="1" inputMode="decimal" value={form.total_amount} onChange={set("total_amount")} placeholder="0" />
               </label>
               <label className="field">
