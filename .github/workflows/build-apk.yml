@@ -44,6 +44,11 @@ jobs:
           M=android/app/src/main/AndroidManifest.xml
           grep -q POST_NOTIFICATIONS $M || sed -i 's#<application#<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <application#' $M
 
+      - name: Let the guest take a photo of an ID card
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.CAMERA' $M || sed -i 's#<application#<uses-permission android:name="android.permission.CAMERA"/>\n    <application#' $M
+
       - name: Firebase needs Android 6 or newer
         run: sed -i -E 's/minSdk(Version)?[ =]+flutter\.minSdkVersion/minSdk = 23/' android/app/build.gradle*
 
@@ -73,7 +78,8 @@ jobs:
 
       - name: Build APK
         run: |
-          API="${{ inputs.api_base || vars.API_BASE || 'http://10.0.2.2:8000' }}"
+          API="${{ inputs.api_base || vars.API_BASE || 'https://api.hillbooker.com' }}"
+          echo "Building against $API"
           flutter build apk --release --dart-define=API_BASE="$API"
 
       - uses: actions/upload-artifact@v4
