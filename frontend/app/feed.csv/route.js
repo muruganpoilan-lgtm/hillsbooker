@@ -3,10 +3,10 @@ import { SITE_URL } from "../../lib/seo";
 
 // The product feed ChatGPT reads, served at https://hillbooker.com/feed.csv
 //
-// One row per trip package. OpenAI's feed wants nine columns on every row:
-// item_id, title, description, url, brand, seller_name, image_url, availability
-// and price. A row missing any of them is thrown away, so every value below is
-// either real or the row is left out.
+// One row per trip package. OpenAI's feed requires eleven columns on every row:
+// item_id, title, description, url, brand, seller_name, image_url, availability,
+// price, target_countries and store_country. A row missing any of them is thrown
+// away, so every value below is either real or the row is left out.
 //
 // Rooms are deliberately not in here. A room's price and availability change
 // with the dates, and a feed can only state one price, so any row we wrote for
@@ -55,6 +55,7 @@ const COLUMNS = [
   "price",
   "product_category",
   "target_countries",
+  "store_country",
 ];
 
 export async function GET() {
@@ -68,7 +69,7 @@ export async function GET() {
     const price = Number(p.price_per_person);
     const image = p.photo ? String(p.photo) : "";
 
-    // Every one of the nine is required. No price or no photo means the row
+    // Every one of the eleven is required. No price or no photo means the row
     // would be rejected, so it is left out rather than sent half empty.
     if (!p.slug || !p.title || !image || !(price > 0)) {
       skipped += 1;
@@ -87,6 +88,8 @@ export async function GET() {
         "in_stock",
         `${price.toFixed(2)} INR`,
         "Travel > Tour Packages",
+        // An array field, so in a CSV cell it is JSON, not a bare code.
+        '["IN"]',
         "IN",
       ]
         .map(cell)
