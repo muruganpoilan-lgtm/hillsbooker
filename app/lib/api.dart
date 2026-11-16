@@ -47,6 +47,33 @@ class Api {
     }
   }
 
+  // Upload one file under a field name the server chooses (ID photos use "file" and PUT).
+  static Future<ApiResult> uploadOne(
+    String path,
+    String field,
+    String filename,
+    List<int> bytes, {
+    String method = 'POST',
+  }) async {
+    final req = http.MultipartRequest(method, Uri.parse('$apiBase$path'));
+    final t = token;
+    if (t != null) req.headers['Authorization'] = 'Bearer $t';
+    req.files.add(http.MultipartFile.fromBytes(field, bytes, filename: filename));
+    try {
+      final streamed = await req.send().timeout(const Duration(seconds: 120));
+      final res = await http.Response.fromStream(streamed);
+      return _finish(res);
+    } catch (_) {
+      return ApiResult.failure(0, "Can't reach the Hill Booker server. Check your internet and try again.");
+    }
+  }
+
+  // The headers an Image.network call needs to fetch something only the host may see.
+  static Map<String, String> imageHeaders() {
+    final t = token;
+    return t == null ? <String, String>{} : {'Authorization': 'Bearer $t'};
+  }
+
   static Future<ApiResult> _send(String method, String path, {Map<String, String>? query, Object? body}) async {
     var uri = Uri.parse('$apiBase$path');
     if (query != null && query.isNotEmpty) {
