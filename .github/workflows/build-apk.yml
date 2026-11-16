@@ -48,15 +48,11 @@ jobs:
         run: sed -i -E 's/minSdk(Version)?[ =]+flutter\.minSdkVersion/minSdk = 23/' android/app/build.gradle*
 
       - name: Keep the package name valid on newer Flutter
-        # Flutter 3.50+ writes the Android config in Kotlin, where "in" is a reserved word, so it
-        # quotes our org (in.roomly) with backticks and Gradle rejects the package name. Strip them.
-        # The package name itself is unchanged, so Firebase and Google sign-in keep working.
         run: |
           for F in android/app/build.gradle.kts android/app/build.gradle; do
             [ -f "$F" ] && sed -i -E '/namespace|applicationId/ s/`//g' "$F" || true
           done
           grep -nE 'namespace|applicationId' android/app/build.gradle.kts android/app/build.gradle 2>/dev/null || true
-
 
       - name: Set up notifications from google-services.json
         run: |
