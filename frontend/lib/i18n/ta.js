@@ -476,6 +476,7 @@ export default {
   "blog.loadFail": "இந்த வழிகாட்டியை ஏற்ற முடியவில்லை",
   "blog.ctaTitle": "உங்கள் பயணத்தைத் திட்டமிட தயாரா?",
   "blog.staysIn": "{city} தங்குமிடங்களைப் பார்க்க",
+  "blog.listFree": "உங்கள் தங்குமிடத்தை இலவசமாகப் பதிவிடுங்கள்",
   "nav.supportAdmin": "டிக்கெட்டுகள்",
   "footer.support": "உதவி & ஆதரவு",
   "sup.title": "உதவி & ஆதரவு",

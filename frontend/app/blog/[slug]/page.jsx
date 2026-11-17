@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import BlogBody from "../../../components/BlogBody";
 import { api } from "../../../lib/api";
 import { getT } from "../../../lib/lang";
-import { SITE_URL, jsonLd, slugify } from "../../../lib/seo";
+import { SITE_URL, jsonLd } from "../../../lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -64,10 +64,13 @@ export default async function BlogPost({ params }) {
         <h2 className="mini-title">{t("blog.ctaTitle")}</h2>
         <div className="actions">
           {p.city && (
-            <Link className="btn btn-primary" href={`/stays/${slugify(p.city)}`}>
+            <Link className="btn btn-primary" href={`/search?city=${encodeURIComponent(p.city)}`}>
               {t("blog.staysIn", { city: p.city })}
             </Link>
           )}
+          <Link className="btn" href="/register?role=owner">
+            {t("blog.listFree")}
+          </Link>
           <Link className="btn" href="/packages">
             {t("nav.packages")}
           </Link>
