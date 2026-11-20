@@ -38,6 +38,81 @@ function HoldTimer({ until, onExpire }) {
   return <span className="scarce">{left > 0 ? (hours >= 1 ? t("bk.heldH", { h: hours, m: mins % 60 }) : t("bk.heldM", { m: mins, s: secs })) : t("bk.holdEnd")}</span>;
 }
 
+// Shown under a past stay: tap the stars, add a few words, send. One review per stay.
+function ReviewForm({ booking, token, onDone, onAuthFail }) {
+  const { t } = useLang();
+  const [open, setOpen] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  if (!open) {
+    return (
+      <div className="booking-actions">
+        <button type="button" className="btn btn-primary" onClick={() => setOpen(true)}>
+          {t("rev.write")}
+        </button>
+      </div>
+    );
+  }
+
+  async function send(e) {
+    e.preventDefault();
+    if (!rating) return setErr(t("rev.pickStars"));
+    setErr("");
+    setBusy(true);
+    const res = await api(`/bookings/${booking.id}/review`, { method: "POST", token, body: { rating, comment } });
+    setBusy(false);
+    if (res.status === 401) return onAuthFail();
+    if (!res.ok) return setErr(res.error);
+    onDone();
+  }
+
+  return (
+    <form className="rev-form" onSubmit={send}>
+      <p className="mini-title">{t("rev.formTitle", { name: booking.property })}</p>
+      <div className="star-pick" role="radiogroup" aria-label={t("rev.yourRating")}>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            role="radio"
+            aria-checked={rating === n}
+            aria-label={t("rev.outOf", { r: n })}
+            className={n <= rating ? "on" : ""}
+            onClick={() => setRating(n)}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+      <label htmlFor={`rev-${booking.id}`}>{t("rev.comment")}</label>
+      <textarea
+        id={`rev-${booking.id}`}
+        rows={4}
+        maxLength={1500}
+        value={comment}
+        placeholder={t("rev.commentHint")}
+        onChange={(e) => setComment(e.target.value)}
+      />
+      {err && (
+        <p className="form-error" role="alert">
+          {err}
+        </p>
+      )}
+      <div className="booking-actions">
+        <button type="submit" className="btn btn-primary" aria-busy={busy} disabled={busy}>
+          {busy ? t("rev.sending") : t("rev.send")}
+        </button>
+        <button type="button" className="btn" onClick={() => setOpen(false)}>
+          {t("rev.later")}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export default function BookingsPage() {
   const { ready, token, logout } = useAuth();
   const { t } = useLang();
@@ -267,12 +342,39 @@ export default function BookingsPage() {
                   )}
                 </div>
               )}
-              {b.status === "confirmed" && (
+              {b.status === "confirmed" && !b.can_review && !b.my_rating && (
                 <p className="meta">
                   {b.can_cancel
                     ? t("bk.canCancel")
                     : t("bk.cantCancel")}
                 </p>
+              )}
+              {b.can_review && (
+                <ReviewForm
+                  booking={b}
+                  token={token}
+                  onAuthFail={logout}
+                  onDone={() => {
+                    setNotice(t("rev.thanks"));
+                    load();
+                  }}
+                />
+              )}
+              {b.my_rating && (
+                <div className="my-review">
+                  <p>
+                    <b>{t("rev.yours")}</b>{" "}
+                    <span className="stars" role="img" aria-label={t("rev.outOf", { r: b.my_rating })}>
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <span key={i} aria-hidden="true" className={i <= b.my_rating ? "on" : ""}>
+                          ★
+                        </span>
+                      ))}
+                    </span>
+                  </p>
+                  {b.my_comment && <p className="meta">{b.my_comment}</p>}
+                  {b.property_id && <Link href={`/properties/${b.property_id}#reviews`}>{t("rev.see")}</Link>}
+                </div>
               )}
             </article>
           );

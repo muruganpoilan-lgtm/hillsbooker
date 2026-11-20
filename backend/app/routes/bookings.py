@@ -9,7 +9,7 @@ from ..auth import current_user
 from ..config import settings
 from ..coupons import check_coupon
 from ..db import get_conn
-from ..schemas import BookingIn
+from ..schemas import BookingIn, ReviewIn
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
@@ -123,7 +123,7 @@ def my_bookings(user: dict = Depends(current_user)):
     with get_conn() as conn, conn.cursor() as cur:
         release_expired_holds(cur)  # so a guest never sees a hold that has already run out
         cur.execute(
-            """SELECT b.id, p.name AS property, p.city, rt.name AS room_type, b.check_in, b.check_out,
+            """SELECT b.id, b.property_id, p.name AS property, p.city, rt.name AS room_type, b.check_in, b.check_out,
                       b.rooms, b.guests, b.children, b.total_amount, b.coupon_code, b.discount_amount,
                       COALESCE(b.advance_amount, b.total_amount) AS advance_amount,
                       b.total_amount - COALESCE(b.advance_amount, b.total_amount) AS balance_due,
@@ -131,14 +131,59 @@ def my_bookings(user: dict = Depends(current_user)):
                       EXISTS (SELECT 1 FROM payments pm WHERE pm.booking_id = b.id AND pm.provider = 'upi_direct' AND pm.status = 'created') AS upi_pending,
                       (SELECT h.upi_id IS NOT NULL FROM users h WHERE h.id = p.owner_id) AS host_upi,
                       COALESCE((SELECT now() < pm.updated_at + make_interval(mins => %s) FROM payments pm
-                                WHERE pm.booking_id = b.id AND pm.status = 'paid' ORDER BY pm.updated_at DESC LIMIT 1), true) AS can_cancel
+                                WHERE pm.booking_id = b.id AND pm.status = 'paid' ORDER BY pm.updated_at DESC LIMIT 1), true) AS can_cancel,
+                      rv.rating AS my_rating, rv.comment AS my_comment,
+                      (b.status = 'confirmed' AND rv.id IS NULL AND p.owner_id <> b.user_id
+                       AND b.check_out <= (now() AT TIME ZONE 'Asia/Kolkata')::date) AS can_review
                FROM bookings b
+               LEFT JOIN reviews rv ON rv.booking_id = b.id
                JOIN properties p ON p.id = b.property_id
                JOIN room_types rt ON rt.id = b.room_type_id
                WHERE b.user_id = %s ORDER BY b.created_at DESC""",
             (settings.cancel_window_minutes, user["id"]),
         )
         return cur.fetchall()
+
+
+@router.post("/{booking_id}/review", status_code=201)
+def review_booking(booking_id: str, body: ReviewIn, user: dict = Depends(current_user)):
+    """A guest rates their stay once, after check-out. The property's average and count are updated at the same time."""
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """SELECT b.id, b.property_id, b.status, b.check_out, p.owner_id,
+                      (now() AT TIME ZONE 'Asia/Kolkata')::date AS today
+               FROM bookings b JOIN properties p ON p.id = b.property_id
+               WHERE b.id::text = %s AND b.user_id = %s""",
+            (booking_id, user["id"]),
+        )
+        b = cur.fetchone()
+        if not b:
+            raise HTTPException(404, "Booking not found")
+        if str(b["owner_id"]) == str(user["id"]):
+            raise HTTPException(403, "Hosts can't review their own property")
+        if b["status"] != "confirmed":
+            raise HTTPException(400, "Only a confirmed stay can be reviewed")
+        if b["check_out"] > b["today"]:
+            raise HTTPException(400, "You can write a review after you check out")
+        cur.execute(
+            """INSERT INTO reviews (booking_id, property_id, user_id, rating, comment)
+               VALUES (%s, %s, %s, %s, %s)
+               ON CONFLICT (booking_id) DO NOTHING RETURNING id""",
+            (b["id"], b["property_id"], user["id"], body.rating, body.comment or None),
+        )
+        if not cur.fetchone():
+            raise HTTPException(409, "You have already reviewed this stay")
+        # Lock the property row so two reviews at once can't both write a stale average.
+        cur.execute("SELECT id FROM properties WHERE id = %s FOR UPDATE", (b["property_id"],))
+        cur.execute(
+            """UPDATE properties p SET rating_avg = COALESCE(x.avg, 0), rating_count = x.n
+               FROM (SELECT ROUND(AVG(rating)::numeric, 1) AS avg, COUNT(*) AS n FROM reviews WHERE property_id = %s) x
+               WHERE p.id = %s
+               RETURNING p.rating_avg, p.rating_count""",
+            (b["property_id"], b["property_id"]),
+        )
+        agg = cur.fetchone()
+    return {"ok": True, "rating_avg": agg["rating_avg"], "rating_count": agg["rating_count"]}
 
 
 @router.post("/{booking_id}/confirm")

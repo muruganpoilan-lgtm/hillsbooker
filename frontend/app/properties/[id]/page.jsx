@@ -4,6 +4,7 @@ import HeartButton from "../../../components/HeartButton";
 import PhotoGallery from "../../../components/PhotoGallery";
 import RoomList from "../../../components/RoomList";
 import PropertyMap, { mapPoint } from "../../../components/PropertyMap";
+import PropertyReviews from "../../../components/PropertyReviews";
 import { api, isISODate, nightsBetween } from "../../../lib/api";
 import { getT } from "../../../lib/lang";
 import { readOccupancy } from "../../../lib/occupancy";
@@ -44,7 +45,8 @@ export default async function PropertyPage({ params, searchParams }) {
   const children = occ.ages.length;
 
   const qs = hasDates ? `?${new URLSearchParams({ check_in: ci, check_out: co }).toString()}` : "";
-  const res = await api(`/properties/${id}${qs}`);
+  const [res, revRes] = await Promise.all([api(`/properties/${id}${qs}`), api(`/properties/${id}/reviews?limit=20`)]);
+  const reviews = revRes.ok ? revRes.data : null;
 
   if (!res.ok && res.status === 404) notFound();
   if (!res.ok) {
@@ -78,6 +80,16 @@ export default async function PropertyPage({ params, searchParams }) {
     priceRange: prices.length ? `from INR ${Math.min(...prices)}` : undefined,
     aggregateRating:
       p.rating_count > 0 ? { "@type": "AggregateRating", ratingValue: Number(p.rating_avg).toFixed(1), reviewCount: p.rating_count } : undefined,
+    review:
+      reviews && reviews.reviews.length
+        ? reviews.reviews.slice(0, 10).map((r) => ({
+            "@type": "Review",
+            author: { "@type": "Person", name: r.guest },
+            datePublished: String(r.created_at).slice(0, 10),
+            reviewRating: { "@type": "Rating", ratingValue: r.rating, bestRating: 5 },
+            reviewBody: r.comment || undefined,
+          }))
+        : undefined,
   };
   return (
     <main className="page">
@@ -88,7 +100,8 @@ export default async function PropertyPage({ params, searchParams }) {
         <p className="rating">
           {p.rating_count > 0 ? (
             <>
-              <b className="score">{Number(p.rating_avg).toFixed(1)}</b> {t("prop.reviewsFrom", { reviews: t.n("unit.review", p.rating_count) })}
+              <b className="score">{Number(p.rating_avg).toFixed(1)}</b>{" "}
+              <a href="#reviews">{t("prop.reviewsFrom", { reviews: t.n("unit.review", p.rating_count) })}</a>
             </>
           ) : (
             t("prop.new")
@@ -99,7 +112,17 @@ export default async function PropertyPage({ params, searchParams }) {
 
       <PhotoGallery photos={p.photos} name={p.name} seed={p.id} />
 
-      <div className="prop-body">
+      <nav className="prop-tabs" aria-label={t("prop.sections")}>
+        <a href="#overview">{t("prop.tabOverview")}</a>
+        <a href="#rooms">{t("prop.rooms")}</a>
+        <a href="#reviews">
+          {t("rev.title")}
+          {p.rating_count > 0 ? <span className="prop-tab-n">{p.rating_count}</span> : null}
+        </a>
+        <a href="#location">{t("prop.tabLocation")}</a>
+      </nav>
+
+      <div className="prop-body" id="overview">
         <div>
           {p.description && (
             <section className="prop-section">
@@ -120,7 +143,7 @@ export default async function PropertyPage({ params, searchParams }) {
         </div>
       </div>
 
-      <section className="prop-section">
+      <section className="prop-section" id="rooms">
         <h2>{t("prop.rooms")}</h2>
         <AvailabilityCalendar propertyId={p.id} checkIn={hasDates ? ci : ""} checkOut={hasDates ? co : ""} guests={guests} children={children} />
         <RoomList
@@ -139,7 +162,11 @@ export default async function PropertyPage({ params, searchParams }) {
         />
       </section>
 
-      <PropertyMap p={p} t={t} />
+      <PropertyReviews data={reviews} t={t} />
+
+      <div id="location">
+        <PropertyMap p={p} t={t} />
+      </div>
     </main>
   );
 }

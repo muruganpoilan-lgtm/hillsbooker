@@ -301,3 +301,13 @@ class VehicleBookingIn(BaseModel):
         else:
             self.end_date = self.start_date
         return self
+
+
+class ReviewIn(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    comment: str = Field(default="", max_length=1500)
+
+    @field_validator("comment")
+    @classmethod
+    def tidy_comment(cls, v):
+        return (v or "").strip()

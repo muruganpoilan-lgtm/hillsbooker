@@ -167,6 +167,44 @@ def availability(property_id: str, days: int = Query(150, ge=7, le=366)):
     return {"today": prop["today"].isoformat(), "earliest": prop["earliest"].isoformat(), "last": end.isoformat(), "open": open_nights}
 
 
+@router.get("/properties/{property_id}/reviews")
+def property_reviews(property_id: str, limit: int = Query(20, ge=1, le=50), offset: int = Query(0, ge=0)):
+    """Guest reviews for a property, newest first. Only guests who stayed (a confirmed booking, after check-out) can write one."""
+    try:
+        uuid.UUID(property_id)
+    except ValueError:
+        raise HTTPException(404, "Property not found")
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("SELECT rating_avg, rating_count FROM properties WHERE id = %s AND status = 'approved'", (property_id,))
+        prop = cur.fetchone()
+        if not prop:
+            raise HTTPException(404, "Property not found")
+        cur.execute(
+            """SELECT rating, COUNT(*) AS n FROM reviews WHERE property_id = %s GROUP BY rating""",
+            (property_id,),
+        )
+        breakdown = {str(i): 0 for i in range(5, 0, -1)}
+        for r in cur.fetchall():
+            breakdown[str(r["rating"])] = r["n"]
+        cur.execute(
+            """SELECT r.id, r.rating, r.comment, r.created_at, b.check_in, rt.name AS room_type,
+                      split_part(trim(u.name), ' ', 1) AS first_name
+               FROM reviews r
+               JOIN users u ON u.id = r.user_id
+               JOIN bookings b ON b.id = r.booking_id
+               JOIN room_types rt ON rt.id = b.room_type_id
+               WHERE r.property_id = %s
+               ORDER BY r.created_at DESC
+               LIMIT %s OFFSET %s""",
+            (property_id, limit, offset),
+        )
+        rows = cur.fetchall()
+    for r in rows:
+        r["guest"] = (r.pop("first_name") or "Guest").strip()[:30] or "Guest"
+        r["stayed"] = r.pop("check_in").strftime("%Y-%m")  # month of stay only, not exact dates
+    return {"rating_avg": prop["rating_avg"], "rating_count": prop["rating_count"], "breakdown": breakdown, "reviews": rows}
+
+
 @router.get("/properties/{property_id}")
 def property_detail(property_id: str, check_in: date | None = None, check_out: date | None = None):
     if (check_in is None) != (check_out is None):

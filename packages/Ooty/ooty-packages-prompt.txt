@@ -1,0 +1,48 @@
+Put all new files for this feature inside the folder C:\Users\poila\Downloads\HillBooker\packages (create it if it doesn't exist), and only change other files where needed to link to it (header menu, home page, sitemap, routes).
+
+Add an "Ooty Trip Packages" page to the Hill Booker website at /packages/ooty, using the existing green/marigold design (do not change the overall look).
+
+Page title: "Ooty Trip Packages – Stay + Cab | Hill Booker"
+Meta description: "Ooty tour packages with stay and private cab. 2 to 4 day trips covering Ooty, Coonoor, Kotagiri, Pykara and the Nilgiri toy train. Enquire on WhatsApp."
+
+Show 4 package cards. Each card has: name, duration, a short tagline, a day-by-day itinerary, "Price on request", and an "Enquire on WhatsApp" button.
+
+1) Ooty Weekend Escape – 2 Days / 1 Night
+Tagline: For couples and short trips from Coimbatore, Bengaluru and Kerala
+Day 1: Pick-up from Coimbatore/Mettupalayam, drive up the ghat road, check in, Botanical Garden, Rose Garden, Ooty Lake boating, evening at Charring Cross market
+Day 2: Doddabetta Peak, Tea Factory & Museum, Coonoor – Sim's Park, Dolphin's Nose, Lamb's Rock, drop at Coimbatore
+
+2) Classic Ooty – 3 Days / 2 Nights  (badge: "Most popular")
+Tagline: Best value for families
+Day 1: Pick-up, check in, Botanical Garden, Ooty Lake boating, Rose Garden
+Day 2: Pine Forest, Shooting Point (9th Mile), Pykara Waterfalls, Pykara Lake boating, bonfire night (where available)
+Day 3: Doddabetta Peak, Tea Factory, Coonoor viewpoints, drop
+
+3) Nilgiris Explorer – 4 Days / 3 Nights
+Tagline: Ooty + Coonoor + Kotagiri
+Day 1: Arrival, Ooty town sightseeing
+Day 2: Pykara Falls, Pykara Lake, Shooting Point, Pine Forest
+Day 3: Avalanche Lake and Emerald Lake
+Day 4: Kotagiri – Kodanad View Point, Catherine Falls, then Coonoor, drop
+
+4) Ooty Toy Train Special – 3 Days / 2 Nights
+Tagline: For families with kids and first-time visitors
+Day 1: Nilgiri Mountain Railway toy train from Mettupalayam to Ooty (UNESCO heritage), cab meets you at Ooty station, check in
+Day 2: Ooty sightseeing + Pykara
+Day 3: Doddabetta + Coonoor, drive down to Coimbatore
+Note: Train tickets booked separately on IRCTC, or by us on request
+
+Below the cards, add:
+- Included in all packages: Stay at a Hill Booker property (homestay, cottage or resort); Private cab with driver for all sightseeing; Fuel, toll, parking and driver allowance
+- Not included: Entry tickets, boating, meals not listed, personal expenses
+- Good to know: Best time is March–June and September–November; December–February is cold. Avoid weekends and May holidays for fewer crowds. Check whether a Nilgiris e-pass is required for vehicles before travel. Toy train seats sell out weeks ahead.
+
+"Enquire on WhatsApp" button: open https://wa.me/918300841442 with prefilled text "Hi Hill Booker, I'm interested in the <package name> package. Please share details." (URL-encoded).
+
+Also:
+- Add a "Trip Packages" link in the header menu (desktop and mobile).
+- Add a "Ooty Trip Packages" section on the home page with the 4 cards in short form, each linking to /packages/ooty.
+- Add /packages/ooty to sitemap.xml.
+- Make it mobile-friendly.
+
+When done: test it locally, then git commit and push, then deploy to the VPS (ssh root@201.18.215.113, cd ~/hillsbooker, git pull, docker compose up -d --build). Show me the live URL at the end.
