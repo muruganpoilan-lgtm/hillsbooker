@@ -20,6 +20,7 @@ export default function Header() {
       <nav className="nav" aria-label="Main">
         <Link href="/vehicles">{t("nav.cars")}</Link>
         <Link href="/packages">{t("nav.packages")}</Link>
+        <Link href="/plan-trip">{t("nav.planTrip")}</Link>
         <Link href="/blog">{t("nav.blog")}</Link>
         {ready && token ? (
           <>

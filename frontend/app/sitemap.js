@@ -25,6 +25,7 @@ export default async function sitemap() {
     { url: `${SITE_URL}/vehicles`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
     ...vehicles.map((v) => ({ url: `${SITE_URL}/vehicles/${v.id}`, lastModified: now, changeFrequency: "weekly", priority: 0.6 })),
     { url: `${SITE_URL}/packages`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${SITE_URL}/plan-trip`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     ...packages.map((p) => ({ url: `${SITE_URL}/packages/${p.slug}`, lastModified: now, changeFrequency: "weekly", priority: 0.6 })),
     { url: `${SITE_URL}/blog`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
     ...posts.map((p) => ({ url: `${SITE_URL}/blog/${p.slug}`, lastModified: p.published_at ? new Date(p.published_at) : now, changeFrequency: "monthly", priority: 0.6 })),

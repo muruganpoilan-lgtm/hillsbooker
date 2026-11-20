@@ -902,3 +902,50 @@ html { scroll-behavior: smooth; }
 .hr-right { right: -1.1rem; }
 .hr-arrow:hover { background: var(--chalk); }
 @media (min-width: 600px) { .hr-arrow { display: grid; place-items: center; } }
+
+/* ---------- plan my trip ---------- */
+.chips { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 1rem; }
+.chip { position: relative; }
+.trip-form { background: var(--paper); border: 3px solid var(--marigold); border-radius: 10px; padding: 1.1rem 1.2rem; margin-top: 1rem; }
+.trip-grid { display: grid; gap: 0.8rem; grid-template-columns: 1fr 1fr; margin-bottom: 1rem; }
+@media (min-width: 860px) { .trip-grid { grid-template-columns: repeat(3, 1fr); } }
+.trip-go { margin-top: 0.9rem; min-width: 12rem; }
+.trip-result { margin-top: 2rem; }
+.trip-card { background: var(--paper); border: 1px solid var(--line); border-radius: 18px; padding: 1.2rem 1.3rem; max-width: 34rem; }
+.trip-card-head { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 1rem; }
+.trip-card-head h2 { font-size: 1.25rem; }
+.trip-card-head p { margin: 0.1rem 0 0; }
+.trip-icon { width: 2.8rem; height: 2.8rem; border-radius: 12px; display: grid; place-items: center; background: var(--green); color: #fff; font-size: 1.3rem; flex: none; }
+.trip-steps { list-style: none; margin: 0; padding: 0; }
+.trip-steps li { position: relative; display: flex; gap: 0.8rem; padding-bottom: 1rem; }
+.trip-steps li:last-child { padding-bottom: 0; }
+.trip-steps li:not(:last-child)::after { content: ""; position: absolute; left: 1.05rem; top: 2.2rem; bottom: 0.1rem; width: 3px; background: var(--line); }
+.trip-steps li.done:not(:last-child)::after { background: var(--marigold); }
+.trip-steps p { margin: 0; }
+.trip-dot { width: 2.2rem; height: 2.2rem; border-radius: 50%; flex: none; display: grid; place-items: center; font-weight: 700; border: 2px solid var(--green); color: var(--green); background: var(--paper); }
+.trip-steps li.done .trip-dot { background: var(--green); color: #fff; }
+.trip-h { font-size: 1.2rem; margin: 1.8rem 0 0.7rem; }
+.trip-list { display: grid; gap: 0.8rem; }
+@media (min-width: 760px) { .trip-list { grid-template-columns: 1fr 1fr; } }
+.trip-item { display: grid; grid-template-columns: 7.5rem 1fr; gap: 0.8rem; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 0.6rem; color: var(--ink); text-decoration: none; }
+.trip-item:hover { border-color: var(--green); }
+.trip-item img { width: 100%; height: 100%; min-height: 6.5rem; object-fit: cover; border-radius: 7px; }
+.trip-item p { margin: 0.1rem 0; }
+.trip-item u { color: var(--green); font-weight: 700; font-size: 0.92rem; }
+.trip-days { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.7rem; }
+.trip-days > li { background: var(--paper); border-left: 4px solid var(--green); border-radius: 0; padding: 0.7rem 1rem; }
+.trip-days ul { margin: 0.3rem 0 0; padding-left: 1.1rem; }
+.trip-cost { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 0.2rem 1.1rem 0.9rem; max-width: 30rem; }
+.trip-cost p { margin: 0.25rem 0; display: flex; justify-content: space-between; gap: 1rem; }
+.trip-cost p.meta { display: block; }
+.trip-total { border-top: 1px solid var(--line); padding-top: 0.4rem; font-size: 1.1rem; }
+.trip-pk { margin: 0; padding-left: 1.1rem; }
+.trip-send { margin-top: 1rem; }
+.trip-send-form { display: grid; gap: 0.8rem; max-width: 30rem; }
+.trip-band { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0.6rem 1rem; padding: 1rem 1.2rem; border-radius: 12px; background: var(--paper); border: 2px solid var(--green); color: var(--ink); text-decoration: none; }
+.trip-band:hover { background: #eef7f2; }
+.trip-band-icon { width: 2.8rem; height: 2.8rem; border-radius: 12px; display: grid; place-items: center; background: var(--green); color: #fff; font-size: 1.3rem; }
+.trip-band b { display: block; font-size: 1.15rem; }
+.trip-band i { display: block; font-style: normal; color: var(--ink-soft); }
+.trip-band u { grid-column: 1 / -1; justify-self: start; text-decoration: none; background: var(--green); color: #fff; font-weight: 700; padding: 0.45rem 1rem; border-radius: 6px; }
+@media (min-width: 760px) { .trip-band { grid-template-columns: auto 1fr auto; } .trip-band u { grid-column: auto; } }

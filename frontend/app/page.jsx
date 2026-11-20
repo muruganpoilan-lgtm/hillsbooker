@@ -103,6 +103,17 @@ export default async function Home() {
       )}
 
       <section className="page hb-section">
+        <Link href="/plan-trip" className="trip-band">
+          <span className="trip-band-icon" aria-hidden="true">✈</span>
+          <span>
+            <b>{t("home.planTitle")}</b>
+            <i>{t("home.planText")}</i>
+          </span>
+          <u>{t("home.planCta")}</u>
+        </Link>
+      </section>
+
+      <section className="page hb-section">
         <h2 className="hb-title">{t("home.regions")}</h2>
         <p className="hb-lead">{t("home.regionsLead")}</p>
         <HomeRow label={t("home.regions")}>

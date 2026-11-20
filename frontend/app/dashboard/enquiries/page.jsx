@@ -7,7 +7,7 @@ import Guard from "../../../components/dashboard/Guard";
 import { api, prettyDate } from "../../../lib/api";
 
 const STATUSES = ["new", "contacted", "won", "lost"];
-const KIND = { group: "Group tour", corporate: "Corporate tour", package: "Trip package" };
+const KIND = { group: "Group tour", corporate: "Corporate tour", package: "Trip package", trip: "Plan my trip" };
 
 // Opens in Excel: a comma-separated file, with quotes around every value.
 function downloadCsv(rows) {
