@@ -14,7 +14,7 @@ export default async function Footer() {
     <footer className="site-footer">
       <div className="tiles" aria-hidden="true" />
       <div className="footer-inner">
-        <p className="footer-brand"><img src="/logo-mark.png" alt="" className="footer-logo" /> Hill Booker</p>
+        <p className="footer-brand"><img src="/logo-mark.png" alt="" className="footer-logo" width="80" height="30" loading="lazy" /> Hill Booker</p>
         <p className="meta">{t("footer.tagline")}</p>
         <nav className="footer-links" aria-label="Popular places">
           {["Munnar", "Ooty", "Valparai", "Kodaikanal", "Alleppey", "Coorg", "Wayanad"].map((c) => (

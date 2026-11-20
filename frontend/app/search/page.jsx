@@ -53,6 +53,21 @@ export default async function SearchPage({ searchParams }) {
     q.set("near_lng", String(nearLng));
   }
   const res = await api(`/search?${q.toString()}`);
+  // 10 places a page, with Back / page numbers / Next under the list. ?page= keeps every other filter.
+  const PER_PAGE = 10;
+  const all = res.ok ? res.data.results : [];
+  const pages = Math.max(1, Math.ceil(all.length / PER_PAGE));
+  const page = Math.min(Math.max(1, Math.trunc(Number(get("page"))) || 1), pages);
+  const shown = all.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const pageHref = (n) => {
+    const u = new URLSearchParams();
+    for (const [k, v] of Object.entries(sp)) {
+      if (k === "page") continue;
+      (Array.isArray(v) ? v : [v]).forEach((x) => x != null && u.append(k, x));
+    }
+    if (n > 1) u.set("page", String(n));
+    return `/search?${u.toString()}`;
+  };
   const activeFilters = [type, maxPrice, minPrice, minRating, picked.length ? "x" : "", sort === "near" ? "x" : ""].filter(Boolean).length;
   const clearParams = writeOccupancy(new URLSearchParams({ check_in: checkIn, check_out: checkOut }), occ);
   if (city) clearParams.set("city", city);
@@ -152,9 +167,10 @@ export default async function SearchPage({ searchParams }) {
               </h1>
               <p className="result-summary">
                 {t("search.summary", { places: t.n("unit.place", res.data.results.length), nights: t.n("unit.nightFor", nights) })}
+                {pages > 1 ? ` · ${t("search.showing", { a: (page - 1) * PER_PAGE + 1, b: (page - 1) * PER_PAGE + shown.length, total: all.length })}` : ""}
               </p>
               <ul className="results">
-                {res.data.results.map((p) => {
+                {shown.map((p) => {
                   const perNight = Number(p.price_per_night);
                   return (
                     <li key={p.id} className="has-heart">
@@ -189,6 +205,38 @@ export default async function SearchPage({ searchParams }) {
                   );
                 })}
               </ul>
+              {pages > 1 && (
+                <nav className="pager" aria-label={t("search.pages")}>
+                  {page > 1 ? (
+                    <Link href={pageHref(page - 1)} className="pager-btn" rel="prev">
+                      ‹ {t("search.back")}
+                    </Link>
+                  ) : (
+                    <span className="pager-btn off" aria-hidden="true">‹ {t("search.back")}</span>
+                  )}
+                  <span className="pager-nums">
+                    {Array.from({ length: pages }, (_, i) => i + 1)
+                      .filter((n) => n === 1 || n === pages || Math.abs(n - page) <= 1)
+                      .map((n, i, arr) => (
+                        <span key={n}>
+                          {i > 0 && n - arr[i - 1] > 1 && <span className="pager-gap">…</span>}
+                          {n === page ? (
+                            <b className="pager-num on" aria-current="page">{n}</b>
+                          ) : (
+                            <Link href={pageHref(n)} className="pager-num">{n}</Link>
+                          )}
+                        </span>
+                      ))}
+                  </span>
+                  {page < pages ? (
+                    <Link href={pageHref(page + 1)} className="pager-btn" rel="next">
+                      {t("search.next")} ›
+                    </Link>
+                  ) : (
+                    <span className="pager-btn off" aria-hidden="true">{t("search.next")} ›</span>
+                  )}
+                </nav>
+              )}
             </>
           )}
         </div>

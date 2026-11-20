@@ -6,8 +6,8 @@ import { api, money } from "../lib/api";
 import { slugify } from "../lib/seo";
 import { getT } from "../lib/lang";
 
-// To use a real photo for a place, add public/cities/<city-slug>.jpg (for example public/cities/munnar.jpg).
-// Until the file exists the card shows its coloured background instead.
+// Photos for places are in public/cities: <city-slug>.webp (640 px, used on cards) and <city-slug>.jpg (960 px, for sharing).
+// To add a place, add both files. Until they exist the card shows its coloured background instead.
 const TREND_BIG = [
   { city: "Munnar", tag: "Tea hills and cool mornings", from: "#0e6b58", to: "#3f9a7f" },
   { city: "Ooty", tag: "Nilgiri hills and lakes", from: "#2a3a7a", to: "#5a6fb8" },
@@ -60,8 +60,10 @@ function Card({ d, className, t }) {
     <Link
       href={`/stays/${slugify(d.city)}`}
       className={`hb-card ${className}`}
-      style={{ backgroundImage: `url(/cities/${slugify(d.city)}.jpg), linear-gradient(160deg, ${d.from}, ${d.to})` }}
+      style={{ backgroundImage: `linear-gradient(160deg, ${d.from}, ${d.to})` }}
     >
+      {/* A real img (not a CSS background) so the browser loads it only when the card is near the screen. */}
+      <img src={`/cities/${slugify(d.city)}.webp`} alt="" loading="lazy" decoding="async" className="hb-card-img" />
       <span className="hb-card-shade" aria-hidden="true" />
       <span className="hb-card-name">{t(`city.${d.city}`)}</span>
       <span className="hb-card-tag">{t(`tag.${d.city}`)}</span>
@@ -123,7 +125,7 @@ export default async function Home() {
             const best = r.towns.reduce((a, c) => ((sc.cities[c.toLowerCase()] || 0) > (sc.cities[a.toLowerCase()] || 0) ? c : a), r.city);
             return (
               <Link key={r.key} href={`/stays/${slugify(best)}`} className="hr-card" role="listitem">
-                <img src={`/cities/${r.photo}.jpg`} alt="" loading="lazy" className="hr-img" />
+                <img src={`/cities/${r.photo}.webp`} alt="" loading="lazy" decoding="async" className="hr-img" />
                 <b className="hr-name">{t(`region.${r.key}`)}</b>
                 <span className="hr-sub">
                   {r.towns.map(town).join(" • ")}
@@ -142,7 +144,7 @@ export default async function Home() {
             const info = sc.types[x.type];
             return (
               <Link key={x.type} href={`/search?type=${x.type}`} className="hr-card" role="listitem">
-                <img src={(info && info.photo) || `/cities/${x.fallback}.jpg`} alt="" loading="lazy" className="hr-img" />
+                <img src={(info && info.photo) || `/cities/${x.fallback}.webp`} alt="" loading="lazy" decoding="async" className="hr-img" />
                 <b className="hr-name">{t(`types.${x.type}`)}</b>
                 {info && info.count > 0 && <span className="hr-sub">{t.n("unit.stay", info.count)}</span>}
               </Link>
@@ -158,7 +160,7 @@ export default async function Home() {
           <HomeRow label={t("home.loved")}>
             {sc.stays.map((p) => (
               <Link key={p.id} href={`/properties/${p.id}`} className="hr-card" role="listitem">
-                <img src={p.photo || `/cities/${slugify(p.city)}.jpg`} alt="" loading="lazy" className="hr-img" />
+                <img src={p.photo || `/cities/${slugify(p.city)}.webp`} alt="" loading="lazy" decoding="async" className="hr-img" />
                 <b className="hr-name">{p.name}</b>
                 <span className="hr-sub">{t("type.in", { type: t(`type.${p.type}`), city: town(p.city) })}</span>
                 <span className="hr-meta">
@@ -173,6 +175,12 @@ export default async function Home() {
                 {Number(p.price_from) > 0 && <span className="hr-price">{t("home.priceFrom", { amt: money(p.price_from) })}</span>}
               </Link>
             ))}
+            <Link href="/search" className="hr-card hr-all" role="listitem">
+              <span className="hr-all-box">
+                <b>{t("home.seeAll")}</b>
+                <span>›</span>
+              </span>
+            </Link>
           </HomeRow>
         </section>
       )}

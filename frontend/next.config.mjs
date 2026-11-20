@@ -13,7 +13,14 @@ const nextConfig = {
   output: "standalone",
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    // Photos and logos in /public rarely change: let browsers keep them for a week instead of asking again on every visit.
+    const week = [{ key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      { source: "/cities/:file*", headers: week },
+      { source: "/logo-mark.png", headers: week },
+      { source: "/logo.png", headers: week },
+    ];
   },
 };
 

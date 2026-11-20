@@ -132,7 +132,8 @@ def my_bookings(user: dict = Depends(current_user)):
                       (SELECT h.upi_id IS NOT NULL FROM users h WHERE h.id = p.owner_id) AS host_upi,
                       COALESCE((SELECT now() < pm.updated_at + make_interval(mins => %s) FROM payments pm
                                 WHERE pm.booking_id = b.id AND pm.status = 'paid' ORDER BY pm.updated_at DESC LIMIT 1), true) AS can_cancel,
-                      rv.rating AS my_rating, rv.comment AS my_comment,
+                      CASE WHEN rv.removed_at IS NULL THEN rv.rating END AS my_rating,
+                      CASE WHEN rv.removed_at IS NULL THEN rv.comment END AS my_comment,
                       (b.status = 'confirmed' AND rv.id IS NULL AND p.owner_id <> b.user_id
                        AND b.check_out <= (now() AT TIME ZONE 'Asia/Kolkata')::date) AS can_review
                FROM bookings b
@@ -143,6 +144,21 @@ def my_bookings(user: dict = Depends(current_user)):
             (settings.cancel_window_minutes, user["id"]),
         )
         return cur.fetchall()
+
+
+def refresh_rating(cur, property_id) -> dict:
+    """Recount a property's average and number of reviews, leaving out removed ones."""
+    # Lock the property row so two changes at once can't both write a stale average.
+    cur.execute("SELECT id FROM properties WHERE id = %s FOR UPDATE", (property_id,))
+    cur.execute(
+        """UPDATE properties p SET rating_avg = COALESCE(x.avg, 0), rating_count = x.n
+           FROM (SELECT ROUND(AVG(rating)::numeric, 1) AS avg, COUNT(*) AS n
+                 FROM reviews WHERE property_id = %s AND removed_at IS NULL) x
+           WHERE p.id = %s
+           RETURNING p.rating_avg, p.rating_count""",
+        (property_id, property_id),
+    )
+    return cur.fetchone()
 
 
 @router.post("/{booking_id}/review", status_code=201)
@@ -173,16 +189,7 @@ def review_booking(booking_id: str, body: ReviewIn, user: dict = Depends(current
         )
         if not cur.fetchone():
             raise HTTPException(409, "You have already reviewed this stay")
-        # Lock the property row so two reviews at once can't both write a stale average.
-        cur.execute("SELECT id FROM properties WHERE id = %s FOR UPDATE", (b["property_id"],))
-        cur.execute(
-            """UPDATE properties p SET rating_avg = COALESCE(x.avg, 0), rating_count = x.n
-               FROM (SELECT ROUND(AVG(rating)::numeric, 1) AS avg, COUNT(*) AS n FROM reviews WHERE property_id = %s) x
-               WHERE p.id = %s
-               RETURNING p.rating_avg, p.rating_count""",
-            (b["property_id"], b["property_id"]),
-        )
-        agg = cur.fetchone()
+        agg = refresh_rating(cur, b["property_id"])
     return {"ok": True, "rating_avg": agg["rating_avg"], "rating_count": agg["rating_count"]}
 
 

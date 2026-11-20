@@ -949,3 +949,34 @@ html { scroll-behavior: smooth; }
 .trip-band i { display: block; font-style: normal; color: var(--ink-soft); }
 .trip-band u { grid-column: 1 / -1; justify-self: start; text-decoration: none; background: var(--green); color: #fff; font-weight: 700; padding: 0.45rem 1rem; border-radius: 6px; }
 @media (min-width: 760px) { .trip-band { grid-template-columns: auto 1fr auto; } .trip-band u { grid-column: auto; } }
+
+/* ---------- search page paging, home "see all" card ---------- */
+.pager { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; margin: 1.4rem 0 0.5rem; }
+.pager-btn { padding: 0.55rem 1.1rem; border: 1.5px solid var(--green); border-radius: 6px; color: var(--green); font-weight: 700; text-decoration: none; background: var(--paper); }
+.pager-btn:hover { background: var(--green); color: #fff; }
+.pager-btn.off { border-color: var(--line); color: #a7b0a9; background: transparent; }
+.pager-nums { display: flex; align-items: center; gap: 0.3rem; }
+.pager-nums > span { display: inline-flex; align-items: center; gap: 0.3rem; }
+.pager-num { min-width: 2.3rem; height: 2.3rem; display: inline-grid; place-items: center; border-radius: 6px; text-decoration: none; color: var(--ink); border: 1px solid var(--line); background: var(--paper); }
+.pager-num:hover { border-color: var(--green); }
+.pager-num.on { background: var(--green); border-color: var(--green); color: #fff; }
+.pager-gap { color: var(--ink-soft); padding: 0 0.15rem; }
+.hr-all-box { width: 100%; aspect-ratio: 5 / 4; border-radius: 10px; border: 2px dashed var(--green); display: grid; place-content: center; justify-items: center; gap: 0.3rem; color: var(--green); background: #eef7f2; }
+.hr-all-box b { font-size: 1.05rem; }
+.hr-all-box span { font-size: 2rem; line-height: 1; }
+
+/* ---------- admin: guest reviews ---------- */
+.rv-filter { width: 100%; max-width: 32rem; padding: 0.5rem 0.7rem; border: 1px solid #aab5ac; border-radius: 4px; font: inherit; margin: 0.2rem 0 0.8rem; }
+.rv-confirm { margin: 1rem 0; border-color: var(--brick); max-width: 36rem; }
+.rv-list { list-style: none; margin: 0; padding: 0; }
+.rv-row { padding: 0.9rem 0; border-bottom: 1px solid var(--line); }
+.rv-row p { margin: 0.25rem 0; }
+.rv-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.6rem; }
+.rv-stars { color: var(--marigold); letter-spacing: 0.05em; }
+.rv-prop { font-weight: 700; color: var(--ink); }
+.rv-text { white-space: pre-line; }
+.rv-gone { opacity: 0.75; }
+.rv-why { color: var(--brick); font-weight: 600; font-size: 0.9rem; }
+
+/* ---------- speed: card photos as lazy images ---------- */
+.hb-card-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }

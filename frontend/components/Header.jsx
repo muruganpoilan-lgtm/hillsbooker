@@ -14,7 +14,7 @@ export default function Header() {
   return (
     <header className="site-header">
       <Link href="/" className="brand">
-        <img src="/logo-mark.png" alt="" className="brand-logo" />
+        <img src="/logo-mark.png" alt="" className="brand-logo" width="91" height="34" />
         Hill Booker
       </Link>
       <nav className="nav" aria-label="Main">

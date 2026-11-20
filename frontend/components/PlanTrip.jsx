@@ -229,7 +229,7 @@ export default function PlanTrip() {
             <div className="trip-list">
               {plan.stays.map((s) => (
                 <Link key={s.id} href={roomLink(s)} className="trip-item">
-                  <img src={s.photo || `/cities/${plan.city.toLowerCase()}.jpg`} alt="" loading="lazy" />
+                  <img src={s.photo || `/cities/${plan.city.toLowerCase()}.webp`} alt="" loading="lazy" />
                   <div>
                     <b>{s.name}</b>
                     <p className="meta">
@@ -256,7 +256,7 @@ export default function PlanTrip() {
                 <div className="trip-list">
                   {plan.cabs.map((v) => (
                     <Link key={v.id} href={`/vehicles/${v.id}`} className="trip-item">
-                      <img src={v.photo || `/cities/${plan.city.toLowerCase()}.jpg`} alt="" loading="lazy" />
+                      <img src={v.photo || `/cities/${plan.city.toLowerCase()}.webp`} alt="" loading="lazy" />
                       <div>
                         <b>{v.name}</b>
                         <p className="meta">

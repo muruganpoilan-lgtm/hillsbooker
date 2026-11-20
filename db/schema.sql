@@ -203,7 +203,9 @@ CREATE TABLE reviews (
   user_id     uuid NOT NULL REFERENCES users(id),
   rating      int NOT NULL CHECK (rating BETWEEN 1 AND 5),
   comment     text,
-  created_at  timestamptz NOT NULL DEFAULT now()
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  removed_at  timestamptz,  -- taken down by the admin; hidden everywhere
+  removed_reason text
 );
 
 INSERT INTO amenities (name) VALUES

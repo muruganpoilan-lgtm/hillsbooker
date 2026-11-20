@@ -43,10 +43,29 @@ export async function api(path, { method = "GET", body, token } = {}) {
   return { ok: true, status: res.status, data };
 }
 
+// Big phone photos are shrunk in the browser before upload: longest side 1600 px, JPEG. A 5 MB photo becomes about
+// 300 KB, so uploads are quicker and guests' pages load faster. Small files and anything that fails are sent as they are.
+async function shrinkForUpload(file) {
+  if (typeof window === "undefined" || !file || !/^image\/(jpeg|png|webp)$/.test(file.type) || file.size < 400 * 1024) return file;
+  try {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(bmp.width * scale));
+    c.height = Math.max(1, Math.round(bmp.height * scale));
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise((done) => c.toBlob(done, "image/jpeg", 0.82));
+    if (!blob || blob.size >= file.size) return file;
+    return new File([blob], (file.name || "photo").replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" });
+  } catch {
+    return file;
+  }
+}
+
 // Multipart upload for photos. The browser sets the Content-Type (with its boundary) itself.
 export async function apiUpload(path, files, token) {
   const form = new FormData();
-  for (const f of files) form.append("files", f);
+  for (const f of files) form.append("files", await shrinkForUpload(f));
   let res;
   try {
     res = await fetch(`${API_BASE}${path}`, {

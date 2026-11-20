@@ -137,3 +137,19 @@ and a monthly salary sheet. Records belong to one property and only the account 
   **Orders & extras** posts food, laundry, travel and other charges to a guest's bill from a one-tap price list, and
   `/dashboard/hotel/bill` prints the bill (room, extras, paid, balance; no GST lines). **Expenses** records spending by type with
   supplier bills still owed, and **Stock** tracks linen, toiletries, kitchen and cleaning items with a "buy more" level.
+
+## Guest reviews: admin removal
+
+- Admin panel → **Guest reviews** (`/dashboard/reviews`) lists every review, newest first, with the guest's name, phone and stay.
+  **Remove** hides a review (abuse, spam, phone numbers) with a private reason; **Restore** brings it back.
+- A removed review is kept in the database (`reviews.removed_at`), hidden from the property page and left out of the star rating.
+  The guest can't post another review for the same stay.
+- Existing database: run `db/migrations/038_review_removal.sql`.
+
+## Page speed
+
+- City photos in `frontend/public/cities`: `<city>.webp` (640 px, ~30 KB, shown on cards) and `<city>.jpg` (960 px, for sharing).
+  The homepage now loads ~0.3 MB of photos instead of ~2.8 MB, and card photos are real `<img loading="lazy">`, so photos
+  below the fold load only when scrolled to.
+- Logos were shrunk (header logo 89 KB → 8 KB). `/cities/*` and the logos are cached by browsers for a week (`next.config.mjs`).
+- Host photo uploads are shrunk in the browser before sending (longest side 1600 px, JPEG), in `apiUpload` (`frontend/lib/api.js`).

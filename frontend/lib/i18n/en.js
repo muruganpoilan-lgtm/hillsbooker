@@ -677,4 +677,10 @@ export default {
   "trip.sending": "Sending…",
   "trip.sent": "Done! We have your plan and will call you on {phone} soon.",
   "trip.errPhone": "Enter your 10-digit mobile number after +91.",
+
+  "search.showing": "showing {a}–{b} of {total}",
+  "search.pages": "Result pages",
+  "search.back": "Back",
+  "search.next": "Next",
+  "home.seeAll": "See all stays",
 };

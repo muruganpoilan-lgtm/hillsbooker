@@ -502,3 +502,62 @@ def review_photos(body: PhotoReview, user: dict = Depends(admin_only)):
             )
             done += len(cur.fetchall())
     return {"updated": done}
+
+
+# ---------- guest reviews: take down abusive or spam reviews ----------
+
+class ReviewRemove(BaseModel):
+    reason: Optional[str] = Field(default=None, max_length=200)
+
+
+@router.get("/reviews")
+def list_reviews(show: Literal["live", "removed", "all"] = "live", user: dict = Depends(admin_only)):
+    """Newest reviews first, with the property and the guest, so the admin can spot abuse."""
+    where = {"live": "r.removed_at IS NULL", "removed": "r.removed_at IS NOT NULL", "all": "TRUE"}[show]
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            f"""SELECT r.id, r.rating, r.comment, r.created_at, r.removed_at, r.removed_reason,
+                       p.id AS property_id, p.name AS property, p.city,
+                       u.name AS guest, u.email AS guest_email, u.phone AS guest_phone,
+                       b.check_in, b.check_out
+                FROM reviews r
+                JOIN properties p ON p.id = r.property_id
+                JOIN users u ON u.id = r.user_id
+                JOIN bookings b ON b.id = r.booking_id
+                WHERE {where}
+                ORDER BY r.created_at DESC
+                LIMIT 300"""
+        )
+        return cur.fetchall()
+
+
+@router.post("/reviews/{review_id}/remove")
+def remove_review(review_id: str, body: ReviewRemove, user: dict = Depends(admin_only)):
+    from .bookings import refresh_rating
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """UPDATE reviews SET removed_at = now(), removed_reason = %s
+               WHERE id::text = %s AND removed_at IS NULL RETURNING property_id""",
+            ((body.reason or "").strip() or None, review_id),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(404, "Review not found or already removed")
+        agg = refresh_rating(cur, row["property_id"])
+    return {"ok": True, "rating_avg": agg["rating_avg"], "rating_count": agg["rating_count"]}
+
+
+@router.post("/reviews/{review_id}/restore")
+def restore_review(review_id: str, user: dict = Depends(admin_only)):
+    from .bookings import refresh_rating
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """UPDATE reviews SET removed_at = NULL, removed_reason = NULL
+               WHERE id::text = %s AND removed_at IS NOT NULL RETURNING property_id""",
+            (review_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(404, "Review not found or not removed")
+        agg = refresh_rating(cur, row["property_id"])
+    return {"ok": True, "rating_avg": agg["rating_avg"], "rating_count": agg["rating_count"]}
