@@ -157,3 +157,12 @@ and a monthly salary sheet. Records belong to one property and only the account 
   needs Pillow). Each copy is made on first request and kept in `uploads/_thumbs`; nothing to run for old photos.
   The website uses `sized()` / `sizedSet()` from `frontend/lib/api.js`.
 - Home page how-to videos show a thumbnail and load the YouTube player only when tapped (`components/LiteYouTube.jsx`).
+
+## Home page design (Nov 2026)
+
+- Photo hero (`public/hero/munnar-1200.webp` / `-720.webp`), search on top of it, then an owners strip ("List your property";
+  the Deepavali line hides itself after `OWNER_OFFER_UNTIL` in `app/page.jsx`).
+- "Explore the hills" cards show each region's height above sea level (`REGIONS` in `app/page.jsx`).
+- Then property types, stays guests love, "Plan the whole trip" (plan my trip, cars, group tours), why Hill Booker,
+  how-to videos, popular towns (only towns with a city page or a listed stay), and the owner band.
+- Logged-out visitors see a "List your property" button in the header.

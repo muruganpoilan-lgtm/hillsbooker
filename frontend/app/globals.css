@@ -988,3 +988,54 @@ html { scroll-behavior: smooth; }
 .lite-yt-play { position: absolute; left: 50%; top: 50%; width: 68px; height: 48px; transform: translate(-50%, -50%); border-radius: 12px; background: #e62117; }
 .lite-yt-play::after { content: ""; position: absolute; left: 27px; top: 14px; border-style: solid; border-width: 10px 0 10px 17px; border-color: transparent transparent transparent #fff; }
 .lite-yt:focus-visible { outline: 3px solid var(--marigold); outline-offset: 2px; }
+
+/* ---------- home page design A: photo hero, owners strip, altitude cards ---------- */
+.hb-hero-photo { position: relative; overflow: hidden; min-height: clamp(330px, 48vw, 480px); display: flex; align-items: flex-end; background: var(--green-dark); padding-bottom: clamp(4.4rem, 9vw, 5.6rem); }
+.hb-hero-photo .hb-hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.hb-hero-photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,63,52,0.12) 0%, rgba(10,63,52,0.25) 45%, rgba(10,63,52,0.86) 100%); }
+.hb-hero-photo .hb-hero-in { position: relative; z-index: 1; width: 100%; }
+.hb-hero-photo h1 { font-size: clamp(2.3rem, 6vw, 4.1rem); max-width: 14ch; letter-spacing: -0.02em; }
+.hb-hero-photo p { color: #e8f2ee; max-width: 46ch; }
+.hb-search .slip { box-shadow: 0 10px 30px rgba(10,63,52,0.18); }
+.hb-owners-wrap { max-width: 70rem; margin: 1.1rem auto 0; padding: 0 clamp(1rem, 4vw, 2.5rem); }
+.hb-owners { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.8rem 1.4rem; background: #dff1e4; border-radius: 10px; padding: 0.9rem 1.2rem; }
+.hb-owners p { margin: 0; max-width: 70ch; }
+.hb-owners-deal { color: var(--green-dark); font-weight: 600; }
+.hb-owners a { background: var(--green-dark); color: #fff; text-decoration: none; font-weight: 700; padding: 0.55rem 1rem; border-radius: 6px; white-space: nowrap; }
+.hb-owners a:hover { background: var(--green); }
+.alt-card { position: relative; scroll-snap-align: start; aspect-ratio: 3 / 4; border-radius: 14px; overflow: hidden; text-decoration: none; color: #fff; display: flex; flex-direction: column; justify-content: flex-end; padding: 1rem; background: var(--green-dark); }
+.alt-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s; }
+.alt-card:hover img { transform: scale(1.04); }
+.alt-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(6,40,33,0.88) 100%); }
+.alt-m, .alt-name, .alt-towns { position: relative; }
+.alt-m { font-family: var(--font-display), system-ui, sans-serif; font-weight: 800; font-size: clamp(2rem, 3.4vw, 2.6rem); line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.alt-name { font-weight: 700; font-size: 1.1rem; margin-top: 0.35rem; }
+.alt-towns { font-size: 0.9rem; color: #d8e8e2; }
+.hb-trips { display: grid; gap: 1rem; margin-top: 1rem; grid-template-columns: 1fr; }
+@media (min-width: 800px) { .hb-trips { grid-template-columns: 1.3fr 1fr 1fr; } }
+.hb-trip { display: flex; flex-direction: column; gap: 0.4rem; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 1.2rem 1.3rem; color: var(--ink); text-decoration: none; }
+.hb-trip b { font-family: var(--font-display), system-ui, sans-serif; font-size: 1.2rem; }
+.hb-trip span { color: var(--ink-soft); }
+.hb-trip u { margin-top: auto; padding-top: 0.5rem; color: var(--green); font-weight: 700; text-decoration: none; }
+.hb-trip:hover { border-color: var(--green); }
+.hb-trip-main { background: var(--green); border-color: var(--green); color: #fff; }
+.hb-trip-main span { color: #d9ece5; }
+.hb-trip-main u { color: var(--marigold); }
+.hb-trip-main:hover { background: var(--green-dark); }
+.hb-why-plain div { gap: 0.2rem; }
+.hb-towns { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.9rem; }
+.hb-towns a { text-decoration: none; color: var(--ink); border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: 0.35rem 0.85rem; font-size: 0.95rem; }
+.hb-towns a:hover { border-color: var(--green); color: var(--green); }
+.host-band-new { background: var(--green-dark); }
+.host-inner-new { grid-template-columns: 1fr; gap: 1.6rem; align-items: center; }
+@media (min-width: 860px) { .host-inner-new { grid-template-columns: 1.2fr 1fr; } }
+.host-inner-new > div { display: grid; gap: 0.7rem; justify-items: start; }
+.host-inner-new p { color: #cfe3dc; }
+.host-points { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+.host-points li { position: relative; padding-left: 1.6rem; }
+.host-points li::before { content: ""; position: absolute; left: 0; top: 0.45em; width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--marigold); }
+/* the header is dark green: the owner button is marigold-outlined so it stands out from the white links */
+.site-header .nav a.nav-list { border: 1.5px solid var(--marigold); color: var(--marigold); padding: 0.3rem 0.75rem; border-radius: 6px; }
+.site-header .nav a.nav-list:hover { background: var(--marigold); color: var(--ink); text-decoration: none; }
+@media (prefers-reduced-motion: reduce) { .alt-card img { transition: none; } }
+@media (max-width: 760px) { .site-header .nav a.nav-list { display: none; } }

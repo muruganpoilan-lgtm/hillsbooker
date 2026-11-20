@@ -41,6 +41,7 @@ export default function Header() {
           </>
         ) : ready ? (
           <>
+            <Link href="/register" className="nav-list">{t("home.host.cta")}</Link>
             <Link href="/login">{t("nav.login")}</Link>
             <Link href="/register" className="btn btn-small">
               {t("nav.signup")}

@@ -3,89 +3,90 @@ import SearchForm from "../components/SearchForm";
 import HelpVideos from "../components/HelpVideos";
 import HomeRow from "../components/HomeRow";
 import { api, money, sized } from "../lib/api";
-import { slugify } from "../lib/seo";
+import { CITY_INFO, slugify } from "../lib/seo";
 import { getT } from "../lib/lang";
 
 // Photos for places are in public/cities: <city-slug>.webp (640 px, used on cards) and <city-slug>.jpg (960 px, for sharing).
-// To add a place, add both files. Until they exist the card shows its coloured background instead.
-const TREND_BIG = [
-  { city: "Munnar", tag: "Tea hills and cool mornings", from: "#0e6b58", to: "#3f9a7f" },
-  { city: "Ooty", tag: "Nilgiri hills and lakes", from: "#2a3a7a", to: "#5a6fb8" },
-];
-const TREND_SMALL = [
-  { city: "Goa", tag: "Beaches", from: "#b3512b", to: "#e89a5a" },
-  { city: "Coorg", tag: "Coffee estates", from: "#7a4b1f", to: "#c08a4d" },
-  { city: "Alleppey", tag: "Backwaters", from: "#0b5f7a", to: "#4aa7c4" },
-];
-const MORE = [
-  { city: "Kodaikanal", tag: "Lake and mist", from: "#4b3a7a", to: "#8d77c4" },
-  { city: "Wayanad", tag: "Forest stays", from: "#1d5c3a", to: "#5aa072" },
-  { city: "Valparai", tag: "Quiet hills", from: "#0a5042", to: "#2f8f78" },
-  { city: "Thekkady", tag: "Spice and wildlife", from: "#6b4a12", to: "#b98a2e" },
-  { city: "Yercaud", tag: "Shevaroy hills", from: "#2f5c2a", to: "#79a35a" },
-];
-const WHY = [1, 2, 3, 4];
+// The hero photo is public/hero/munnar-1200.webp (and -720 for phones).
 
-// "Explore the hills" row. Each region opens the stays page of its main town; the photo comes from public/cities.
+// "Explore the hills": each region shows its height above sea level (rounded, of the main town) as the big number.
+// alt: metres, or 0 for sea level. Each card opens the town in the region that has the most stays.
 const REGIONS = [
-  { key: "nilgiris", city: "Ooty", photo: "ooty", towns: ["Ooty", "Coonoor", "Kotagiri"] },
-  { key: "keralaHills", city: "Munnar", photo: "munnar", towns: ["Munnar", "Wayanad", "Thekkady"] },
-  { key: "anamalai", city: "Valparai", photo: "valparai", towns: ["Valparai", "Kodaikanal"] },
-  { key: "coorg", city: "Coorg", photo: "coorg", towns: ["Coorg", "Chikmagalur"] },
-  { key: "shevaroy", city: "Yercaud", photo: "yercaud", towns: ["Yercaud", "Kolli Hills"] },
-  { key: "backwaters", city: "Alleppey", photo: "alleppey", towns: ["Alleppey", "Kumarakom"] },
+  { key: "nilgiris", city: "Ooty", photo: "ooty", alt: 2240, towns: ["Ooty", "Coonoor", "Kotagiri"] },
+  { key: "keralaHills", city: "Munnar", photo: "munnar", alt: 1600, towns: ["Munnar", "Wayanad", "Thekkady"] },
+  { key: "palani", city: "Kodaikanal", photo: "kodaikanal", alt: 2133, towns: ["Kodaikanal"] },
+  { key: "anamalai", city: "Valparai", photo: "valparai", alt: 1193, towns: ["Valparai"] },
+  { key: "shevaroy", city: "Yercaud", photo: "yercaud", alt: 1515, towns: ["Yercaud", "Kolli Hills"] },
+  { key: "coorg", city: "Coorg", photo: "coorg", alt: 1170, towns: ["Coorg", "Chikmagalur"] },
+  { key: "backwaters", city: "Alleppey", photo: "alleppey", alt: 0, towns: ["Alleppey", "Kumarakom"] },
 ];
 
-// "Browse by property type" row. Shows a photo from a real listing of that type; until one exists, a hill photo.
+// "Browse by property type". Shows a photo from a real listing of that type; until one exists, a hill photo.
 const TYPES = [
-  { type: "hotel", fallback: "thekkady" },
   { type: "homestay", fallback: "wayanad" },
+  { type: "hotel", fallback: "thekkady" },
   { type: "resort", fallback: "alleppey" },
   { type: "apartment", fallback: "kodaikanal" },
 ];
 
+// "Popular towns" links (good for Google). A town shows if it has a city page or any listed stay.
+const TOWNS = ["Ooty", "Munnar", "Kodaikanal", "Valparai", "Coonoor", "Kotagiri", "Coorg", "Wayanad", "Yercaud", "Thekkady", "Alleppey", "Goa"];
+const WHY = [1, 2, 3, 4];
+
+const todayIST = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 // Festive holiday banner: shows from 1 Dec to 2 Jan (India time), then hides by itself until next season.
 const FESTIVE_CITIES = ["Ooty", "Munnar", "Kodaikanal", "Valparai"];
 function festiveOn() {
-  const [m, d] = new Date()
-    .toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })
-    .split("-")
-    .slice(1)
-    .map(Number);
+  const [m, d] = todayIST().split("-").slice(1).map(Number);
   return m === 12 || (m === 1 && d <= 2);
 }
-
-function Card({ d, className, t }) {
-  return (
-    <Link
-      href={`/stays/${slugify(d.city)}`}
-      className={`hb-card ${className}`}
-      style={{ backgroundImage: `linear-gradient(160deg, ${d.from}, ${d.to})` }}
-    >
-      {/* A real img (not a CSS background) so the browser loads it only when the card is near the screen. */}
-      <img src={`/cities/${slugify(d.city)}.webp`} alt="" loading="lazy" decoding="async" className="hb-card-img" />
-      <span className="hb-card-shade" aria-hidden="true" />
-      <span className="hb-card-name">{t(`city.${d.city}`)}</span>
-      <span className="hb-card-tag">{t(`tag.${d.city}`)}</span>
-    </Link>
-  );
-}
+// The owner offer line in the strip under the search: shown until this date (inclusive), then hidden.
+const OWNER_OFFER_UNTIL = "2026-11-30";
 
 export default async function Home() {
   const t = await getT();
   const show = await api("/home/showcase");
   const sc = show.ok ? show.data : { cities: {}, types: {}, stays: [] };
   const town = (c) => (t(`city.${c}`) === `city.${c}` ? c : t(`city.${c}`));
+  const count = (c) => sc.cities[c.toLowerCase()] || 0;
+  const popular = [
+    ...TOWNS.filter((c) => CITY_INFO[slugify(c)] || count(c) > 0),
+    // any other town where an owner has listed, in the order of most stays
+    ...Object.entries(sc.cities)
+      .filter(([c]) => !TOWNS.some((x) => x.toLowerCase() === c))
+      .sort((a, b) => b[1] - a[1])
+      .map(([c]) => c.replace(/\b\w/g, (ch) => ch.toUpperCase())),
+  ];
+
   return (
     <main>
-      <section className="hb-hero">
+      <section className="hb-hero hb-hero-photo">
+        <img
+          src="/hero/munnar-1200.webp"
+          srcSet="/hero/munnar-720.webp 720w, /hero/munnar-1200.webp 1200w"
+          sizes="100vw"
+          alt={t("home.heroAlt")}
+          className="hb-hero-img"
+          fetchPriority="high"
+          decoding="async"
+        />
         <div className="hb-hero-in">
-          <h1>{t("home.title")}</h1>
-          <p>{t("home.sub")}</p>
+          <h1>{t("home.heroTitle")}</h1>
+          <p>{t("home.heroSub")}</p>
         </div>
       </section>
       <div className="hb-search">
         <SearchForm />
+      </div>
+
+      <div className="hb-owners-wrap">
+        <div className="hb-owners">
+          <p>
+            <b>{t("home.ownersTitle")}</b> {t("home.ownersText")}
+            {todayIST() <= OWNER_OFFER_UNTIL ? <span className="hb-owners-deal"> {t("home.ownersDeal")}</span> : null}
+          </p>
+          <Link href="/register">{t("home.host.cta")}</Link>
+        </div>
       </div>
 
       {festiveOn() && (
@@ -105,30 +106,20 @@ export default async function Home() {
       )}
 
       <section className="page hb-section">
-        <Link href="/plan-trip" className="trip-band">
-          <span className="trip-band-icon" aria-hidden="true">✈</span>
-          <span>
-            <b>{t("home.planTitle")}</b>
-            <i>{t("home.planText")}</i>
-          </span>
-          <u>{t("home.planCta")}</u>
-        </Link>
-      </section>
-
-      <section className="page hb-section">
         <h2 className="hb-title">{t("home.regions")}</h2>
-        <p className="hb-lead">{t("home.regionsLead")}</p>
+        <p className="hb-lead">{t("home.altLead")}</p>
         <HomeRow label={t("home.regions")}>
           {REGIONS.map((r) => {
-            const n = r.towns.reduce((sum, c) => sum + (sc.cities[c.toLowerCase()] || 0), 0);
-            // Open the town in this region that has the most stays, so a guest never lands on an empty page.
-            const best = r.towns.reduce((a, c) => ((sc.cities[c.toLowerCase()] || 0) > (sc.cities[a.toLowerCase()] || 0) ? c : a), r.city);
+            const n = r.towns.reduce((sum, c) => sum + count(c), 0);
+            const best = r.towns.reduce((a, c) => (count(c) > count(a) ? c : a), r.city);
             return (
-              <Link key={r.key} href={`/stays/${slugify(best)}`} className="hr-card" role="listitem">
-                <img src={`/cities/${r.photo}.webp`} alt="" loading="lazy" decoding="async" className="hr-img" />
-                <b className="hr-name">{t(`region.${r.key}`)}</b>
-                <span className="hr-sub">
-                  {r.towns.map(town).join(" • ")}
+              <Link key={r.key} href={`/stays/${slugify(best)}`} className="alt-card" role="listitem">
+                <img src={`/cities/${r.photo}.webp`} alt="" loading="lazy" decoding="async" />
+                <span className="alt-shade" aria-hidden="true" />
+                <span className="alt-m">{r.alt > 0 ? t("home.altM", { m: r.alt.toLocaleString("en-IN") }) : t("home.seaLevel")}</span>
+                <span className="alt-name">{t(`region.${r.key}`)}</span>
+                <span className="alt-towns">
+                  {r.towns.map(town).join(", ")}
                   {n > 0 ? ` · ${t.n("unit.stay", n)}` : ""}
                 </span>
               </Link>
@@ -186,65 +177,31 @@ export default async function Home() {
       )}
 
       <section className="page hb-section">
-        <h2 className="hb-title">{t("home.offers")}</h2>
-        <p className="hb-lead">{t("home.offersLead")}</p>
-        <div className="hb-offers">
-          <Link href="/search" className="hb-offer hb-offer-a">
-            <span>
-              <b>{t("home.offer1.title")}</b>
-              <i>{t("home.offer1.text")}</i>
-              <u>{t("home.offer1.cta")}</u>
-            </span>
+        <h2 className="hb-title">{t("home.tripsTitle")}</h2>
+        <div className="hb-trips">
+          <Link href="/plan-trip" className="hb-trip hb-trip-main">
+            <b>{t("home.planTitle")}</b>
+            <span>{t("home.planText")}</span>
+            <u>{t("home.planCta")}</u>
           </Link>
-          <Link href="/vehicles" className="hb-offer hb-offer-b">
-            <span>
-              <b>{t("home.offer2.title")}</b>
-              <i>{t("home.offer2.text")}</i>
-              <u>{t("home.offer2.cta")}</u>
-            </span>
+          <Link href="/vehicles" className="hb-trip">
+            <b>{t("home.carsTitle")}</b>
+            <span>{t("home.carsText")}</span>
+            <u>{t("home.carsCta")}</u>
           </Link>
-        </div>
-      </section>
-
-      <section className="page hb-section">
-        <h2 className="hb-title">{t("home.tours")}</h2>
-        <p className="hb-lead">{t("home.toursLead")}</p>
-        <div className="hb-tours">
-          <Link href="/enquiry?kind=group" className="btn btn-primary">{t("home.groupTour")}</Link>
-          <Link href="/enquiry?kind=corporate" className="btn btn-primary">{t("home.corpTour")}</Link>
-        </div>
-      </section>
-
-      <section className="page hb-section">
-        <h2 className="hb-title">{t("home.trending")}</h2>
-        <p className="hb-lead">{t("home.trendingLead")}</p>
-        <div className="hb-grid-big">
-          {TREND_BIG.map((d) => (
-            <Card key={d.city} d={d} className="hb-card-big" t={t} />
-          ))}
-        </div>
-        <div className="hb-grid-small">
-          {TREND_SMALL.map((d) => (
-            <Card key={d.city} d={d} className="hb-card-mid" t={t} />
-          ))}
-        </div>
-      </section>
-
-      <section className="page hb-section">
-        <h2 className="hb-title">{t("home.more")}</h2>
-        <div className="hb-row">
-          {MORE.map((d) => (
-            <Card key={d.city} d={d} className="hb-card-sm" t={t} />
-          ))}
+          <Link href="/enquiry?kind=group" className="hb-trip">
+            <b>{t("home.tours")}</b>
+            <span>{t("home.toursText")}</span>
+            <u>{t("home.toursCta")}</u>
+          </Link>
         </div>
       </section>
 
       <section className="page hb-section">
         <h2 className="hb-title">{t("home.why")}</h2>
-        <div className="hb-why">
+        <div className="hb-why hb-why-plain">
           {WHY.map((n) => (
             <div key={n}>
-              <span aria-hidden="true">✓</span>
               <b>{t(`home.why${n}.t`)}</b>
               <p>{t(`home.why${n}.d`)}</p>
             </div>
@@ -254,13 +211,31 @@ export default async function Home() {
 
       <HelpVideos />
 
-      <section className="host-band">
-        <div className="host-inner">
-          <h2>{t("home.host.title")}</h2>
-          <p>{t("home.host.text")}</p>
-          <Link href="/register" className="btn btn-gold">
-            {t("home.host.cta")}
-          </Link>
+      {popular.length > 0 && (
+        <section className="page hb-section">
+          <h2 className="hb-title">{t("home.popular")}</h2>
+          <nav className="hb-towns" aria-label={t("home.popular")}>
+            {popular.map((c) => (
+              <Link key={c} href={`/stays/${slugify(c)}`}>{town(c)}</Link>
+            ))}
+          </nav>
+        </section>
+      )}
+
+      <section className="host-band host-band-new">
+        <div className="host-inner host-inner-new">
+          <div>
+            <h2>{t("home.hostTitle")}</h2>
+            <p>{t("home.hostText")}</p>
+            <Link href="/register" className="btn btn-gold">
+              {t("home.host.cta")}
+            </Link>
+          </div>
+          <ul className="host-points">
+            {[1, 2, 3, 4].map((n) => (
+              <li key={n}>{t(`home.hostP${n}`)}</li>
+            ))}
+          </ul>
         </div>
       </section>
     </main>
