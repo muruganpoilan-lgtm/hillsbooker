@@ -6,7 +6,7 @@ import { useAuth } from "../../components/AuthProvider";
 import { useLang } from "../../components/LangProvider";
 import HeartButton from "../../components/HeartButton";
 import Ridge from "../../components/Ridge";
-import { api, money } from "../../lib/api";
+import { api, money, sized, sizedSet } from "../../lib/api";
 
 export default function SavedPage() {
   const { ready, token } = useAuth();
@@ -44,7 +44,7 @@ export default function SavedPage() {
           {list.map((p) => (
             <li key={p.id} className="has-heart">
               <Link className="result" href={`/properties/${p.id}`}>
-                <div className="result-photo">{p.photo ? <img src={p.photo} alt="" loading="lazy" /> : <Ridge seed={p.id} />}</div>
+                <div className="result-photo">{p.photo ? <img src={sized(p.photo, 640)} srcSet={sizedSet(p.photo)} sizes="(min-width: 760px) 320px, 45vw" alt="" loading="lazy" /> : <Ridge seed={p.id} />}</div>
                 <div className="result-body">
                   <p className="meta">{t("prop.in", { type: ["hotel", "homestay", "apartment", "resort"].includes(p.type) ? t(`type.${p.type}`) : p.type, city: p.city })}</p>
                   <h2 className="row-name">{p.name}</h2>

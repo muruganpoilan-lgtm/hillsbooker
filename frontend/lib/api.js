@@ -43,6 +43,23 @@ export async function api(path, { method = "GET", body, token } = {}) {
   return { ok: true, status: res.status, data };
 }
 
+// A smaller copy of an uploaded photo, from the API's /img route (made once, then cached). w is the width in pixels the
+// photo is shown at (doubled for sharp phone screens is fine: 640 for cards, 960/1600 for big views).
+// Photos that aren't Hill Booker uploads (or are empty) are returned unchanged.
+export function sized(url, w = 640) {
+  if (!url || typeof url !== "string") return url;
+  const i = url.indexOf("/uploads/");
+  if (i < 0 || url.includes("/uploads/_thumbs/")) return url;
+  return `${url.slice(0, i)}/img/${url.slice(i + "/uploads/".length)}?w=${w}`;
+}
+
+// The same photo at several widths, for <img srcSet>: the browser picks the smallest one that looks sharp.
+export function sizedSet(url) {
+  const a = sized(url, 320);
+  if (a === url) return undefined;
+  return `${a} 320w, ${sized(url, 640)} 640w, ${sized(url, 960)} 960w`;
+}
+
 // Big phone photos are shrunk in the browser before upload: longest side 1600 px, JPEG. A 5 MB photo becomes about
 // 300 KB, so uploads are quicker and guests' pages load faster. Small files and anything that fails are sent as they are.
 async function shrinkForUpload(file) {

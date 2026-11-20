@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Ridge from "../../components/Ridge";
-import { api, money } from "../../lib/api";
+import { api, money, sized, sizedSet } from "../../lib/api";
 import { getT } from "../../lib/lang";
 import { SITE_URL } from "../../lib/seo";
 
@@ -39,7 +39,7 @@ export default async function PackagesPage() {
         {rows.map((p) => (
           <li key={p.id}>
             <Link className="result" href={`/packages/${p.slug}`}>
-              <div className="result-photo">{p.photo ? <img src={p.photo} alt={p.title} loading="lazy" /> : <Ridge seed={p.id} />}</div>
+              <div className="result-photo">{p.photo ? <img src={sized(p.photo, 640)} srcSet={sizedSet(p.photo)} sizes="(min-width: 760px) 320px, 45vw" alt={p.title} loading="lazy" /> : <Ridge seed={p.id} />}</div>
               <div className="result-body">
                 <p className="meta">
                   {p.destination} · {t("pkg.nd", { nights: p.nights, days: p.days })}

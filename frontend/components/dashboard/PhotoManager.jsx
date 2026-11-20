@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { api, apiUpload } from "../../lib/api";
+import { api, apiUpload, sized } from "../../lib/api";
 
 // Upload and remove photos for a property or a room. `base` is e.g. /owner/properties/ID or /owner/room-types/ID.
 export default function PhotoManager({ base, photos, token, onChange, onAuthError }) {
@@ -38,7 +38,7 @@ export default function PhotoManager({ base, photos, token, onChange, onAuthErro
         <ul className="photo-grid">
           {photos.map((p) => (
             <li key={p.id}>
-              <img src={p.url} alt="" loading="lazy" style={p.status && p.status !== "approved" ? { opacity: 0.6 } : undefined} />
+              <img src={sized(p.url, 320)} alt="" loading="lazy" style={p.status && p.status !== "approved" ? { opacity: 0.6 } : undefined} />
               {p.status === "pending" && <span className="status status-held" style={{ position: "absolute", left: 6, top: 6, background: "#fff" }}>Waiting for approval</span>}
               {p.status === "rejected" && <span className="status status-cancelled" style={{ position: "absolute", left: 6, top: 6, background: "#fff", color: "var(--brick)" }} title={p.reject_reason || ""}>Not approved{p.reject_reason ? `: ${p.reject_reason}` : ""}</span>}
               <button type="button" className="photo-remove" onClick={() => remove(p.id)} aria-label="Remove photo">

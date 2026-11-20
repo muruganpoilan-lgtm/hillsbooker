@@ -1,5 +1,6 @@
 "use client";
 
+import { sized, sizedSet } from "../lib/api";
 import { useRef } from "react";
 import Ridge from "./Ridge";
 import { useLang } from "./LangProvider";
@@ -23,7 +24,7 @@ export default function PhotoGallery({ photos, name, seed }) {
       <div className={`gallery gallery-${Math.min(shown.length, 5)}`}>
         {shown.map((url, i) => (
           <button type="button" key={url} className="gallery-cell" onClick={open} aria-label={t("gal.open", { i: i + 1, n: photos.length })}>
-            <img src={url} alt={i === 0 ? name : ""} loading={i === 0 ? "eager" : "lazy"} />
+            <img src={sized(url, i === 0 ? 960 : 640)} srcSet={sizedSet(url)} sizes={i === 0 ? "(min-width: 900px) 560px, 100vw" : "(min-width: 900px) 280px, 50vw"} alt={i === 0 ? name : ""} loading={i === 0 ? "eager" : "lazy"} />
           </button>
         ))}
         {photos.length > 1 && (
@@ -38,7 +39,7 @@ export default function PhotoGallery({ photos, name, seed }) {
         </button>
         <div className="viewer-list">
           {photos.map((url, i) => (
-            <img key={url} src={url} alt={t("gal.alt", { name, i: i + 1 })} loading="lazy" />
+            <img key={url} src={sized(url, 1600)} alt={t("gal.alt", { name, i: i + 1 })} loading="lazy" />
           ))}
         </div>
       </dialog>

@@ -980,3 +980,11 @@ html { scroll-behavior: smooth; }
 
 /* ---------- speed: card photos as lazy images ---------- */
 .hb-card-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+/* ---------- light YouTube: thumbnail first, player on tap ---------- */
+.lite-yt { position: relative; display: block; width: 100%; aspect-ratio: 16 / 9; padding: 0; border: 0; border-radius: 10px; overflow: hidden; background: #000; cursor: pointer; }
+.lite-yt img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0.92; transition: opacity 0.15s; }
+.lite-yt:hover img { opacity: 1; }
+.lite-yt-play { position: absolute; left: 50%; top: 50%; width: 68px; height: 48px; transform: translate(-50%, -50%); border-radius: 12px; background: #e62117; }
+.lite-yt-play::after { content: ""; position: absolute; left: 27px; top: 14px; border-style: solid; border-width: 10px 0 10px 17px; border-color: transparent transparent transparent #fff; }
+.lite-yt:focus-visible { outline: 3px solid var(--marigold); outline-offset: 2px; }

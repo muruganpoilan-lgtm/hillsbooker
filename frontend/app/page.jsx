@@ -2,7 +2,7 @@ import Link from "next/link";
 import SearchForm from "../components/SearchForm";
 import HelpVideos from "../components/HelpVideos";
 import HomeRow from "../components/HomeRow";
-import { api, money } from "../lib/api";
+import { api, money, sized } from "../lib/api";
 import { slugify } from "../lib/seo";
 import { getT } from "../lib/lang";
 
@@ -144,7 +144,7 @@ export default async function Home() {
             const info = sc.types[x.type];
             return (
               <Link key={x.type} href={`/search?type=${x.type}`} className="hr-card" role="listitem">
-                <img src={(info && info.photo) || `/cities/${x.fallback}.webp`} alt="" loading="lazy" decoding="async" className="hr-img" />
+                <img src={sized(info && info.photo, 640) || `/cities/${x.fallback}.webp`} alt="" loading="lazy" decoding="async" className="hr-img" />
                 <b className="hr-name">{t(`types.${x.type}`)}</b>
                 {info && info.count > 0 && <span className="hr-sub">{t.n("unit.stay", info.count)}</span>}
               </Link>
@@ -160,7 +160,7 @@ export default async function Home() {
           <HomeRow label={t("home.loved")}>
             {sc.stays.map((p) => (
               <Link key={p.id} href={`/properties/${p.id}`} className="hr-card" role="listitem">
-                <img src={p.photo || `/cities/${slugify(p.city)}.webp`} alt="" loading="lazy" decoding="async" className="hr-img" />
+                <img src={sized(p.photo, 640) || `/cities/${slugify(p.city)}.webp`} alt="" loading="lazy" decoding="async" className="hr-img" />
                 <b className="hr-name">{p.name}</b>
                 <span className="hr-sub">{t("type.in", { type: t(`type.${p.type}`), city: town(p.city) })}</span>
                 <span className="hr-meta">

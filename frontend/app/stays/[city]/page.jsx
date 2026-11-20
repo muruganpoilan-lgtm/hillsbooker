@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import HeartButton from "../../../components/HeartButton";
 import Ridge from "../../../components/Ridge";
 import SearchForm from "../../../components/SearchForm";
-import { api, money } from "../../../lib/api";
+import { api, money, sized, sizedSet } from "../../../lib/api";
 import { getT } from "../../../lib/lang";
 import { CITY_INFO, SITE_URL, jsonLd, slugify } from "../../../lib/seo";
 
@@ -73,7 +73,7 @@ export default async function CityPage({ params }) {
             {props.map((p) => (
               <li key={p.id} className="has-heart">
                 <Link className="result" href={`/properties/${p.id}`}>
-                  <div className="result-photo">{p.photo ? <img src={p.photo} alt={`${p.name}, ${name}`} loading="lazy" /> : <Ridge seed={p.id} />}</div>
+                  <div className="result-photo">{p.photo ? <img src={sized(p.photo, 640)} srcSet={sizedSet(p.photo)} sizes="(min-width: 760px) 320px, 45vw" alt={`${p.name}, ${name}`} loading="lazy" /> : <Ridge seed={p.id} />}</div>
                   <div className="result-body">
                     <p className="meta">{t("type.in", { type: TYPES.includes(p.type) ? t(`type.${p.type}`) : p.type, city: p.city })}</p>
                     <h2 className="row-name">{p.name}</h2>

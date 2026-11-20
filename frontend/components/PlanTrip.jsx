@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { addDays, api, money, prettyDate, todayISO } from "../lib/api";
+import { addDays, api, money, prettyDate, todayISO, sized } from "../lib/api";
 import { useLang } from "./LangProvider";
 
 const PLACES = ["Ooty", "Coonoor", "Kotagiri", "Munnar", "Kodaikanal", "Valparai", "Coorg", "Wayanad", "Yercaud", "Thekkady", "Alleppey"];
@@ -229,7 +229,7 @@ export default function PlanTrip() {
             <div className="trip-list">
               {plan.stays.map((s) => (
                 <Link key={s.id} href={roomLink(s)} className="trip-item">
-                  <img src={s.photo || `/cities/${plan.city.toLowerCase()}.webp`} alt="" loading="lazy" />
+                  <img src={sized(s.photo, 640) || `/cities/${plan.city.toLowerCase()}.webp`} alt="" loading="lazy" />
                   <div>
                     <b>{s.name}</b>
                     <p className="meta">
@@ -256,7 +256,7 @@ export default function PlanTrip() {
                 <div className="trip-list">
                   {plan.cabs.map((v) => (
                     <Link key={v.id} href={`/vehicles/${v.id}`} className="trip-item">
-                      <img src={v.photo || `/cities/${plan.city.toLowerCase()}.webp`} alt="" loading="lazy" />
+                      <img src={sized(v.photo, 640) || `/cities/${plan.city.toLowerCase()}.webp`} alt="" loading="lazy" />
                       <div>
                         <b>{v.name}</b>
                         <p className="meta">

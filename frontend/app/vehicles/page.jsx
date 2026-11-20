@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Ridge from "../../components/Ridge";
-import { api, money } from "../../lib/api";
+import { api, money, sized, sizedSet } from "../../lib/api";
 import { SITE_URL } from "../../lib/seo";
 import { KINDS, kindName, vehicleLine } from "../../lib/vehicles";
 import { getT } from "../../lib/lang";
@@ -89,7 +89,7 @@ export default async function VehiclesPage({ searchParams }) {
         {rows.map((v) => (
           <li key={v.id}>
             <Link className="result" href={`/vehicles/${v.id}`}>
-              <div className="result-photo">{v.photo ? <img src={v.photo} alt={`${v.name}, ${v.city}`} loading="lazy" /> : <Ridge seed={v.id} />}</div>
+              <div className="result-photo">{v.photo ? <img src={sized(v.photo, 640)} srcSet={sizedSet(v.photo)} sizes="(min-width: 760px) 320px, 45vw" alt={`${v.name}, ${v.city}`} loading="lazy" /> : <Ridge seed={v.id} />}</div>
               <div className="result-body">
                 <p className="meta">{vehicleLine(v, t)}</p>
                 <h2 className="row-name">{v.name}</h2>

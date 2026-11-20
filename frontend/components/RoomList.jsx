@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "./AuthProvider";
 import Ridge from "./Ridge";
 import { useLang } from "./LangProvider";
-import { addDays, advanceFor, api, money, prettyDate, todayISO } from "../lib/api";
+import { addDays, advanceFor, api, money, prettyDate, todayISO, sized } from "../lib/api";
 import OccupancyPicker from "./OccupancyPicker";
 import { agesComplete, writeOccupancy } from "../lib/occupancy";
 import BedInfo from "./BedInfo";
@@ -222,7 +222,7 @@ export default function RoomList({ rooms, checkIn: ci, checkOut: co, guests: g, 
         return (
           <article className="room" key={room.id}>
             {room.photos && room.photos[0] ? (
-              <img className="thumb" src={room.photos[0]} alt="" loading="lazy" />
+              <img className="thumb" src={sized(room.photos[0], 320)} alt="" loading="lazy" />
             ) : (
               <div className="thumb"><Ridge seed={room.id} /></div>
             )}

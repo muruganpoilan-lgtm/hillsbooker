@@ -153,3 +153,7 @@ and a monthly salary sheet. Records belong to one property and only the account 
   below the fold load only when scrolled to.
 - Logos were shrunk (header logo 89 KB → 8 KB). `/cities/*` and the logos are cached by browsers for a week (`next.config.mjs`).
 - Host photo uploads are shrunk in the browser before sending (longest side 1600 px, JPEG), in `apiUpload` (`frontend/lib/api.js`).
+- Uploaded photos are shown as smaller WebP copies from `GET /img/<key>?w=320|640|960|1600` (`backend/app/routes/images.py`,
+  needs Pillow). Each copy is made on first request and kept in `uploads/_thumbs`; nothing to run for old photos.
+  The website uses `sized()` / `sizedSet()` from `frontend/lib/api.js`.
+- Home page how-to videos show a thumbnail and load the YouTube player only when tapped (`components/LiteYouTube.jsx`).

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Ridge from "../../components/Ridge";
-import { api } from "../../lib/api";
+import { api, sized, sizedSet } from "../../lib/api";
 import { getT } from "../../lib/lang";
 import { SITE_URL } from "../../lib/seo";
 
@@ -34,7 +34,7 @@ export default async function BlogPage() {
         {rows.map((p) => (
           <li key={p.id}>
             <Link className="result" href={`/blog/${p.slug}`}>
-              <div className="result-photo">{p.photo ? <img src={p.photo} alt={p.title} loading="lazy" /> : <Ridge seed={p.id} />}</div>
+              <div className="result-photo">{p.photo ? <img src={sized(p.photo, 640)} srcSet={sizedSet(p.photo)} sizes="(min-width: 760px) 320px, 45vw" alt={p.title} loading="lazy" /> : <Ridge seed={p.id} />}</div>
               <div className="result-body">
                 {p.city && <p className="meta">{p.city}</p>}
                 <h2 className="row-name">{p.title}</h2>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import BlogBody from "../../../components/BlogBody";
-import { api } from "../../../lib/api";
+import { api, sized, sizedSet } from "../../../lib/api";
 import { getT } from "../../../lib/lang";
 import { SITE_URL, jsonLd } from "../../../lib/seo";
 
@@ -55,10 +55,10 @@ export default async function BlogPost({ params }) {
       {p.city && <p className="meta">{p.city}</p>}
       <h1 className="result-title">{p.title}</h1>
       {p.summary && <p className="prose">{p.summary}</p>}
-      {photos[0] && <img src={photos[0]} alt={p.title} style={{ width: "100%", borderRadius: "12px", margin: "0.5rem 0 1rem" }} />}
+      {photos[0] && <img src={sized(photos[0], 960)} srcSet={sizedSet(photos[0])} sizes="(min-width: 800px) 760px, 100vw" alt={p.title} style={{ width: "100%", borderRadius: "12px", margin: "0.5rem 0 1rem" }} />}
       <BlogBody text={p.body} />
       {photos.slice(1).map((u, i) => (
-        <img key={i} src={u} alt={p.title} loading="lazy" style={{ width: "100%", borderRadius: "12px", margin: "0.6rem 0" }} />
+        <img key={i} src={sized(u, 960)} srcSet={sizedSet(u)} sizes="(min-width: 800px) 760px, 100vw" alt={p.title} loading="lazy" style={{ width: "100%", borderRadius: "12px", margin: "0.6rem 0" }} />
       ))}
       <div className="card" style={{ padding: "1rem", margin: "1.5rem 0", display: "grid", gap: "0.6rem" }}>
         <h2 className="mini-title">{t("blog.ctaTitle")}</h2>

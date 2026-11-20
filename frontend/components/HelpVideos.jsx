@@ -1,3 +1,4 @@
+import LiteYouTube from "./LiteYouTube";
 import { HELP_VIDEOS } from "../lib/helpVideos";
 import { getT } from "../lib/lang";
 
@@ -13,13 +14,7 @@ export default async function HelpVideos() {
       <div className="hb-videos">
         {HELP_VIDEOS.map((v) => (
           <figure key={v.id} className="hb-video">
-            <iframe
-              src={`https://www.youtube-nocookie.com/embed/${v.id}`}
-              title={v.title}
-              loading="lazy"
-              allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
+            <LiteYouTube id={v.id} title={v.title} />
             <figcaption>
               <b>{v.title}</b>
               {v.for ? <span>{FOR[v.for] ? t(FOR[v.for]) : v.for}</span> : null}
