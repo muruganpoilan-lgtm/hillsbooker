@@ -167,6 +167,36 @@ def availability(property_id: str, days: int = Query(150, ge=7, le=366)):
     return {"today": prop["today"].isoformat(), "earliest": prop["earliest"].isoformat(), "last": end.isoformat(), "open": open_nights}
 
 
+@router.get("/home/showcase")
+def home_showcase():
+    """What the home page rows need: stays per city and per property type (with a real listing photo for each type),
+    and a few listed stays with their first photo. No dates needed."""
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("SELECT lower(city) AS city, COUNT(*) AS n FROM properties WHERE status = 'approved' GROUP BY lower(city)")
+        cities = {r["city"]: r["n"] for r in cur.fetchall()}
+        cur.execute(
+            """SELECT t.type, t.n,
+                      (SELECT ph.url FROM properties p2
+                         JOIN property_photos ph ON ph.property_id = p2.id AND ph.status = 'approved'
+                        WHERE p2.status = 'approved' AND p2.type = t.type
+                        ORDER BY p2.rating_avg DESC, p2.created_at DESC, ph.position LIMIT 1) AS photo
+               FROM (SELECT type, COUNT(*) AS n FROM properties WHERE status = 'approved' GROUP BY type) t"""
+        )
+        types = {r["type"]: {"count": r["n"], "photo": r["photo"]} for r in cur.fetchall()}
+        cur.execute(
+            """SELECT p.id, p.name, p.type, p.city, p.rating_avg, p.rating_count,
+                      (SELECT MIN(base_price) FROM room_types rt WHERE rt.property_id = p.id) AS price_from,
+                      (SELECT ph.url FROM property_photos ph WHERE ph.property_id = p.id AND ph.status = 'approved'
+                        ORDER BY ph.position LIMIT 1) AS photo
+               FROM properties p
+               WHERE p.status = 'approved'
+               ORDER BY (p.rating_count > 0) DESC, p.rating_avg DESC, p.created_at DESC
+               LIMIT 12"""
+        )
+        stays = cur.fetchall()
+    return {"cities": cities, "types": types, "stays": stays}
+
+
 @router.get("/properties/{property_id}/reviews")
 def property_reviews(property_id: str, limit: int = Query(20, ge=1, le=50), offset: int = Query(0, ge=0)):
     """Guest reviews for a property, newest first. Only guests who stayed (a confirmed booking, after check-out) can write one."""
