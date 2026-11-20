@@ -9,3 +9,4 @@ secrets/
 google-services.json.bak
 
 *.apk
+*.zip
