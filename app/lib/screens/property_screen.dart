@@ -209,7 +209,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
           itemCount: photos.length,
           onPageChanged: (i) => setState(() => _photoIndex = i),
           itemBuilder: (_, i) => Image.network(
-            fixUrl(photos[i]),
+            sizedUrl(photos[i], 960),
             fit: BoxFit.cover,
             width: double.infinity,
             errorBuilder: (_, __, ___) => PhotoOrRidge(url: null, seed: '$seed$i'),

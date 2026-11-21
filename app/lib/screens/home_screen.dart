@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../api.dart';
 import '../format.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import 'property_screen.dart';
 import 'results_screen.dart';
 import 'vehicles_screen.dart';
 
@@ -20,33 +22,41 @@ class StayQuery {
   String get dates => '${prettyDay(checkIn)} to ${prettyDay(checkOut)}';
 }
 
-// Roughly how high each place sits above the sea, in metres.
-const _places = <MapEntry<String, int>>[
-  MapEntry('Ooty', 2240),
-  MapEntry('Kodaikanal', 2130),
-  MapEntry('Munnar', 1530),
-  MapEntry('Yercaud', 1500),
-  MapEntry('Coorg', 1150),
-  MapEntry('Valparai', 1050),
-  MapEntry('Thekkady', 900),
-  MapEntry('Wayanad', 800),
-  MapEntry('Alleppey', 0),
-  MapEntry('Kovalam', 0),
-  MapEntry('Varkala', 0),
-  MapEntry('Pondicherry', 0),
-  MapEntry('Goa', 0),
+// "Explore the hills": each region shows its height above sea level (rounded, of the main town).
+// alt 0 means sea level. Tapping a card searches the town in it that has the most stays.
+class _Region {
+  final String name;
+  final String photo;
+  final int alt;
+  final List<String> towns;
+  const _Region(this.name, this.photo, this.alt, this.towns);
+}
+
+const _regions = <_Region>[
+  _Region('Nilgiri hills', 'ooty', 2240, ['Ooty', 'Coonoor', 'Kotagiri']),
+  _Region('Kerala hills', 'munnar', 1600, ['Munnar', 'Wayanad', 'Thekkady']),
+  _Region('Palani hills', 'kodaikanal', 2133, ['Kodaikanal']),
+  _Region('Anamalai hills', 'valparai', 1193, ['Valparai']),
+  _Region('Shevaroy hills', 'yercaud', 1515, ['Yercaud', 'Kolli Hills']),
+  _Region('Coorg and Chikmagalur', 'coorg', 1170, ['Coorg', 'Chikmagalur']),
+  _Region('Kerala backwaters', 'alleppey', 0, ['Alleppey', 'Kumarakom']),
 ];
 
-// Popular places shown as coloured tiles, like the website. Tap one to search it.
-const _trending = <List<Object>>[
-  ['Munnar', 'Tea hills', Color(0xFF0E6B58), Color(0xFF3F9A7F)],
-  ['Ooty', 'Nilgiri hills', Color(0xFF2A3A7A), Color(0xFF5A6FB8)],
-  ['Goa', 'Beaches', Color(0xFFB3512B), Color(0xFFE89A5A)],
-  ['Coorg', 'Coffee estates', Color(0xFF7A4B1F), Color(0xFFC08A4D)],
-  ['Alleppey', 'Backwaters', Color(0xFF0B5F7A), Color(0xFF4AA7C4)],
-  ['Kodaikanal', 'Lake and mist', Color(0xFF4B3A7A), Color(0xFF8D77C4)],
-  ['Valparai', 'Quiet hills', Color(0xFF0A5042), Color(0xFF2F8F78)],
+// "Browse by property type": a real listing's photo when there is one, otherwise a hill photo.
+const _types = <List<String>>[
+  ['homestay', 'Homestays', 'wayanad'],
+  ['hotel', 'Hotels', 'thekkady'],
+  ['resort', 'Resorts', 'alleppey'],
+  ['apartment', 'Apartments', 'kodaikanal'],
 ];
+
+const _towns = ['Ooty', 'Munnar', 'Kodaikanal', 'Valparai', 'Kotagiri', 'Coonoor', 'Coorg', 'Wayanad', 'Yercaud', 'Thekkady', 'Alleppey', 'Goa'];
+
+// The owner offer line in the strip under the search shows until this date, then hides by itself.
+final _ownerOfferUntil = DateTime(2026, 11, 30);
+
+const _site = 'https://hillbooker.com';
+const _tea = Color(0xFFDFF1E4);
 
 // How-to videos on YouTube (same as the website's "How it works" section).
 const _helpVideos = <List<String>>[
@@ -65,6 +75,19 @@ const _why = <List<String>>[
   ['Safe online payment', 'UPI, cards and net banking, secured by Razorpay.'],
 ];
 
+const _hostPoints = [
+  'Free to list, commission only on confirmed bookings',
+  'Guests pay 30% online, so fewer no-shows',
+  'WhatsApp alert for every booking',
+  'Free hotel management software: rooms, walk-in guests, staff and expenses',
+];
+
+String _altText(int m) {
+  if (m <= 0) return 'Sea level';
+  final s = m.toString();
+  return s.length > 3 ? '${s.substring(0, s.length - 3)},${s.substring(s.length - 3)} m' : '$s m';
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -79,6 +102,10 @@ class _HomeScreenState extends State<HomeScreen> {
   int _adults = 2;
   int _children = 0;
   String _error = '';
+  // From the server: stays per town, per type (with a photo), and listed stays. Empty until loaded.
+  Map<String, int> _cityCount = {};
+  Map<String, dynamic> _typeInfo = {};
+  List<Map<String, dynamic>> _stays = [];
 
   @override
   void initState() {
@@ -86,7 +113,24 @@ class _HomeScreenState extends State<HomeScreen> {
     final t = today();
     _checkIn = t.add(const Duration(days: 2));
     _checkOut = t.add(const Duration(days: 3));
+    _loadShowcase();
   }
+
+  Future<void> _loadShowcase() async {
+    final res = await Api.get('/home/showcase');
+    if (!mounted || !res.ok || res.data is! Map) return;
+    final d = res.data as Map;
+    setState(() {
+      _cityCount = {for (final e in ((d['cities'] as Map?) ?? {}).entries) '${e.key}': (e.value as num).toInt()};
+      _typeInfo = Map<String, dynamic>.from((d['types'] as Map?) ?? {});
+      _stays = [for (final x in ((d['stays'] as List?) ?? [])) Map<String, dynamic>.from(x as Map)];
+    });
+  }
+
+  int _count(String town) => _cityCount[town.toLowerCase()] ?? 0;
+
+  StayQuery _query(String city) =>
+      StayQuery(city: city.trim(), checkIn: _checkIn, checkOut: _checkOut, guests: _adults + _children, children: _children);
 
   @override
   void dispose() {
@@ -120,150 +164,375 @@ class _HomeScreenState extends State<HomeScreen> {
     if (picked != null) setState(() => _checkOut = picked);
   }
 
-  void _search(String city) {
+  void _search(String city, {String type = ''}) {
     if (!_checkOut.isAfter(_checkIn)) {
       setState(() => _error = 'Check-out must be after check-in.');
       return;
     }
     setState(() => _error = '');
-    final q = StayQuery(city: city.trim(), checkIn: _checkIn, checkOut: _checkOut, guests: _adults + _children, children: _children);
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => ResultsScreen(query: q)));
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => ResultsScreen(query: _query(city), initialType: type)));
   }
 
   @override
   Widget build(BuildContext context) {
     final nights = nightsBetween(_checkIn, _checkOut);
+    final showDeal = !today().isAfter(_ownerOfferUntil);
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        // Hero: deep green, like the website.
-        Container(
-          color: _deep,
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 64),
-          child: SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(color: const Color(0xFFFAF9F4), borderRadius: BorderRadius.circular(8)),
-                      child: Image.asset('assets/logo_mark.png', height: 26),
-                    ),
-                    const SizedBox(width: 10),
-                    Text('Hill Booker', style: display(18, color: Colors.white)),
-                  ]),
-                  const SizedBox(height: 22),
-                  Text('Find your next stay', style: display(34, color: Colors.white)),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Hill stations, backwaters and beaches across South India. Rooms and homestays from hosts you can book in minutes.',
-                    style: TextStyle(color: Color(0xFFDCECE6), fontSize: 14.5, height: 1.4),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+        _hero(),
         Transform.translate(
           offset: const Offset(0, -44),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: _slip(nights)),
-              _sectionTitle('Offers', 'Simple ways to book with Hill Booker'),
+              Padding(padding: const EdgeInsets.fromLTRB(16, 14, 16, 0), child: _ownersStrip(showDeal)),
+              _sectionTitle('Explore the hills', 'The number on each card is the height above sea level. Higher means cooler.'),
+              _regionRow(),
+              _sectionTitle('Browse by property type', null),
+              _typeRow(),
+              if (_stays.isNotEmpty) ...[
+                _sectionTitle('Stays guests love', 'Hand-picked hotels and homestays listed on Hill Booker'),
+                _staysRow(),
+              ],
+              _sectionTitle('Plan the whole trip', null),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _offerCard(
-                  color: C.green,
-                  title: 'Book with just 30%',
-                  text: 'Pay a small advance to confirm. Pay the rest when you reach the stay.',
-                  button: 'Find a stay',
-                  textOnButton: Colors.white,
-                  onTap: () => _search(_city.text),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: _offerCard(
-                  color: C.gold,
-                  title: 'Need a ride too?',
-                  text: 'Need a car, van or bus with a driver? Tell us your trip and we will arrange it.',
-                  button: 'Cars and vans',
-                  textOnButton: C.ink,
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VehiclesScreen(city: _city.text.trim()))),
-                ),
-              ),
-              _sectionTitle('Group and corporate tours', 'Travelling with a big group or your team? Tell us what you need and we will call you with a quote.'),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(children: [
-                  Expanded(child: FilledButton(onPressed: () => _open('https://hillbooker.com/enquiry?kind=group'), child: const Text('Group tour'))),
-                  const SizedBox(width: 10),
-                  Expanded(child: FilledButton(onPressed: () => _open('https://hillbooker.com/enquiry?kind=corporate'), child: const Text('Corporate tour'))),
+                child: Column(children: [
+                  _tripTile(
+                    main: true,
+                    title: 'Plan my trip',
+                    text: 'Tell us your dates and budget. Get a stay, a cab and a day-by-day plan in seconds.',
+                    cta: 'Plan my trip',
+                    onTap: () => _open('$_site/plan-trip'),
+                  ),
+                  const SizedBox(height: 10),
+                  _tripTile(
+                    title: 'Cars and vans',
+                    text: 'A car, van or bus with a driver, for pickup and sightseeing.',
+                    cta: 'See cars and vans',
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VehiclesScreen(city: _city.text.trim()))),
+                  ),
+                  const SizedBox(height: 10),
+                  _tripTile(
+                    title: 'Group and corporate tours',
+                    text: "Big group or office trip? Tell us what you need and we'll call with a quote.",
+                    cta: 'Ask for a quote',
+                    onTap: () => _open('$_site/enquiry?kind=group'),
+                  ),
                 ]),
               ),
-              _sectionTitle('Trending destinations', 'Popular places to stay'),
-              _trendingRow(),
-              _sectionTitle('More places to explore', null),
+              _sectionTitle('Why book with Hill Booker', null),
+              for (final w in _why)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(w[0], style: display(16)),
+                    const SizedBox(height: 2),
+                    Text(w[1], style: const TextStyle(color: C.soft, fontSize: 13.5)),
+                  ]),
+                ),
+              _sectionTitle('How it works', 'Short videos to help you get started'),
+              for (final v in _helpVideos) _videoCard(v[0], v[1], v[2]),
+              _sectionTitle('Popular towns', null),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    for (final p in _places)
+                    for (final c in _popularTowns())
                       ActionChip(
-                        label: Text(p.key),
+                        label: Text(c),
                         backgroundColor: Colors.white,
                         side: const BorderSide(color: C.line),
-                        onPressed: () => _search(p.key),
+                        shape: const StadiumBorder(),
+                        onPressed: () => _search(c),
                       ),
                   ],
                 ),
               ),
-              _sectionTitle('How it works', 'Short videos to help you get started'),
-              for (final v in _helpVideos) _videoCard(v[0], v[1], v[2]),
-              _sectionTitle('Why book with Hill Booker', null),
-              for (final w in _why)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Padding(padding: EdgeInsets.only(top: 2), child: Icon(Icons.check_circle, color: C.green, size: 20)),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(w[0], style: display(16)),
-                        Text(w[1], style: const TextStyle(color: C.soft, fontSize: 13.5)),
-                      ]),
-                    ),
-                  ]),
-                ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                child: Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(color: _deep, borderRadius: BorderRadius.circular(12)),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Own a hotel or homestay?', style: display(20, color: Colors.white)),
-                    const SizedBox(height: 6),
-                    const Text('Add your rooms and photos, open the nights you want to sell, and set your own prices.', style: TextStyle(color: Color(0xFFDCECE6), fontSize: 14)),
-                    const SizedBox(height: 12),
-                    FilledButton(
-                      style: FilledButton.styleFrom(backgroundColor: C.gold, foregroundColor: C.ink),
-                      onPressed: () => _open('https://hillbooker.com/register'),
-                      child: const Text('List your property'),
-                    ),
-                  ]),
-                ),
-              ),
+              Padding(padding: const EdgeInsets.fromLTRB(16, 24, 16, 24), child: _hostBand()),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  // Hero: the Munnar tea-hills photo from the website, darkened at the bottom so the words stay readable.
+  Widget _hero() {
+    return SizedBox(
+      height: 380,
+      child: Stack(fit: StackFit.expand, children: [
+        Container(color: _deep),
+        Image.network('$_site/hero/munnar-720.webp', fit: BoxFit.cover, errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0x330A3F34), Color(0x400A3F34), Color(0xDB0A3F34)],
+              stops: [0, 0.45, 1],
+            ),
+          ),
+        ),
+        SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 64),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(color: const Color(0xFFFAF9F4), borderRadius: BorderRadius.circular(8)),
+                  child: Image.asset('assets/logo_mark.png', height: 26),
+                ),
+                const SizedBox(width: 10),
+                Text('Hill Booker', style: display(18, color: Colors.white)),
+              ]),
+              const Spacer(),
+              Text('Stay up in the hills', style: display(36, color: Colors.white)),
+              const SizedBox(height: 8),
+              const Text(
+                'Homestays, cottages and hotels in Ooty, Munnar, Kodaikanal, Valparai and more. Pay 30% to book, the rest when you arrive.',
+                style: TextStyle(color: Color(0xFFE8F2EE), fontSize: 14.5, height: 1.4),
+              ),
+            ]),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _ownersStrip(bool showDeal) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: _tea, borderRadius: BorderRadius.circular(10)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text.rich(TextSpan(style: const TextStyle(color: C.ink, fontSize: 14.5, height: 1.4), children: [
+          const TextSpan(text: 'Own a homestay or hotel in the hills? ', style: TextStyle(fontWeight: FontWeight.w700)),
+          const TextSpan(text: 'List it free and pay only when you get a booking.'),
+          if (showDeal)
+            const TextSpan(text: ' Deepavali offer: 5% commission if you list by 30 Nov.', style: TextStyle(color: _deep, fontWeight: FontWeight.w600)),
+        ])),
+        const SizedBox(height: 10),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: _deep, minimumSize: const Size(0, 42)),
+          onPressed: () => _open('$_site/register'),
+          child: const Text('List your property'),
+        ),
+      ]),
+    );
+  }
+
+  Widget _regionRow() {
+    return SizedBox(
+      height: 250,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: _regions.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (_, i) {
+          final r = _regions[i];
+          final n = r.towns.fold<int>(0, (sum, t) => sum + _count(t));
+          var best = r.towns.first;
+          for (final t in r.towns) {
+            if (_count(t) > _count(best)) best = t;
+          }
+          return InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => _search(best),
+            child: Container(
+              width: 186,
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(color: _deep, borderRadius: BorderRadius.circular(14)),
+              child: Stack(fit: StackFit.expand, children: [
+                Image.network('$_site/cities/${r.photo}.webp', fit: BoxFit.cover, errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0x00000000), Color(0xE0062821)],
+                      stops: [0.35, 1],
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(mainAxisAlignment: MainAxisAlignment.end, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(_altText(r.alt), style: display(30, color: Colors.white)),
+                    const SizedBox(height: 4),
+                    Text(r.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+                    Text(
+                      r.towns.join(', ') + (n > 0 ? ' · ${plural(n, 'stay')}' : ''),
+                      style: const TextStyle(color: Color(0xFFD8E8E2), fontSize: 12.5),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ]),
+                ),
+              ]),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _photoCard({required String? photoUrl, required String fallback, required String seed, required List<Widget> lines, required VoidCallback onTap}) {
+    return SizedBox(
+      width: 200,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: SizedBox(
+              height: 150,
+              width: 200,
+              child: (photoUrl != null && photoUrl.isNotEmpty)
+                  ? PhotoOrRidge(url: photoUrl, seed: seed)
+                  : Image.network('$_site/cities/$fallback.webp', fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: C.line)),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...lines,
+        ]),
+      ),
+    );
+  }
+
+  Widget _typeRow() {
+    return SizedBox(
+      height: 200,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: _types.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (_, i) {
+          final t = _types[i];
+          final info = _typeInfo[t[0]];
+          final count = info is Map ? ((info['count'] as num?) ?? 0).toInt() : 0;
+          final photo = info is Map ? info['photo'] as String? : null;
+          return _photoCard(
+            photoUrl: photo,
+            fallback: t[2],
+            seed: t[0],
+            onTap: () => _search('', type: t[0]),
+            lines: [
+              Text(t[1], style: display(16)),
+              if (count > 0) Text(plural(count, 'stay'), style: const TextStyle(color: C.soft, fontSize: 13)),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _staysRow() {
+    return SizedBox(
+      height: 250,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: _stays.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (_, i) {
+          final p = _stays[i];
+          final id = '${p['id']}';
+          final rated = ((p['rating_count'] as num?) ?? 0) > 0;
+          final price = p['price_from'] as num?;
+          return _photoCard(
+            photoUrl: p['photo'] as String?,
+            fallback: '${p['city']}'.toLowerCase(),
+            seed: id,
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PropertyScreen(propertyId: id, query: _query('')))),
+            lines: [
+              Text('${p['name']}', style: display(15.5), maxLines: 1, overflow: TextOverflow.ellipsis),
+              Text('${typeLabel('${p['type']}')} in ${p['city']}', style: const TextStyle(color: C.soft, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+              Text(
+                rated ? '★ ${((p['rating_avg'] as num?) ?? 0).toStringAsFixed(1)} · ${plural((p['rating_count'] as num).toInt(), 'review')}' : 'New on Hill Booker',
+                style: TextStyle(color: rated ? C.soft : C.green, fontWeight: rated ? FontWeight.w400 : FontWeight.w700, fontSize: 13),
+              ),
+              if (price != null && price > 0) Text('From ${money(price)} a night', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _tripTile({bool main = false, required String title, required String text, required String cta, required VoidCallback onTap}) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: main ? C.green : Colors.white,
+          border: Border.all(color: main ? C.green : C.line),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: display(18, color: main ? Colors.white : C.ink)),
+          const SizedBox(height: 4),
+          Text(text, style: TextStyle(color: main ? const Color(0xFFD9ECE5) : C.soft, fontSize: 14, height: 1.35)),
+          const SizedBox(height: 10),
+          Text(cta, style: TextStyle(color: main ? C.gold : C.green, fontWeight: FontWeight.w700)),
+        ]),
+      ),
+    );
+  }
+
+  List<String> _popularTowns() {
+    final out = <String>[];
+    for (final t in _towns) {
+      out.add(t);
+    }
+    // any other town where an owner has listed, most stays first
+    final extra = _cityCount.entries.where((e) => !_towns.any((t) => t.toLowerCase() == e.key)).toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    for (final e in extra) {
+      out.add(e.key.split(' ').map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}').join(' '));
+    }
+    return out;
+  }
+
+  Widget _hostBand() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(color: _deep, borderRadius: BorderRadius.circular(12)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Own a hotel or homestay in the hills?', style: display(20, color: Colors.white)),
+        const SizedBox(height: 6),
+        const Text(
+          'Guests on Hill Booker are looking for exactly your kind of place. You set the prices and choose which nights to sell.',
+          style: TextStyle(color: Color(0xFFCFE3DC), fontSize: 14, height: 1.4),
+        ),
+        const SizedBox(height: 12),
+        for (final pt in _hostPoints)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(margin: const EdgeInsets.only(top: 6), width: 9, height: 9, decoration: const BoxDecoration(color: C.gold, shape: BoxShape.circle)),
+              const SizedBox(width: 10),
+              Expanded(child: Text(pt, style: const TextStyle(color: Colors.white, fontSize: 14))),
+            ]),
+          ),
+        const SizedBox(height: 6),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: C.gold, foregroundColor: C.ink),
+          onPressed: () => _open('$_site/register'),
+          child: const Text('List your property'),
+        ),
+      ]),
     );
   }
 
@@ -277,96 +546,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _offerCard({required Color color, required String title, required String text, required String button, required Color textOnButton, required VoidCallback onTap}) {
-    return Container(
-      decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(10)),
-      clipBehavior: Clip.antiAlias,
-      child: IntrinsicHeight(
-        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Container(width: 8, color: color),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, style: display(19)),
-                const SizedBox(height: 4),
-                Text(text, style: const TextStyle(color: C.soft, fontSize: 14, height: 1.35)),
-                const SizedBox(height: 12),
-                FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: color, foregroundColor: textOnButton),
-                  onPressed: onTap,
-                  child: Text(button),
-                ),
-              ]),
-            ),
-          ),
-        ]),
-      ),
-    );
-  }
-
   Future<void> _open(String url) async {
     final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open the link. Please try again.')));
     }
-  }
-
-  Widget _trendingRow() {
-    return SizedBox(
-      height: 120,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _trending.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (_, i) {
-          final t = _trending[i];
-          return InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () => _search(t[0] as String),
-            child: Container(
-              width: 150,
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [t[2] as Color, t[3] as Color]),
-              ),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // Real photo from the website. If it cannot load, the colour shows instead.
-                  Image.network(
-                    'https://hillbooker.com/cities/${(t[0] as String).toLowerCase()}.jpg',
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                  ),
-                  const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x00000000), Color(0xB3000000)]),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Align(
-                      alignment: Alignment.bottomLeft,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(t[0] as String, style: display(19, color: Colors.white)),
-                          Text(t[1] as String, style: const TextStyle(color: Color(0xFFEAF3EF), fontSize: 13)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
   }
 
   Widget _videoCard(String id, String title, String forWho) {

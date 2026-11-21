@@ -24,7 +24,8 @@ String typeLabel(String t) {
 
 class ResultsScreen extends StatefulWidget {
   final StayQuery query;
-  const ResultsScreen({super.key, required this.query});
+  final String initialType; // homestay, hotel, resort or apartment; empty for any
+  const ResultsScreen({super.key, required this.query, this.initialType = ''});
 
   @override
   State<ResultsScreen> createState() => _ResultsScreenState();
@@ -40,6 +41,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
   @override
   void initState() {
     super.initState();
+    _type = widget.initialType;
     _load();
   }
 

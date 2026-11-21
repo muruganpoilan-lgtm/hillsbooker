@@ -13,3 +13,12 @@ String fixUrl(String url) {
   if (u == null || !u.hasAuthority) return url;
   return u.replace(scheme: b.scheme, host: b.host, port: b.port).toString();
 }
+
+// A smaller copy of an uploaded photo (the server makes it once and keeps it): w is the width in pixels,
+// for example 640 for cards and 960 for big photos. Photos that aren't Hill Booker uploads are left as they are.
+String sizedUrl(String url, int w) {
+  final fixed = fixUrl(url);
+  final i = fixed.indexOf('/uploads/');
+  if (i < 0 || fixed.contains('/uploads/_thumbs/')) return fixed;
+  return '${fixed.substring(0, i)}/img/${fixed.substring(i + 9)}?w=$w';
+}

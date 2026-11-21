@@ -199,7 +199,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
         itemBuilder: (context, i) => ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: Image.network(
-            fixUrl('${(photos[i] as Map)['url']}'),
+            sizedUrl('${(photos[i] as Map)['url']}', 960),
             width: 280,
             height: 190,
             fit: BoxFit.cover,

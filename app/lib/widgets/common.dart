@@ -45,14 +45,15 @@ class ScoreBadge extends StatelessWidget {
 class PhotoOrRidge extends StatelessWidget {
   final String? url;
   final String seed;
-  const PhotoOrRidge({super.key, required this.url, required this.seed});
+  final int width; // size of the smaller copy to load, in pixels
+  const PhotoOrRidge({super.key, required this.url, required this.seed, this.width = 640});
 
   @override
   Widget build(BuildContext context) {
     final u = url;
     if (u == null || u.isEmpty) return Ridge(seed: seed);
     return Image.network(
-      fixUrl(u),
+      sizedUrl(u, width),
       fit: BoxFit.cover,
       width: double.infinity,
       height: double.infinity,

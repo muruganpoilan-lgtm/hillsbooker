@@ -79,7 +79,7 @@ class _PhotoStripState extends State<PhotoStrip> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(6),
                     child: Image.network(
-                      fixUrl('${p['url']}'),
+                      sizedUrl('${p['url']}', 320),
                       width: 144,
                       height: 108,
                       fit: BoxFit.cover,
