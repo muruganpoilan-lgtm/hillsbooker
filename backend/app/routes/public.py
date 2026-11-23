@@ -210,7 +210,7 @@ def property_reviews(property_id: str, limit: int = Query(20, ge=1, le=50), offs
         if not prop:
             raise HTTPException(404, "Property not found")
         cur.execute(
-            """SELECT rating, COUNT(*) AS n FROM reviews WHERE property_id = %s AND removed_at IS NULL GROUP BY rating""",
+            """SELECT rating, COUNT(*) AS n FROM reviews WHERE property_id = %s GROUP BY rating""",
             (property_id,),
         )
         breakdown = {str(i): 0 for i in range(5, 0, -1)}
@@ -223,7 +223,7 @@ def property_reviews(property_id: str, limit: int = Query(20, ge=1, le=50), offs
                JOIN users u ON u.id = r.user_id
                JOIN bookings b ON b.id = r.booking_id
                JOIN room_types rt ON rt.id = b.room_type_id
-               WHERE r.property_id = %s AND r.removed_at IS NULL
+               WHERE r.property_id = %s
                ORDER BY r.created_at DESC
                LIMIT %s OFFSET %s""",
             (property_id, limit, offset),

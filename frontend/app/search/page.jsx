@@ -3,7 +3,7 @@ import HeartButton from "../../components/HeartButton";
 import Ridge from "../../components/Ridge";
 import NearMeButton from "../../components/NearMeButton";
 import SearchForm from "../../components/SearchForm";
-import { addDays, api, isISODate, money, nightsBetween, todayISO, sized, sizedSet } from "../../lib/api";
+import { addDays, api, isISODate, money, nightsBetween, todayISO } from "../../lib/api";
 import { getT } from "../../lib/lang";
 import { readOccupancy, writeOccupancy } from "../../lib/occupancy";
 
@@ -176,7 +176,7 @@ export default async function SearchPage({ searchParams }) {
                     <li key={p.id} className="has-heart">
                       <Link className="result" href={`/properties/${p.id}?${detailQuery}`}>
                         <div className="result-photo">
-                          {p.photo ? <img src={sized(p.photo, 640)} srcSet={sizedSet(p.photo)} sizes="(min-width: 760px) 320px, 45vw" alt="" loading="lazy" /> : <Ridge seed={p.id} />}
+                          {p.photo ? <img src={p.photo} alt="" loading="lazy" /> : <Ridge seed={p.id} />}
                         </div>
                         <div className="result-body">
                           <p className="meta">{t("type.in", { type: TYPES.includes(p.type) ? t(`type.${p.type}`) : p.type, city: p.city })}</p>

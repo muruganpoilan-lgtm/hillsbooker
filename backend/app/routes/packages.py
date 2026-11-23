@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from .. import notify, ratelimit
 from ..auth import require_role
 from ..db import get_conn
-from .enquiries import _email
+from .enquiries import _email, spam_reason
 from .owner import _delete_photo, _upload_photos
 
 public = APIRouter(prefix="/packages", tags=["packages"])
@@ -76,6 +76,7 @@ def package_enquiry(slug: str, body: PackageEnquiryIn, request: Request):
     phone = notify.wa_number(body.phone)
     if not phone:
         raise HTTPException(422, "Please enter a valid phone number")
+    spam = spam_reason(body, phone)
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute("SELECT id, title FROM packages WHERE slug = %s AND active", (slug,))
         p = cur.fetchone()
@@ -85,11 +86,14 @@ def package_enquiry(slug: str, body: PackageEnquiryIn, request: Request):
         if cur.fetchone()["n"] >= 3:
             raise HTTPException(429, "We already have your enquiry. We will call you soon")
         cur.execute(
-            """INSERT INTO enquiries (kind, name, phone, email, destination, start_date, people, notes, package_id)
-               VALUES ('package', %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *""",
-            (body.name.strip(), phone, body.email, p["title"], body.start_date, body.people, body.notes, p["id"]),
+            """INSERT INTO enquiries (kind, name, phone, email, destination, start_date, people, notes, package_id, status)
+               VALUES ('package', %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *""",
+            (body.name.strip(), phone, body.email, p["title"], body.start_date, body.people, body.notes, p["id"],
+             "spam" if spam else "new"),
         )
         row = cur.fetchone()
+    if spam:  # no alert: adverts should not interrupt anyone
+        return {"ok": True}
     notify.enquiry_in_background(row)
     _email(row)
     return {"ok": True}

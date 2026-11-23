@@ -1,6 +1,7 @@
 """Group tour and corporate tour enquiries. Anyone can send one; only the admin reads them.
 The owner is told on WhatsApp (when the template is set up) and by email (when SMTP is set up). Failures never block the form."""
 import logging
+import re
 import smtplib
 from datetime import date
 from email.message import EmailMessage
@@ -33,6 +34,36 @@ class EnquiryIn(BaseModel):
     budget: Optional[str] = Field(default=None, max_length=60)
     notes: Optional[str] = Field(default=None, max_length=1000)
     website: Optional[str] = None  # hidden field: real people leave it empty, form-filling bots don't
+    elapsed_ms: Optional[int] = None  # how long the form was open: people take seconds, bots none
+
+
+LINK = re.compile(r"(https?://|www\.|\b[a-z0-9-]+\.(com|net|org|in|co|io|biz|info|shop|site|xyz|online)\b)", re.I)
+MIN_FILL_MS = 3000  # a person cannot read and fill the form faster than this
+
+
+def spam_reason(body, phone: str) -> Optional[str]:
+    """Why this looks like an advert rather than an enquiry. None means it looks real.
+    Takes any of the enquiry forms (tour, trip, package), so every field is read defensively.
+    Kept deliberately narrow: a wrongly flagged enquiry is worse than one spam row to delete."""
+    g = lambda k: getattr(body, k, None)
+    notes = (g("notes") or "").strip()
+    trip_given = any([g("destination"), g("start_date"), g("people"), g("budget"), g("city"), g("package_id")])
+
+    # Someone pitching a service: a link, and nothing at all about a trip.
+    if notes and LINK.search(notes) and not trip_given:
+        return "a link in the notes and no trip details"
+
+    # Their own email domain turns up in the message: self-promotion, not an enquiry.
+    if g("email") and "@" in g("email"):
+        domain = g("email").split("@")[-1].strip().lower()
+        if not trip_given and len(domain) > 3 and domain in f"{notes} {g('company') or ''} {g('name') or ''}".lower():
+            return "the sender's own website is being advertised in the message"
+
+    # Submitted faster than anyone can type.
+    if g("elapsed_ms") is not None and 0 <= g("elapsed_ms") < MIN_FILL_MS:
+        return "the form was submitted in under 3 seconds"
+
+    return None
 
 
 def _mail(subject: str, text: str) -> None:
@@ -71,16 +102,23 @@ def create_enquiry(body: EnquiryIn, request: Request):
     phone = notify.wa_number(body.phone)
     if not phone:
         raise HTTPException(422, "Please enter a valid phone number")
+    # Kept, not thrown away, so a wrongly flagged enquiry can still be found under "spam".
+    spam = spam_reason(body, phone)
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute("SELECT count(*) AS n FROM enquiries WHERE phone = %s AND created_at > now() - interval '1 hour'", (phone,))
         if cur.fetchone()["n"] >= 3:
             raise HTTPException(429, "We already have your enquiry. We will call you soon")
         cur.execute(
-            """INSERT INTO enquiries (kind, name, company, phone, email, destination, start_date, people, budget, notes)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *""",
-            (body.kind, body.name.strip(), body.company, phone, body.email, body.destination, body.start_date, body.people, body.budget, body.notes),
+            """INSERT INTO enquiries (kind, name, company, phone, email, destination, start_date, people, budget, notes, status)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *""",
+            (body.kind, body.name.strip(), body.company, phone, body.email, body.destination, body.start_date, body.people, body.budget, body.notes,
+             "spam" if spam else "new"),
         )
         row = cur.fetchone()
+    if spam:
+        # No WhatsApp, no email: the point is not to be interrupted by adverts.
+        log.info("Enquiry marked as spam (%s): %s / %s", spam, row["name"], phone)
+        return {"ok": True}  # the sender is told nothing, so a bot does not come back with a new wording
     notify.enquiry_in_background(row)
     _email(row)
     return {"ok": True}
@@ -89,7 +127,8 @@ def create_enquiry(body: EnquiryIn, request: Request):
 @admin.get("")
 def list_enquiries(user: dict = Depends(admin_only)):
     with get_conn() as conn, conn.cursor() as cur:
-        cur.execute("SELECT * FROM enquiries ORDER BY (status = 'new') DESC, created_at DESC LIMIT 500")
+        # Spam last, so the real enquiries are what the admin sees first.
+        cur.execute("SELECT * FROM enquiries ORDER BY (status = 'spam'), (status = 'new') DESC, created_at DESC LIMIT 500")
         return cur.fetchall()
 
 

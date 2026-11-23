@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from .. import notify, ratelimit
 from ..db import get_conn
-from .enquiries import _email
+from .enquiries import _email, spam_reason
 from .packages import list_packages
 from .public import search as search_rooms
 from .vehicles import list_vehicles
@@ -224,17 +224,20 @@ def send_trip(body: TripRequestIn, request: Request):
         lines.append(f"Liked stay: {body.stay_name}")
     if body.notes:
         lines.append(f"Notes: {body.notes.strip()}")
+    spam = spam_reason(body, phone)
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute("SELECT count(*) AS n FROM enquiries WHERE phone = %s AND created_at > now() - interval '1 hour'", (phone,))
         if cur.fetchone()["n"] >= 3:
             raise HTTPException(429, "We already have your trip request. We will call you soon")
         cur.execute(
-            """INSERT INTO enquiries (kind, name, phone, email, destination, start_date, people, budget, notes)
-               VALUES ('trip', %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *""",
+            """INSERT INTO enquiries (kind, name, phone, email, destination, start_date, people, budget, notes, status)
+               VALUES ('trip', %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *""",
             (body.name.strip(), phone, body.email, body.city.strip(), body.check_in, body.adults + body.children,
-             BUDGET_LABEL[body.budget], "\n".join(lines)),
+             BUDGET_LABEL[body.budget], "\n".join(lines), "spam" if spam else "new"),
         )
         row = cur.fetchone()
+    if spam:  # no alert: adverts should not interrupt anyone
+        return {"ok": True}
     notify.enquiry_in_background(row)
     _email(row)
     return {"ok": True}

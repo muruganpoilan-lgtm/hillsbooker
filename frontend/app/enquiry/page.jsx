@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api, todayISO } from "../../lib/api";
 
@@ -11,6 +11,7 @@ function Form() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  const shownAt = useRef(Date.now()); // people take seconds to fill this in; bots post at once
   const set = (k) => (e) => {
     setF({ ...f, [k]: e.target.value });
     setError("");
@@ -31,7 +32,7 @@ function Form() {
     if (busy) return;
     if (f.phone.replace(/\D/g, "").length !== 12) return setError("Enter your 10-digit mobile number after +91.");
     setBusy(true);
-    const body = { kind, ...f, people: f.people ? Number(f.people) : null, start_date: f.start_date || null };
+    const body = { kind, ...f, people: f.people ? Number(f.people) : null, start_date: f.start_date || null, elapsed_ms: Date.now() - shownAt.current };
     for (const k of ["company", "email", "destination", "budget", "notes"]) if (!body[k]) body[k] = null;
     const res = await api("/enquiries", { method: "POST", body });
     setBusy(false);
