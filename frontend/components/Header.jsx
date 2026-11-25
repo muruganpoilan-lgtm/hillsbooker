@@ -26,7 +26,7 @@ export default function Header() {
           <>
             {role === "admin" && <Link href="/dashboard/overview">{t("nav.admin")}</Link>}
             {(role === "owner" || role === "operator") && <Link href="/dashboard/home">{t("nav.hostPanel")}</Link>}
-            {role === "guest" && <Link href="/dashboard">{t("nav.becomeHost")}</Link>}
+            {role === "guest" && <Link href="/dashboard" className="btn btn-small btn-gold">{t("home.host.cta")}</Link>}
             <Link href="/account">{t("nav.account")}</Link>
             <button
               type="button"
@@ -41,7 +41,7 @@ export default function Header() {
           </>
         ) : ready ? (
           <>
-            <Link href="/register" className="nav-list">{t("home.host.cta")}</Link>
+            <Link href="/register" className="btn btn-small btn-gold">{t("home.host.cta")}</Link>
             <Link href="/login">{t("nav.login")}</Link>
             <Link href="/register" className="btn btn-small">
               {t("nav.signup")}
