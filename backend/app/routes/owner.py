@@ -273,27 +273,32 @@ def update_room_type(room_type_id: str, body: RoomTypeUpdate, user: dict = Depen
         rt = _own_room_type(cur, room_type_id, user)
         new_total, old_total = changes.get("total_rooms"), rt["total_rooms"]
         moved = 0
-        if new_total is not None and new_total != old_total:
-            # Each open night holds how many rooms are still free, so what is already taken is
-            # (old total - free). Changing the room count has to move those nights with it, or the
-            # site goes on selling the old number: that is how a 2-room stay kept offering 5.
-            if new_total < old_total:
-                cur.execute(
-                    """SELECT day, (%(old)s - available) AS taken FROM room_inventory
-                       WHERE room_type_id = %(rt)s AND day >= CURRENT_DATE AND (%(old)s - available) > %(new)s
-                       ORDER BY day LIMIT 3""",
-                    {"old": old_total, "new": new_total, "rt": room_type_id},
-                )
-                clash = cur.fetchall()
-                if clash:
-                    days = ", ".join(str(r["day"]) for r in clash)
-                    raise HTTPException(409, f"{clash[0]['taken']} rooms are already booked on {days}, which is more than {new_total}. Those bookings have to be moved or cancelled first")
-            # Keep what is already booked, and give the night the new number of free rooms.
+        # Lowering the room count has to bring the open nights down with it, or the site goes on
+        # selling the old number. Raising it is left alone: a host who opened fewer rooms than the
+        # total did so on purpose, and the availability calendar is where they open more.
+        if new_total is not None and new_total < old_total:
+            # What is really booked that night, counted from the bookings themselves. Never inferred
+            # from (total - available): a night may have fewer rooms open simply because the host
+            # chose to open fewer, and treating that gap as bookings empties the night.
+            booked = """COALESCE((SELECT SUM(b.rooms) FROM bookings b
+                                   WHERE b.room_type_id = ri.room_type_id AND b.status IN ('held','confirmed')
+                                     AND ri.day >= b.check_in AND ri.day < b.check_out), 0)"""
+            cur.execute(
+                f"""SELECT ri.day, {booked} AS taken FROM room_inventory ri
+                    WHERE ri.room_type_id = %(rt)s AND ri.day >= CURRENT_DATE AND {booked} > %(new)s
+                    ORDER BY ri.day LIMIT 3""",
+                {"new": new_total, "rt": room_type_id},
+            )
+            clash = cur.fetchall()
+            if clash:
+                days = ", ".join(str(r["day"]) for r in clash)
+                raise HTTPException(409, f"{clash[0]['taken']} rooms are already booked on {days}, which is more than {new_total}. Those bookings have to be moved or cancelled first")
+            # Never more than the new total, and never more than is left after the real bookings.
             # Nights the host has closed stay closed.
             cur.execute(
-                """UPDATE room_inventory SET available = GREATEST(0, LEAST(available + %(new)s - %(old)s, %(new)s))
-                   WHERE room_type_id = %(rt)s AND day >= CURRENT_DATE AND NOT blocked""",
-                {"old": old_total, "new": new_total, "rt": room_type_id},
+                f"""UPDATE room_inventory ri SET available = GREATEST(0, LEAST(ri.available, %(new)s - {booked}))
+                    WHERE ri.room_type_id = %(rt)s AND ri.day >= CURRENT_DATE AND NOT ri.blocked""",
+                {"new": new_total, "rt": room_type_id},
             )
             moved = cur.rowcount
         sets = ", ".join(f"{col} = %s" for col in changes)  # column names come from the schema model, never from the request
