@@ -29,9 +29,14 @@ export const metadata = {
     description: DESCRIPTION,
     url: SITE_URL,
     locale: "en_IN",
-    images: [{ url: "/logo.png", alt: "Hill Booker" }],
+    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: "Hill Booker: hotels and homestays in the hills and by the sea" }],
   },
-  twitter: { card: "summary", title: "Hill Booker", description: DESCRIPTION, images: ["/logo.png"] },
+  twitter: {
+    card: "summary_large_image",
+    title: "Hill Booker: hotels and homestays in the hills and by the sea",
+    description: DESCRIPTION,
+    images: ["/og.jpg"],
+  },
 };
 
 const SITE_LD = {

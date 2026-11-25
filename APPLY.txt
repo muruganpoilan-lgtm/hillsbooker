@@ -1,0 +1,101 @@
+HILL BOOKER - HOMEPAGE AND SHARE-PREVIEW FIXES
+25 November 2026 - built against main @ 6d3a643
+
+Unzip over C:\Users\poila\Downloads\HillBooker, keeping the folder
+structure. Four files, two of them new.
+
+  frontend/app/page.jsx                         (modified)
+  frontend/app/layout.jsx                       (modified)
+  frontend/public/og.jpg                        (NEW - 1200x630)
+  db/fixes/2026-11-25-tidy-listings.sql         (NEW - run by hand)
+
+-----------------------------------------------------------
+WHAT CHANGED
+-----------------------------------------------------------
+1. No more dead destination tiles.
+   The homepage advertised Coorg & Chikmagalur, Yercaud & Kolli Hills,
+   Kerala backwaters, Apartments, Goa, Kodaikanal and Thekkady. Clicking
+   Coorg gives "No places listed in Coorg yet."
+
+   Every destination tile, property-type tile and festive-banner city is
+   now hidden unless it actually has stays. A section with nothing left
+   in it hides itself too.
+
+   If the /home/showcase API call FAILS, nothing is filtered and the page
+   behaves exactly as it does today. A broken API gives you the old
+   homepage, never an empty one.
+
+   The tiles come back on their own the moment a property in that place
+   is approved. No code change needed when you sign up Coorg.
+
+2. Featured stays sort cheapest first.
+   The row led with Villa Ottilia at Rs 40,000 and Cassa Don at Rs 20,000
+   while everything else was Rs 1,600-3,500. Anything with no price sits
+   at the end. One line, easy to revert if you disagree.
+
+3. Share previews show a hill, not your logo.
+   og:image was /logo.png, so every WhatsApp and Facebook share of
+   Hill Booker showed a bare logo on white. It is now /og.jpg - the
+   Munnar tea-estate photo already in your repo, cropped to 1200x630
+   with the wordmark on it.
+
+   twitter:card went from "summary" (small square thumbnail) to
+   "summary_large_image" (full-width), and the Twitter title now matches
+   the Open Graph one instead of saying just "Hill Booker".
+
+-----------------------------------------------------------
+DEPLOY
+-----------------------------------------------------------
+  cd C:\Users\poila\Downloads\HillBooker
+  git add -A
+  git commit -m "Hide empty destination tiles, sort stays by price, real OG image"
+  git push
+
+Then on the VPS:
+
+  cd ~/hillsbooker
+  git pull
+  docker compose -f docker-compose.prod.yml build web
+  docker compose -f docker-compose.prod.yml up -d --force-recreate web
+
+Check it says "Started" and not "Running". "Running" means compose left
+the old container alone and your change is not live.
+
+Only the frontend changed, so the api container does not need rebuilding.
+
+-----------------------------------------------------------
+THE SQL IS SEPARATE - RUN IT YOURSELF
+-----------------------------------------------------------
+  cd ~/hillsbooker
+  docker compose -f docker-compose.prod.yml exec -T db \
+    psql -U roomly -d roomly -f - < db/fixes/2026-11-25-tidy-listings.sql
+
+It opens a transaction, makes three changes, prints every live property,
+and stops. Nothing is saved until you type COMMIT; yourself. If the list
+looks wrong, type ROLLBACK;.
+
+What it fixes:
+  - "Cassa Don Premium poll villa" -> "Cassa Don Premium Pool Villa"
+  - Kanthaloor is currently three cities. One property is filed under
+    "KANTHALLOOR", another under "Kanthaloor Marayoor". City is matched
+    in lowercase, so those are separate buckets and NEITHER matches
+    /stays/kanthaloor. Your two Kanthaloor properties cannot be found
+    together today. Both become "Kanthaloor".
+  - Any other city stored in block capitals gets normal capitals.
+
+-----------------------------------------------------------
+STILL YOURS TO DO - NOT CODE
+-----------------------------------------------------------
+* Double Deluxe A, C and D have inventory open only to 30 November.
+  That is five days away. From 1 December they disappear from results.
+  Open the dates in the dashboard.
+
+* The duplicate room type called plain "Double Deluxe" (47 nights open)
+  is still visible to guests. Delete it.
+
+* "Welbeck Vintage by Oxygen Resorts" has no price and shows a stock
+  Ooty photo instead of the property. Add both.
+
+* All eleven properties show "New on Hill Booker" because none has a
+  review. Ask every guest who checks out for two sentences, by WhatsApp,
+  the same day.

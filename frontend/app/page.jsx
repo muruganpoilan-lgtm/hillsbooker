@@ -74,6 +74,29 @@ export default async function Home() {
   const show = await api("/home/showcase");
   const sc = show.ok ? show.data : { cities: {}, types: {}, stays: [] };
   const town = (c) => (t(`city.${c}`) === `city.${c}` ? c : t(`city.${c}`));
+
+  // Never advertise a place we cannot sell: a guest who clicks a tile and lands on
+  // "No places listed yet" does not come back. Only filter when the showcase call
+  // succeeded — if the API is down we show everything rather than an empty homepage.
+  const counts = show.ok ? sc.cities || {} : null;
+  const staysIn = (city) => (counts ? counts[String(city).toLowerCase()] || 0 : 1);
+  const sellable = (list) => (counts ? list.filter((d) => staysIn(d.city) > 0) : list);
+
+  const regions = counts
+    ? REGIONS.filter((r) => r.towns.some((c) => staysIn(c) > 0))
+    : REGIONS;
+  const types = show.ok ? TYPES.filter((x) => (sc.types[x.type] || {}).count > 0) : TYPES;
+  const trendBig = sellable(TREND_BIG);
+  const trendSmall = sellable(TREND_SMALL);
+  const more = sellable(MORE);
+  const festiveCities = counts ? FESTIVE_CITIES.filter((c) => staysIn(c) > 0) : FESTIVE_CITIES;
+
+  // Cheapest first; anything without a price sits at the end.
+  const stays = [...sc.stays].sort((a, b) => {
+    const pa = Number(a.price_from) > 0 ? Number(a.price_from) : Infinity;
+    const pb = Number(b.price_from) > 0 ? Number(b.price_from) : Infinity;
+    return pa - pb;
+  });
   return (
     <main>
       <section className="hb-hero">
@@ -86,14 +109,14 @@ export default async function Home() {
         <SearchForm />
       </div>
 
-      {festiveOn() && (
+      {festiveOn() && festiveCities.length > 0 && (
         <section className="page hb-section">
           <div className="hb-festive">
             <span className="hb-festive-lamps" aria-hidden="true">🪔 ✨ 🎄</span>
             <h2>{t("home.festive.title")}</h2>
             <p>{t("home.festive.text")}</p>
             <div className="hb-festive-cities">
-              {FESTIVE_CITIES.map((c) => (
+              {festiveCities.map((c) => (
                 <Link key={c} href={`/stays/${slugify(c)}`}>{t(`city.${c}`)}</Link>
               ))}
             </div>
@@ -113,11 +136,12 @@ export default async function Home() {
         </Link>
       </section>
 
+      {regions.length > 0 && (
       <section className="page hb-section">
         <h2 className="hb-title">{t("home.regions")}</h2>
         <p className="hb-lead">{t("home.regionsLead")}</p>
         <HomeRow label={t("home.regions")}>
-          {REGIONS.map((r) => {
+          {regions.map((r) => {
             const n = r.towns.reduce((sum, c) => sum + (sc.cities[c.toLowerCase()] || 0), 0);
             // Open the town in this region that has the most stays, so a guest never lands on an empty page.
             const best = r.towns.reduce((a, c) => ((sc.cities[c.toLowerCase()] || 0) > (sc.cities[a.toLowerCase()] || 0) ? c : a), r.city);
@@ -134,11 +158,13 @@ export default async function Home() {
           })}
         </HomeRow>
       </section>
+      )}
 
+      {types.length > 0 && (
       <section className="page hb-section">
         <h2 className="hb-title">{t("home.byType")}</h2>
         <HomeRow label={t("home.byType")}>
-          {TYPES.map((x) => {
+          {types.map((x) => {
             const info = sc.types[x.type];
             return (
               <Link key={x.type} href={`/search?type=${x.type}`} className="hr-card" role="listitem">
@@ -150,13 +176,14 @@ export default async function Home() {
           })}
         </HomeRow>
       </section>
+      )}
 
-      {sc.stays.length > 0 && (
+      {stays.length > 0 && (
         <section className="page hb-section">
           <h2 className="hb-title">{t("home.loved")}</h2>
           <p className="hb-lead">{t("home.lovedLead")}</p>
           <HomeRow label={t("home.loved")}>
-            {sc.stays.map((p) => (
+            {stays.map((p) => (
               <Link key={p.id} href={`/properties/${p.id}`} className="hr-card" role="listitem">
                 <img src={p.photo || `/cities/${slugify(p.city)}.jpg`} alt="" loading="lazy" className="hr-img" />
                 <b className="hr-name">{p.name}</b>
@@ -213,29 +240,37 @@ export default async function Home() {
         </div>
       </section>
 
+      {(trendBig.length > 0 || trendSmall.length > 0) && (
       <section className="page hb-section">
         <h2 className="hb-title">{t("home.trending")}</h2>
         <p className="hb-lead">{t("home.trendingLead")}</p>
-        <div className="hb-grid-big">
-          {TREND_BIG.map((d) => (
-            <Card key={d.city} d={d} className="hb-card-big" t={t} />
-          ))}
-        </div>
-        <div className="hb-grid-small">
-          {TREND_SMALL.map((d) => (
-            <Card key={d.city} d={d} className="hb-card-mid" t={t} />
-          ))}
-        </div>
+        {trendBig.length > 0 && (
+          <div className="hb-grid-big">
+            {trendBig.map((d) => (
+              <Card key={d.city} d={d} className="hb-card-big" t={t} />
+            ))}
+          </div>
+        )}
+        {trendSmall.length > 0 && (
+          <div className="hb-grid-small">
+            {trendSmall.map((d) => (
+              <Card key={d.city} d={d} className="hb-card-mid" t={t} />
+            ))}
+          </div>
+        )}
       </section>
+      )}
 
+      {more.length > 0 && (
       <section className="page hb-section">
         <h2 className="hb-title">{t("home.more")}</h2>
         <div className="hb-row">
-          {MORE.map((d) => (
+          {more.map((d) => (
             <Card key={d.city} d={d} className="hb-card-sm" t={t} />
           ))}
         </div>
       </section>
+      )}
 
       <section className="page hb-section">
         <h2 className="hb-title">{t("home.why")}</h2>
