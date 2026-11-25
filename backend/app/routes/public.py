@@ -172,8 +172,20 @@ def home_showcase():
     """What the home page rows need: stays per city and per property type (with a real listing photo for each type),
     and a few listed stays with their first photo. No dates needed."""
     with get_conn() as conn, conn.cursor() as cur:
-        cur.execute("SELECT lower(city) AS city, COUNT(*) AS n FROM properties WHERE status = 'approved' GROUP BY lower(city)")
-        cities = {r["city"]: r["n"] for r in cur.fetchall()}
+        # Per city: how many stays, and a real listing photo. The photo lets a city card show
+        # the place itself when public/cities/<slug>.jpg does not exist, instead of a flat colour.
+        cur.execute(
+            """SELECT c.city, c.n,
+                      (SELECT ph.url FROM properties p2
+                         JOIN property_photos ph ON ph.property_id = p2.id AND ph.status = 'approved'
+                        WHERE p2.status = 'approved' AND lower(p2.city) = c.city
+                        ORDER BY p2.rating_avg DESC, p2.created_at DESC, ph.position LIMIT 1) AS photo
+                 FROM (SELECT lower(city) AS city, COUNT(*) AS n FROM properties
+                        WHERE status = 'approved' GROUP BY lower(city)) c"""
+        )
+        rows = cur.fetchall()
+        cities = {r["city"]: r["n"] for r in rows}
+        city_photos = {r["city"]: r["photo"] for r in rows if r["photo"]}
         cur.execute(
             """SELECT t.type, t.n,
                       (SELECT ph.url FROM properties p2
@@ -194,7 +206,7 @@ def home_showcase():
                LIMIT 12"""
         )
         stays = cur.fetchall()
-    return {"cities": cities, "types": types, "stays": stays}
+    return {"cities": cities, "city_photos": city_photos, "types": types, "stays": stays}
 
 
 @router.get("/properties/{property_id}/reviews")

@@ -17,10 +17,16 @@ const TREND_SMALL = [
   { city: "Coorg", tag: "Coffee estates", from: "#7a4b1f", to: "#c08a4d" },
   { city: "Alleppey", tag: "Backwaters", from: "#0b5f7a", to: "#4aa7c4" },
 ];
+// Towns without a public/cities/<slug>.jpg still get a picture: the Card falls back to a real
+// listing photo from that town, supplied by /home/showcase as city_photos.
 const MORE = [
   { city: "Kodaikanal", tag: "Lake and mist", from: "#4b3a7a", to: "#8d77c4" },
   { city: "Wayanad", tag: "Forest stays", from: "#1d5c3a", to: "#5aa072" },
   { city: "Valparai", tag: "Quiet hills", from: "#0a5042", to: "#2f8f78" },
+  { city: "Kotagiri", tag: "Tea and quiet", from: "#1f4f5c", to: "#5a9aa8" },
+  { city: "Kanthaloor", tag: "Orchards and cold mornings", from: "#6b3f12", to: "#c08a3d" },
+  { city: "Madikeri", tag: "Coffee country", from: "#4a3a1c", to: "#9c8046" },
+  { city: "Nelliyampathy", tag: "Orange orchards and valley views", from: "#7a4a0f", to: "#d19a3c" },
   { city: "Thekkady", tag: "Spice and wildlife", from: "#6b4a12", to: "#b98a2e" },
   { city: "Yercaud", tag: "Shevaroy hills", from: "#2f5c2a", to: "#79a35a" },
 ];
@@ -55,16 +61,18 @@ function festiveOn() {
   return m === 12 || (m === 1 && d <= 2);
 }
 
-function Card({ d, className, t }) {
+// A CSS background layer that fails to load is skipped and the next one shows, so this reads as
+// a fallback chain: the town's own photo file, then a photo from a listing there, then the colour.
+function Card({ d, className, t, photo }) {
+  const or = (key, fallback) => (t(key) === key ? fallback : t(key));
+  const layers = [`url(/cities/${slugify(d.city)}.jpg)`];
+  if (photo) layers.push(`url(${photo})`);
+  layers.push(`linear-gradient(160deg, ${d.from}, ${d.to})`);
   return (
-    <Link
-      href={`/stays/${slugify(d.city)}`}
-      className={`hb-card ${className}`}
-      style={{ backgroundImage: `url(/cities/${slugify(d.city)}.jpg), linear-gradient(160deg, ${d.from}, ${d.to})` }}
-    >
+    <Link href={`/stays/${slugify(d.city)}`} className={`hb-card ${className}`} style={{ backgroundImage: layers.join(", ") }}>
       <span className="hb-card-shade" aria-hidden="true" />
-      <span className="hb-card-name">{t(`city.${d.city}`)}</span>
-      <span className="hb-card-tag">{t(`tag.${d.city}`)}</span>
+      <span className="hb-card-name">{or(`city.${d.city}`, d.city)}</span>
+      <span className="hb-card-tag">{or(`tag.${d.city}`, d.tag)}</span>
     </Link>
   );
 }
@@ -81,11 +89,12 @@ export default async function Home() {
   const counts = show.ok ? sc.cities || {} : null;
   const staysIn = (city) => (counts ? counts[String(city).toLowerCase()] || 0 : 1);
   const sellable = (list) => (counts ? list.filter((d) => staysIn(d.city) > 0) : list);
+  const cityPhoto = (city) => (sc.city_photos || {})[String(city).toLowerCase()] || null;
 
   const regions = counts
     ? REGIONS.filter((r) => r.towns.some((c) => staysIn(c) > 0))
     : REGIONS;
-  const types = show.ok ? TYPES.filter((x) => (sc.types[x.type] || {}).count > 0) : TYPES;
+  const types = TYPES;
   const trendBig = sellable(TREND_BIG);
   const trendSmall = sellable(TREND_SMALL);
   const more = sellable(MORE);
@@ -247,14 +256,14 @@ export default async function Home() {
         {trendBig.length > 0 && (
           <div className="hb-grid-big">
             {trendBig.map((d) => (
-              <Card key={d.city} d={d} className="hb-card-big" t={t} />
+              <Card key={d.city} d={d} className="hb-card-big" t={t} photo={cityPhoto(d.city)} />
             ))}
           </div>
         )}
         {trendSmall.length > 0 && (
           <div className="hb-grid-small">
             {trendSmall.map((d) => (
-              <Card key={d.city} d={d} className="hb-card-mid" t={t} />
+              <Card key={d.city} d={d} className="hb-card-mid" t={t} photo={cityPhoto(d.city)} />
             ))}
           </div>
         )}
@@ -266,7 +275,7 @@ export default async function Home() {
         <h2 className="hb-title">{t("home.more")}</h2>
         <div className="hb-row">
           {more.map((d) => (
-            <Card key={d.city} d={d} className="hb-card-sm" t={t} />
+            <Card key={d.city} d={d} className="hb-card-sm" t={t} photo={cityPhoto(d.city)} />
           ))}
         </div>
       </section>
