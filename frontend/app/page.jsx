@@ -29,9 +29,9 @@ const WHY = [1, 2, 3, 4];
 // "Explore the hills" row. Each region opens the stays page of its main town; the photo comes from public/cities.
 const REGIONS = [
   { key: "nilgiris", city: "Ooty", photo: "ooty", towns: ["Ooty", "Coonoor", "Kotagiri"] },
-  { key: "keralaHills", city: "Munnar", photo: "munnar", towns: ["Munnar", "Wayanad", "Thekkady"] },
+  { key: "keralaHills", city: "Munnar", photo: "munnar", towns: ["Munnar", "Wayanad", "Thekkady", "Nelliyampathy"] },
   { key: "anamalai", city: "Valparai", photo: "valparai", towns: ["Valparai", "Kodaikanal"] },
-  { key: "coorg", city: "Coorg", photo: "coorg", towns: ["Coorg", "Chikmagalur"] },
+  { key: "coorg", city: "Coorg", photo: "coorg", towns: ["Coorg", "Madikeri", "Chikmagalur"] },
   { key: "shevaroy", city: "Yercaud", photo: "yercaud", towns: ["Yercaud", "Kolli Hills"] },
   { key: "backwaters", city: "Alleppey", photo: "alleppey", towns: ["Alleppey", "Kumarakom"] },
 ];

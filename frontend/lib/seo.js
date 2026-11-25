@@ -16,6 +16,8 @@ export const CITY_INFO = {
   munnar: { name: "Munnar", blurb: "Munnar, in the high ranges of Kerala, is known for rolling tea plantations, cool air and mountain views." },
   yercaud: { name: "Yercaud", blurb: "Yercaud is a quiet hill station in the Shevaroy hills of Tamil Nadu, with coffee estates, a lake and cool weather." },
   coorg: { name: "Coorg", blurb: "Coorg (Kodagu) in Karnataka is known for coffee estates, misty hills, waterfalls and homestays." },
+  madikeri: { name: "Madikeri", blurb: "Madikeri is the hill town at the heart of Coorg in Karnataka, with coffee estates, mist, waterfalls and homestays." },
+  nelliyampathy: { name: "Nelliyampathy", blurb: "Nelliyampathy, in Kerala's Palakkad district, is a quiet range of orange orchards, tea estates and valley viewpoints." },
   valparai: { name: "Valparai", blurb: "Valparai, in the Anamalai hills of Tamil Nadu, is surrounded by tea estates, forests and wildlife, and is far from the crowds." },
   thekkady: { name: "Thekkady", blurb: "Thekkady in Kerala is known for the Periyar forest, spice plantations and boat rides on the lake." },
   wayanad: { name: "Wayanad", blurb: "Wayanad in Kerala has forests, waterfalls, spice and coffee plantations, and many homestays." },
