@@ -271,17 +271,34 @@ def update_room_type(room_type_id: str, body: RoomTypeUpdate, user: dict = Depen
         raise HTTPException(400, "Nothing to change")
     with get_conn() as conn, conn.cursor() as cur:
         rt = _own_room_type(cur, room_type_id, user)
-        new_total = changes.get("total_rooms")
-        if new_total is not None and new_total < rt["total_rooms"]:
+        new_total, old_total = changes.get("total_rooms"), rt["total_rooms"]
+        moved = 0
+        if new_total is not None and new_total != old_total:
+            # Each open night holds how many rooms are still free, so what is already taken is
+            # (old total - free). Changing the room count has to move those nights with it, or the
+            # site goes on selling the old number: that is how a 2-room stay kept offering 5.
+            if new_total < old_total:
+                cur.execute(
+                    """SELECT day, (%(old)s - available) AS taken FROM room_inventory
+                       WHERE room_type_id = %(rt)s AND day >= CURRENT_DATE AND (%(old)s - available) > %(new)s
+                       ORDER BY day LIMIT 3""",
+                    {"old": old_total, "new": new_total, "rt": room_type_id},
+                )
+                clash = cur.fetchall()
+                if clash:
+                    days = ", ".join(str(r["day"]) for r in clash)
+                    raise HTTPException(409, f"{clash[0]['taken']} rooms are already booked on {days}, which is more than {new_total}. Those bookings have to be moved or cancelled first")
+            # Keep what is already booked, and give the night the new number of free rooms.
+            # Nights the host has closed stay closed.
             cur.execute(
-                "SELECT COALESCE(MAX(available), 0) AS most FROM room_inventory WHERE room_type_id = %s AND day >= %s",
-                (room_type_id, date.today()),
+                """UPDATE room_inventory SET available = GREATEST(0, LEAST(available + %(new)s - %(old)s, %(new)s))
+                   WHERE room_type_id = %(rt)s AND day >= CURRENT_DATE AND NOT blocked""",
+                {"old": old_total, "new": new_total, "rt": room_type_id},
             )
-            if cur.fetchone()["most"] > new_total:
-                raise HTTPException(409, "Some upcoming nights have more rooms open than that. Lower the open rooms for those dates first")
+            moved = cur.rowcount
         sets = ", ".join(f"{col} = %s" for col in changes)  # column names come from the schema model, never from the request
         cur.execute(f"UPDATE room_types SET {sets} WHERE id = %s", (*changes.values(), room_type_id))
-        return {"id": room_type_id, "updated": list(changes)}
+        return {"id": room_type_id, "updated": list(changes), "nights_adjusted": moved}
 
 
 @router.delete("/room-types/{room_type_id}")

@@ -62,7 +62,8 @@ export default function RoomCard({ room, token, reload, onAuthError }) {
     setBusy("");
     if (res.status === 401) return onAuthError();
     if (!res.ok) return say(res.error, true);
-    say("Saved.");
+    const n = res.data?.nights_adjusted;
+    say(n ? `Saved. ${n} upcoming night${n === 1 ? "" : "s"} updated to ${body.total_rooms} room${body.total_rooms === 1 ? "" : "s"}.` : "Saved.");
     reload();
   }
 
