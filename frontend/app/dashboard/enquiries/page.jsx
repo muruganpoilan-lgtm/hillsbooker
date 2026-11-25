@@ -28,7 +28,9 @@ const td = { padding: "0.5rem 0.7rem", borderBottom: "1px solid var(--line)", ve
 function Enquiries() {
   const { token, role, logout } = useAuth();
   const [rows, setRows] = useState(null);
+  const [blocked, setBlocked] = useState([]);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [filter, setFilter] = useState("all");
 
   const load = useCallback(async () => {
@@ -37,6 +39,8 @@ function Enquiries() {
     if (!res.ok) return setError(res.error);
     setError("");
     setRows(res.data);
+    const bl = await api("/admin/enquiries/blocklist/all", { token });
+    if (bl.ok) setBlocked(bl.data);
   }, [token, logout]);
 
   useEffect(() => {
@@ -49,6 +53,27 @@ function Enquiries() {
     load();
   }
 
+  // Blocks the sender's whole domain, so the same advertiser cannot just switch address.
+  async function block(r) {
+    const domain = (r.email || "").split("@")[1];
+    const kind = domain ? "domain" : "phone";
+    const value = domain || r.phone;
+    if (!value) return setError("This enquiry has no email or phone to block.");
+    if (!window.confirm(`Block ${value}? Everything already in the list from this sender becomes spam, and future enquiries are filed as spam automatically.`)) return;
+    const res = await api("/admin/enquiries/blocklist/all", { method: "POST", body: { kind, value, note: `Blocked from the enquiry list (${r.name})` }, token });
+    if (!res.ok) return setError(res.error);
+    setError("");
+    setNotice(`${value} blocked${res.data.also_marked ? `, and ${res.data.also_marked} earlier enquir${res.data.also_marked === 1 ? "y" : "ies"} marked as spam` : ""}.`);
+    load();
+  }
+
+  async function unblock(b) {
+    const res = await api(`/admin/enquiries/blocklist/all/${b.id}`, { method: "DELETE", token });
+    if (!res.ok) return setError(res.error);
+    setNotice(`${b.value} unblocked. Enquiries already marked as spam stay as they are.`);
+    load();
+  }
+
   const shown = useMemo(() => (rows ? rows.filter((r) => filter === "all" || r.status === filter) : []), [rows, filter]);
 
   if (role !== "admin") return <p className="empty">Only the Hill Booker admin can open this page.</p>;
@@ -57,6 +82,7 @@ function Enquiries() {
       <p className="meta"><Link href="/dashboard">← Dashboard</Link></p>
       <h1 className="section-title">Tour enquiries</h1>
       {error && <p className="form-error" role="alert">{error}</p>}
+      {notice && <p className="meta" role="status">{notice}</p>}
       {rows === null ? (
         <p className="meta">Loading…</p>
       ) : rows.length === 0 ? (
@@ -107,6 +133,9 @@ function Enquiries() {
                       <select value={r.status} onChange={(e) => setStatus(r.id, e.target.value)} aria-label={`Status for ${r.name}`}>
                         {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                       </select>
+                      <div className="meta" style={{ marginTop: "0.3rem" }}>
+                        <button type="button" className="btn btn-small" onClick={() => block(r)}>Block sender</button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -115,6 +144,20 @@ function Enquiries() {
           </div>
           {shown.length === 0 && <p className="empty">No enquiries with this status.</p>}
         </>
+      )}
+      <h2 className="section-title" style={{ marginTop: "2rem", fontSize: "1.1rem" }}>Blocked senders</h2>
+      {blocked.length === 0 ? (
+        <p className="meta">Nobody is blocked. Use <b>Block sender</b> on an enquiry to add one.</p>
+      ) : (
+        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+          {blocked.map((b) => (
+            <li key={b.id} style={{ display: "flex", gap: "0.8rem", alignItems: "baseline", padding: "0.45rem 0", borderBottom: "1px solid var(--line)" }}>
+              <b style={{ minWidth: "14rem" }}>{b.value}</b>
+              <span className="meta" style={{ flex: 1 }}>{b.kind}{b.note ? ` · ${b.note}` : ""}</span>
+              <button type="button" className="btn btn-small btn-danger" onClick={() => unblock(b)}>Remove</button>
+            </li>
+          ))}
+        </ul>
       )}
     </>
   );

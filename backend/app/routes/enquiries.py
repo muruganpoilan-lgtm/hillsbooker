@@ -66,6 +66,38 @@ def spam_reason(body, phone: str) -> Optional[str]:
     return None
 
 
+def blocked_reason(cur, email: Optional[str], phone: Optional[str]) -> Optional[str]:
+    """Why this sender is on the blocklist. None means they are not.
+    Checked before the rules above: a known advertiser is spam whatever they write this time."""
+    email = (email or "").strip().lower()
+    digits = re.sub(r"\D", "", phone or "")
+    wanted = []
+    if email and "@" in email:
+        wanted.append(("email", email))
+        wanted.append(("domain", email.split("@")[-1]))
+    if digits:
+        wanted.append(("phone", digits))
+    if not wanted:
+        return None
+    cur.execute(
+        "SELECT kind, value FROM enquiry_blocklist WHERE (kind, value) IN %s",
+        (tuple(wanted),),
+    )
+    hit = cur.fetchone()
+    if not hit:
+        return None
+    return {
+        "domain": f"the domain {hit['value']} is blocked",
+        "email": f"the address {hit['value']} is blocked",
+        "phone": "this phone number is blocked",
+    }[hit["kind"]]
+
+
+def spam_check(cur, body, phone: str) -> Optional[str]:
+    """The whole spam decision for any of the enquiry forms: blocklist first, then the rules."""
+    return blocked_reason(cur, getattr(body, "email", None), phone) or spam_reason(body, phone)
+
+
 def _mail(subject: str, text: str) -> None:
     """Emails the business address when SMTP is set up. Never raises."""
     to = settings.business_email
@@ -102,9 +134,9 @@ def create_enquiry(body: EnquiryIn, request: Request):
     phone = notify.wa_number(body.phone)
     if not phone:
         raise HTTPException(422, "Please enter a valid phone number")
-    # Kept, not thrown away, so a wrongly flagged enquiry can still be found under "spam".
-    spam = spam_reason(body, phone)
     with get_conn() as conn, conn.cursor() as cur:
+        # Kept, not thrown away, so a wrongly flagged enquiry can still be found under "spam".
+        spam = spam_check(cur, body, phone)
         cur.execute("SELECT count(*) AS n FROM enquiries WHERE phone = %s AND created_at > now() - interval '1 hour'", (phone,))
         if cur.fetchone()["n"] >= 3:
             raise HTTPException(429, "We already have your enquiry. We will call you soon")
@@ -133,7 +165,8 @@ def list_enquiries(user: dict = Depends(admin_only)):
 
 
 class StatusIn(BaseModel):
-    status: Literal["new", "contacted", "won", "lost"]
+    # 'spam' included: the dashboard offers it, and an advert the rules missed is marked by hand.
+    status: Literal["new", "contacted", "won", "lost", "spam"]
 
 
 @admin.put("/{enquiry_id}")
@@ -143,3 +176,58 @@ def set_status(enquiry_id: str, body: StatusIn, user: dict = Depends(admin_only)
         if not cur.fetchone():
             raise HTTPException(404, "Enquiry not found")
     return {"id": enquiry_id, "status": body.status}
+
+
+# --- Blocked senders -------------------------------------------------------
+# Blocking by domain is the useful default: an advertiser who gets no reply from one
+# address simply writes again from another at the same company.
+
+class BlockIn(BaseModel):
+    kind: Literal["domain", "email", "phone"]
+    value: str = Field(min_length=3, max_length=160)
+    note: Optional[str] = Field(default=None, max_length=200)
+
+
+@admin.get("/blocklist/all")
+def list_blocked(user: dict = Depends(admin_only)):
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("SELECT * FROM enquiry_blocklist ORDER BY created_at DESC")
+        return cur.fetchall()
+
+
+@admin.post("/blocklist/all", status_code=201)
+def add_blocked(body: BlockIn, user: dict = Depends(admin_only)):
+    value = body.value.strip().lower()
+    if body.kind == "phone":
+        value = re.sub(r"\D", "", value)
+    elif body.kind == "domain":
+        value = value.split("@")[-1].lstrip("@")  # paste a whole address, get the domain
+    if len(value) < 3:
+        raise HTTPException(422, "That is too short to block")
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """INSERT INTO enquiry_blocklist (kind, value, note) VALUES (%s, %s, %s)
+               ON CONFLICT (kind, value) DO UPDATE SET note = COALESCE(EXCLUDED.note, enquiry_blocklist.note)
+               RETURNING *""",
+            (body.kind, value, body.note),
+        )
+        row = cur.fetchone()
+        # Everything already sitting in the inbox from this sender becomes spam too.
+        if body.kind == "domain":
+            cur.execute("UPDATE enquiries SET status='spam' WHERE status <> 'spam' AND lower(email) LIKE %s", (f"%@{value}",))
+        elif body.kind == "email":
+            cur.execute("UPDATE enquiries SET status='spam' WHERE status <> 'spam' AND lower(email) = %s", (value,))
+        else:
+            cur.execute("UPDATE enquiries SET status='spam' WHERE status <> 'spam' AND regexp_replace(phone, '\\D', '', 'g') = %s", (value,))
+        row["also_marked"] = cur.rowcount
+    return row
+
+
+@admin.delete("/blocklist/all/{block_id}")
+def remove_blocked(block_id: str, user: dict = Depends(admin_only)):
+    """Unblocks a sender. Enquiries already filed as spam stay as they are."""
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("DELETE FROM enquiry_blocklist WHERE id = %s RETURNING id", (block_id,))
+        if not cur.fetchone():
+            raise HTTPException(404, "Not on the blocklist")
+    return {"id": block_id}

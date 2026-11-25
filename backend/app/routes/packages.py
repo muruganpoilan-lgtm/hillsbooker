@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from .. import notify, ratelimit
 from ..auth import require_role
 from ..db import get_conn
-from .enquiries import _email, spam_reason
+from .enquiries import _email, spam_check
 from .owner import _delete_photo, _upload_photos
 
 public = APIRouter(prefix="/packages", tags=["packages"])
@@ -76,8 +76,8 @@ def package_enquiry(slug: str, body: PackageEnquiryIn, request: Request):
     phone = notify.wa_number(body.phone)
     if not phone:
         raise HTTPException(422, "Please enter a valid phone number")
-    spam = spam_reason(body, phone)
     with get_conn() as conn, conn.cursor() as cur:
+        spam = spam_check(cur, body, phone)
         cur.execute("SELECT id, title FROM packages WHERE slug = %s AND active", (slug,))
         p = cur.fetchone()
         if not p:

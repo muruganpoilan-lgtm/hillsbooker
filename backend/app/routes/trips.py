@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from .. import notify, ratelimit
 from ..db import get_conn
-from .enquiries import _email, spam_reason
+from .enquiries import _email, spam_check
 from .packages import list_packages
 from .public import search as search_rooms
 from .vehicles import list_vehicles
@@ -224,8 +224,8 @@ def send_trip(body: TripRequestIn, request: Request):
         lines.append(f"Liked stay: {body.stay_name}")
     if body.notes:
         lines.append(f"Notes: {body.notes.strip()}")
-    spam = spam_reason(body, phone)
     with get_conn() as conn, conn.cursor() as cur:
+        spam = spam_check(cur, body, phone)
         cur.execute("SELECT count(*) AS n FROM enquiries WHERE phone = %s AND created_at > now() - interval '1 hour'", (phone,))
         if cur.fetchone()["n"] >= 3:
             raise HTTPException(429, "We already have your trip request. We will call you soon")
