@@ -21,7 +21,6 @@ export const metadata = {
   title: { default: "Hill Booker: hotels and homestays in the hills and by the sea", template: "%s | Hill Booker" },
   description: DESCRIPTION,
   applicationName: SITE_NAME,
-  alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     siteName: SITE_NAME,

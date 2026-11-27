@@ -6,6 +6,9 @@ import { api, money } from "../lib/api";
 import { slugify } from "../lib/seo";
 import { getT } from "../lib/lang";
 
+// The homepage's own canonical (the site-wide one in layout.jsx was removed: every page inherited it and told Google it was a copy of the homepage)
+export const metadata = { alternates: { canonical: "/" } };
+
 // To use a real photo for a place, add public/cities/<city-slug>.jpg (for example public/cities/munnar.jpg).
 // Until the file exists the card shows its coloured background instead.
 const TREND_BIG = [

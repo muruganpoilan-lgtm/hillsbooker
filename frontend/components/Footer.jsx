@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { getT } from "../lib/lang";
+import { API_BASE } from "../lib/api";
+import { slugify } from "../lib/seo";
 
 const SOCIAL = [
   { name: "Instagram", href: "https://www.instagram.com/hillbookerbooking/" },
@@ -8,8 +10,29 @@ const SOCIAL = [
   { name: "WhatsApp", href: "https://wa.me/918300841442" },
 ];
 
+// Fallback when the API can't be reached: cities that currently have stays.
+const FALLBACK_CITIES = ["Munnar", "Ooty", "Valparai", "Wayanad", "Madikeri", "Kotagiri", "Nelliyampathy"];
+
+// The footer is on every page, so it must only link to city pages that have stays.
+// Empty city pages are noindex, and linking to them from every page filled Search Console with
+// "Excluded by noindex". Same source as the sitemap; cached for an hour so it is one request, not one per page.
+async function liveCities() {
+  try {
+    const res = await fetch(`${API_BASE}/seo/properties`, { next: { revalidate: 3600 } });
+    if (!res.ok) return FALLBACK_CITIES;
+    const counts = new Map();
+    for (const p of await res.json()) counts.set(p.city, (counts.get(p.city) || 0) + 1);
+    const list = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c).slice(0, 8);
+    return list.length ? list : FALLBACK_CITIES;
+  } catch {
+    return FALLBACK_CITIES;
+  }
+}
+
 export default async function Footer() {
   const t = await getT();
+  const cities = await liveCities();
+  const or = (key, fallback) => (t(key) === key ? fallback : t(key)); // new cities may not have a translation yet
   return (
     <footer className="site-footer">
       <div className="tiles" aria-hidden="true" />
@@ -17,9 +40,9 @@ export default async function Footer() {
         <p className="footer-brand"><img src="/logo-mark.png" alt="" className="footer-logo" width="80" height="30" loading="lazy" /> Hill Booker</p>
         <p className="meta">{t("footer.tagline")}</p>
         <nav className="footer-links" aria-label="Popular places">
-          {["Munnar", "Ooty", "Valparai", "Kodaikanal", "Alleppey", "Coorg", "Wayanad"].map((c) => (
-            <Link key={c} href={`/stays/${c.toLowerCase()}`}>
-              {t("footer.staysIn", { city: t(`city.${c}`) })}
+          {cities.map((c) => (
+            <Link key={c} href={`/stays/${slugify(c)}`}>
+              {t("footer.staysIn", { city: or(`city.${c}`, c) })}
             </Link>
           ))}
         </nav>
