@@ -7,6 +7,7 @@ import 'screens/bookings_hub.dart';
 import 'screens/home_screen.dart';
 import 'screens/manage_hub.dart';
 import 'session.dart';
+import 'widgets/phone_gate.dart';
 import 'theme.dart';
 
 Future<void> main() async {
@@ -31,7 +32,7 @@ class HillBookerApp extends StatelessWidget {
       scaffoldMessengerKey: messengerKey,
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
-      home: const Shell(),
+      home: const PhoneGate(child: Shell()), // asks for a mobile number if a logged-in account has none
     );
   }
 }
