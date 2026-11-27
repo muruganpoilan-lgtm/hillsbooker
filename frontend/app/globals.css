@@ -17,7 +17,7 @@
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
-  background: var(--chalk);
+  background: var(--paper); /* white page (was the pale green --chalk); --chalk stays for hovers and small fills */
   color: var(--ink);
   font-family: var(--font-body), var(--font-tamil), system-ui, sans-serif;
   font-size: 1rem;
@@ -857,7 +857,7 @@ label.btn[aria-busy="true"] { opacity: 0.7; cursor: progress; }
 
 /* ---------- property page tabs and reviews ---------- */
 html { scroll-behavior: smooth; }
-.prop-tabs { position: sticky; top: 0; z-index: 5; display: flex; gap: 0.3rem; overflow-x: auto; margin: 1.2rem 0 0; padding: 0.3rem 0; background: var(--chalk); border-bottom: 1px solid var(--line); }
+.prop-tabs { position: sticky; top: 0; z-index: 5; display: flex; gap: 0.3rem; overflow-x: auto; margin: 1.2rem 0 0; padding: 0.3rem 0; background: var(--paper); border-bottom: 1px solid var(--line); }
 .prop-tabs a { flex: none; padding: 0.55rem 0.9rem; font-weight: 700; color: var(--ink-soft); text-decoration: none; border-bottom: 3px solid transparent; }
 .prop-tabs a:hover, .prop-tabs a:focus-visible { color: var(--green); border-bottom-color: var(--marigold); }
 .prop-tab-n { display: inline-block; margin-left: 0.35rem; padding: 0 0.45rem; font-size: 0.8rem; border-radius: 999px; background: var(--green); color: #fff; }
