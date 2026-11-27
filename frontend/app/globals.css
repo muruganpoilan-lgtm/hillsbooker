@@ -83,10 +83,17 @@ img { max-width: 100%; }
 .hero-text { max-width: 44ch; font-size: 1.12rem; margin-top: 1rem; color: #dcece6; }
 .hero-ridge { position: absolute; left: 0; right: 0; bottom: -1px; width: 100%; height: clamp(110px, 22vw, 230px); display: block; }
 .slip-wrap { max-width: 70rem; margin: calc(-1 * clamp(1.2rem, 3vw, 2.2rem)) auto 0; padding: 0 clamp(1rem, 4vw, 2.5rem); position: relative; z-index: 2; }
+/* Footer strip: army green band with twin cream lines top and bottom (replaced the four-colour triangle tiles) */
 .tiles {
-  height: 26px;
-  background: conic-gradient(from 45deg, var(--marigold) 0 25%, var(--indigo) 0 50%, var(--paper) 0 75%, var(--green) 0);
-  background-size: 26px 26px;
+  --army: #4b5320;
+  --cream: #efe6cf;
+  height: 14px;
+  background: linear-gradient(
+    var(--cream) 0 1.5px, var(--army) 1.5px 3.5px, var(--cream) 3.5px 4.5px,
+    var(--army) 4.5px calc(100% - 4.5px),
+    var(--cream) calc(100% - 4.5px) calc(100% - 3.5px), var(--army) calc(100% - 3.5px) calc(100% - 1.5px),
+    var(--cream) calc(100% - 1.5px)
+  );
 }
 .slip {
   background: var(--paper); color: var(--ink); border: 2px solid var(--ink); border-radius: var(--radius);
