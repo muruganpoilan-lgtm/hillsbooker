@@ -1,5 +1,5 @@
 import "./globals.css";
-import { Bricolage_Grotesque, Albert_Sans } from "next/font/google";
+import { Figtree, Noto_Sans_Tamil } from "next/font/google";
 import { AuthProvider } from "../components/AuthProvider";
 import { LangProvider } from "../components/LangProvider";
 import { getLang } from "../lib/lang";
@@ -10,8 +10,11 @@ import ReferralClaim from "../components/ReferralClaim";
 import WelcomeToast from "../components/WelcomeToast";
 import { SITE_NAME, SITE_URL, jsonLd } from "../lib/seo";
 
-const display = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-display", display: "swap" });
-const body = Albert_Sans({ subsets: ["latin"], variable: "--font-body", display: "swap" });
+// Figtree for English (headings at weight 800, close to Booking.com's look); Noto Sans Tamil for Tamil letters,
+// drawn in the same style, so Tamil pages no longer fall back to whatever font the phone has.
+const display = Figtree({ subsets: ["latin"], weight: ["600", "700", "800"], variable: "--font-display", display: "swap" });
+const body = Figtree({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-body", display: "swap" });
+const tamil = Noto_Sans_Tamil({ subsets: ["tamil"], weight: ["400", "600", "700", "800"], variable: "--font-tamil", display: "swap" });
 
 const DESCRIPTION =
   "Book hotels and homestays in Munnar, Ooty, Kodaikanal, Valparai, Alleppey and more. See only the rooms that are free on every night of your stay.";
@@ -62,7 +65,7 @@ export default async function RootLayout({ children }) {
   const lang = await getLang();
   return (
     <html lang={lang}>
-      <body className={`${display.variable} ${body.variable}`}>
+      <body className={`${display.variable} ${body.variable} ${tamil.variable}`}>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(SITE_LD) }} />
         <LangProvider initial={lang}>
         <AuthProvider>
