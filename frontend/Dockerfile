@@ -1,7 +1,8 @@
 FROM node:20-alpine AS build
 WORKDIR /web
-COPY package.json ./
-RUN npm install
+# Install exactly the versions in package-lock.json, so every build is the same (and safe) set of packages
+COPY package.json package-lock.json ./
+RUN npm ci
 COPY . .
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
