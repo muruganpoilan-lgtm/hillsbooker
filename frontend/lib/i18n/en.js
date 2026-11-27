@@ -331,6 +331,10 @@ export default {
   "bk.canCancel": "You can cancel for the first 10 minutes after booking and your advance is refunded in full. After that, please call customer care.",
   "bk.cantCancel": "The 10 minute cancel time is over. To change or cancel this booking, please call Hill Booker customer care.",
 
+  "pg.title": "One more step: your mobile number",
+  "pg.body": "Hosts use it to reach you about your stay, and we send your booking confirmation and invoice to your WhatsApp.",
+  "pg.save": "Save and continue",
+  "pg.logout": "Log out",
   "ph.label": "Your mobile / WhatsApp number",
   "ph.hint": "Used to send your invoice to your own WhatsApp and so your host can reach you.",
   "ph.save": "Save number",

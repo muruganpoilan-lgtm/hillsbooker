@@ -8,6 +8,7 @@ import Footer from "../components/Footer";
 import ChatBot from "../components/ChatBot";
 import ReferralClaim from "../components/ReferralClaim";
 import WelcomeToast from "../components/WelcomeToast";
+import PhoneGate from "../components/PhoneGate";
 import { SITE_NAME, SITE_URL, jsonLd } from "../lib/seo";
 
 // Figtree for English (headings at weight 800, close to Booking.com's look); Noto Sans Tamil for Tamil letters,
@@ -75,6 +76,7 @@ export default async function RootLayout({ children }) {
           <ChatBot />
           <ReferralClaim />
           <WelcomeToast />
+          <PhoneGate />
         </AuthProvider>
         </LangProvider>
       </body>

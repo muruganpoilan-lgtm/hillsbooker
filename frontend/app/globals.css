@@ -974,3 +974,10 @@ html { scroll-behavior: smooth; }
 .hr-all-box { width: 100%; aspect-ratio: 5 / 4; border-radius: 10px; border: 2px dashed var(--green); display: grid; place-content: center; justify-items: center; gap: 0.3rem; color: var(--green); background: #eef7f2; }
 .hr-all-box b { font-size: 1.05rem; }
 .hr-all-box span { font-size: 2rem; line-height: 1; }
+
+/* Mobile number gate (components/PhoneGate.jsx): covers the page until a signed-in user saves a mobile number */
+.phone-gate { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 1rem; background: rgba(23, 33, 59, 0.55); }
+.phone-gate-card { width: 100%; max-width: 24rem; background: var(--paper); border-radius: 12px; padding: 1.4rem 1.3rem; box-shadow: 0 12px 40px rgba(23, 33, 59, 0.25); }
+.phone-gate-card h2 { margin: 0; font-size: 1.3rem; }
+.phone-gate-card .meta { margin: 0; }
+.link-button { background: none; border: 0; padding: 0.2rem; color: var(--ink-soft); text-decoration: underline; font: inherit; cursor: pointer; justify-self: center; }

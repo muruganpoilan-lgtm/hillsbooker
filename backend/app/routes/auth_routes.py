@@ -82,7 +82,8 @@ def my_phone(user: dict = Depends(current_user)):
 @router.put("/phone")
 def set_my_phone(body: PhoneIn, user: dict = Depends(current_user)):
     phone = body.phone.strip()
-    if phone and not notify.wa_number(phone):
+    # A mobile number is required on every account now (the site asks Google sign-ups for one too), so it can be changed but not removed
+    if not notify.wa_number(phone):
         raise HTTPException(400, "Enter a valid mobile number, for example 98765 43210")
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute("UPDATE users SET phone = %s WHERE id = %s", (phone or None, user["id"]))
