@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api.dart';
@@ -28,27 +29,77 @@ class _LoginScreenState extends State<LoginScreen> {
   String _role = 'guest';
   String _error = '';
   bool _googleOn = false;
+  String? _googleClientId;
 
   @override
   void initState() {
     super.initState();
     _signUp = widget.startOnSignUp;
     _checkGoogle();
+    _fillEmail();
+  }
+
+  // Second time onwards the email is already filled in.
+  Future<void> _fillEmail() async {
+    final e = await lastEmail();
+    if (e != null && mounted && _email.text.isEmpty) setState(() => _email.text = e);
   }
 
   Future<void> _checkGoogle() async {
     final res = await Api.get('/auth/google/config');
-    if (mounted && res.ok && res.data is Map && res.data['enabled'] == true) setState(() => _googleOn = true);
+    if (mounted && res.ok && res.data is Map && res.data['enabled'] == true) {
+      setState(() {
+        _googleOn = true;
+        _googleClientId = res.data['clientId'] as String?;
+      });
+    }
   }
 
-  // Opens Google's sign-in page in the phone's browser; the server sends us back to hillbooker://auth with a token.
+  // First the phone's own pop-up listing its Google accounts: one tap and they are in.
+  // If that pop-up is not set up for this build (or Google Play is missing), fall back to Google's page in the browser.
   Future<void> _google() async {
     setState(() {
       _busy = true;
       _error = '';
     });
+    final role = _signUp ? _role : 'guest';
+    final id = _googleClientId;
+    if (id != null) {
+      final g = GoogleSignIn(scopes: const ['email'], serverClientId: id);
+      try {
+        final acc = await g.signIn();
+        if (acc == null) {
+          if (mounted) setState(() => _busy = false); // closed the pop-up without choosing
+          return;
+        }
+        final idToken = (await acc.authentication).idToken;
+        await g.signOut(); // so the pop-up asks which account again next time
+        if (idToken != null) {
+          final res = await Api.post('/auth/google/app', body: {'id_token': idToken, 'role': role});
+          if (!mounted) return;
+          if (res.ok) {
+            await saveLastEmail(acc.email);
+            await session.login(res.data['token'] as String, res.data['role'] as String);
+            if (!mounted) return;
+            Navigator.of(context).pop(true);
+            return;
+          }
+          setState(() {
+            _busy = false;
+            _error = res.error;
+          });
+          return;
+        }
+      } catch (_) {
+        // not set up for this build: use the browser below
+      }
+    }
+    await _googleInBrowser(role);
+  }
+
+  // Opens Google's sign-in page in the phone's browser; the server sends us back to hillbooker://auth with a token.
+  Future<void> _googleInBrowser(String role) async {
     try {
-      final role = _signUp ? _role : 'guest';
       final result = await FlutterWebAuth2.authenticate(url: '$apiBase/auth/google/start?target=app&role=$role', callbackUrlScheme: 'hillbooker');
       final q = Uri.parse(result).queryParameters;
       final token = q['token'];
@@ -133,6 +184,7 @@ class _LoginScreenState extends State<LoginScreen> {
       });
       return;
     }
+    await saveLastEmail(email.toLowerCase());
     await session.login(res.data['token'] as String, res.data['role'] as String);
     if (!mounted) return;
     Navigator.of(context).pop(true);

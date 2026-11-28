@@ -54,6 +54,18 @@ def login(body: LoginIn, request: Request):
     return {"token": make_token(str(user["id"]), user["role"]), "role": user["role"]}
 
 
+@router.post("/refresh")
+def refresh(user: dict = Depends(current_user)):
+    """The app calls this when it opens, so people who use it stay logged in instead of being logged out after a week.
+    A fresh token is only given while the old one is still valid and the account still exists."""
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("SELECT id, role FROM users WHERE id = %s", (user["id"],))
+        row = cur.fetchone()
+    if not row:
+        raise HTTPException(401, "Log in first")
+    return {"token": make_token(str(row["id"]), row["role"]), "role": row["role"]}
+
+
 @router.post("/become-host")
 def become_host(user: dict = Depends(current_user)):
     """A guest account turns into a host account. The same login still books stays and trips.

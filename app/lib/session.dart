@@ -18,6 +18,23 @@ class Session extends ChangeNotifier {
     Api.token = token;
   }
 
+  // Swap the saved token for a fresh one each time the app opens, so anyone who uses the app
+  // stays logged in. If the token has already run out, the API logs them out as before.
+  Future<void> refresh() async {
+    if (token == null) return;
+    final res = await Api.post('/auth/refresh');
+    if (res.ok && res.data is Map && res.data['token'] is String) {
+      token = res.data['token'] as String;
+      role = res.data['role'] as String;
+      Api.token = token;
+      try {
+        final p = await SharedPreferences.getInstance();
+        await p.setString('token', token!);
+        await p.setString('role', role!);
+      } catch (_) {}
+    }
+  }
+
   Future<void> login(String newToken, String newRole) async {
     token = newToken;
     role = newRole;
@@ -46,6 +63,21 @@ class Session extends ChangeNotifier {
 }
 
 final Session session = Session();
+
+// The last email that logged in on this phone, filled in on the login screen next time.
+Future<String?> lastEmail() async {
+  try {
+    return (await SharedPreferences.getInstance()).getString('lastEmail');
+  } catch (_) {
+    return null;
+  }
+}
+
+Future<void> saveLastEmail(String email) async {
+  try {
+    await (await SharedPreferences.getInstance()).setString('lastEmail', email);
+  } catch (_) {}
+}
 
 // Which tab of the bottom bar is open: 0 Search, 1 Bookings, 2 Account.
 final ValueNotifier<int> tabIndex = ValueNotifier<int>(0);

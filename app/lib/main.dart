@@ -19,6 +19,7 @@ Future<void> main() async {
   };
   await Push.init();
   if (session.token != null) Push.register();
+  session.refresh(); // no await: the app opens straight away
   runApp(const HillBookerApp());
 }
 

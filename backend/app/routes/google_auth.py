@@ -20,6 +20,7 @@ from html import escape
 import jwt
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
+from pydantic import BaseModel, Field
 
 from ..auth import hash_password, make_token
 from ..config import google_enabled, settings
@@ -37,7 +38,8 @@ def _redirect_uri() -> str:
 
 @router.get("/config")
 def config():
-    return {"enabled": google_enabled()}
+    # The client id is public (it is in every Google sign-in link). The app passes it to the phone's account picker.
+    return {"enabled": google_enabled(), "clientId": settings.google_client_id if google_enabled() else None}
 
 
 @router.get("/start")
@@ -101,6 +103,12 @@ def callback(code: str | None = None, state: str | None = None, error: str | Non
     if claims.get("aud") != settings.google_client_id or not claims.get("email") or claims.get("email_verified") is not True:
         return _back(target, {"error": "Google didn't confirm your email"}, nxt)
 
+    user = _account(claims, role)
+    return _back(target, {"token": make_token(str(user["id"]), user["role"]), "role": user["role"]}, nxt)
+
+
+def _account(claims: dict, role: str) -> dict:
+    """Find the account for a Google-verified email, or create it with the chosen type."""
     email = claims["email"].lower()
     name = (claims.get("name") or email.split("@")[0])[:100]
     with get_conn() as conn, conn.cursor() as cur:
@@ -113,4 +121,29 @@ def callback(code: str | None = None, state: str | None = None, error: str | Non
                 (name, email, hash_password(secrets.token_urlsafe(32)), role),
             )
             user = cur.fetchone()
-    return _back(target, {"token": make_token(str(user["id"]), user["role"]), "role": user["role"]}, nxt)
+    return user
+
+
+class AppSignIn(BaseModel):
+    id_token: str = Field(min_length=20, max_length=4096)
+    role: str = Field("guest", pattern="^(guest|owner|operator)$")
+
+
+@router.post("/app")
+def app_sign_in(body: AppSignIn):
+    """The app's own Google account picker (the pop-up listing the emails on the phone) sends the ID token here.
+    Google checks the token's signature for us at tokeninfo; we then check it was made for Hill Booker."""
+    if not google_enabled():
+        raise HTTPException(503, "Google sign-in isn't switched on yet")
+    try:
+        url = "https://oauth2.googleapis.com/tokeninfo?" + urllib.parse.urlencode({"id_token": body.id_token})
+        with urllib.request.urlopen(url, timeout=15) as r:  # noqa: S310 (fixed https URL)
+            claims = json.loads(r.read())
+    except (urllib.error.URLError, ValueError):
+        raise HTTPException(401, "Google sign-in failed. Try again")
+    if (claims.get("aud") != settings.google_client_id
+            or claims.get("iss") not in ("accounts.google.com", "https://accounts.google.com")
+            or not claims.get("email") or str(claims.get("email_verified")).lower() != "true"):
+        raise HTTPException(401, "Google didn't confirm your email")
+    user = _account(claims, body.role)
+    return {"token": make_token(str(user["id"]), user["role"]), "role": user["role"]}
