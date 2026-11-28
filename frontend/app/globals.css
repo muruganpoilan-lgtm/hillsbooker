@@ -157,10 +157,10 @@ img { max-width: 100%; }
 .steps h3 { font-size: 1.1rem; }
 .steps p { color: var(--ink-soft); max-width: 42ch; }
 @media (min-width: 800px) { .steps { grid-template-columns: repeat(3, 1fr); gap: 2rem; } }
-.host-band { background: var(--indigo); color: #fff; margin-top: clamp(2rem, 5vw, 3.5rem); }
+.host-band { background: var(--green-dark); color: #fff; margin-top: clamp(2rem, 5vw, 3.5rem); }
 .host-inner { max-width: 70rem; margin: 0 auto; padding: clamp(2rem, 5vw, 3.2rem) clamp(1rem, 4vw, 2.5rem); display: grid; gap: 0.7rem; justify-items: start; }
 .host-inner h2 { font-size: clamp(1.5rem, 4vw, 2.1rem); }
-.host-inner p { color: #dfe4f5; max-width: 48ch; }
+.host-inner p { color: #d6ebe2; max-width: 48ch; }
 
 /* footer */
 .site-footer { margin-top: 0; background: var(--paper); border-top: 0; }

@@ -29,6 +29,21 @@ flutter:
   assets:
     - assets/logo.png
     - assets/logo_mark.png
+  # Figtree, same as the website. The build workflow makes these files from
+  # Google Fonts' Figtree before building, so they are not kept in git.
+  fonts:
+    - family: Figtree
+      fonts:
+        - asset: assets/fonts/Figtree-400.ttf
+          weight: 400
+        - asset: assets/fonts/Figtree-500.ttf
+          weight: 500
+        - asset: assets/fonts/Figtree-600.ttf
+          weight: 600
+        - asset: assets/fonts/Figtree-700.ttf
+          weight: 700
+        - asset: assets/fonts/Figtree-800.ttf
+          weight: 800
 
 flutter_launcher_icons:
   android: true
