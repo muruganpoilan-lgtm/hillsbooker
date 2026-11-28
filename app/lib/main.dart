@@ -61,7 +61,10 @@ class Shell extends StatelessWidget {
             ];
             return Scaffold(
               body: SafeArea(top: index != 0, child: pages[index]),
-              bottomNavigationBar: NavigationBar(
+              // Thin line on top so the white tab bar stays apart from the white page.
+              bottomNavigationBar: DecoratedBox(
+                decoration: const BoxDecoration(border: Border(top: BorderSide(color: C.line))),
+                child: NavigationBar(
                 selectedIndex: index,
                 onDestinationSelected: (i) => tabIndex.value = i,
                 destinations: [
@@ -70,6 +73,7 @@ class Shell extends StatelessWidget {
                   const NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Account'),
                   if (manager) const NavigationDestination(icon: Icon(Icons.storefront_outlined), selectedIcon: Icon(Icons.storefront), label: 'Manage'),
                 ],
+                ),
               ),
             );
           },
